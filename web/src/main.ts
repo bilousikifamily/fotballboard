@@ -12,6 +12,9 @@ if (!app) {
 const tg = window.Telegram?.WebApp;
 if (tg?.ready) {
   tg.ready();
+  if (tg.expand) {
+    tg.expand();
+  }
 }
 
 const initData = tg?.initData || "";
