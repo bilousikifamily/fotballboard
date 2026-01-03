@@ -223,6 +223,8 @@ function renderUser(user: TelegramWebAppUser | undefined, stats: UserStats, admi
         </div>
       </section>
 
+      <p class="muted small notice">Прогнози приймаються за 60 хв до старту.</p>
+
       <section class="panel matches">
         <div class="section-header">
           <h2>Матчі</h2>
@@ -230,8 +232,6 @@ function renderUser(user: TelegramWebAppUser | undefined, stats: UserStats, admi
         </div>
         <div class="matches-list" data-matches></div>
       </section>
-
-      <p class="muted small notice">Прогнози приймаються за 60 хв до старту.</p>
 
       <section class="panel leaderboard center">
         <button class="button" type="button" data-leaderboard>ТАБЛИЦЯ</button>
@@ -678,9 +678,16 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
 
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
   averageEl.classList.add("is-visible");
+  const match = matchesById.get(matchId);
+  const homeName = match?.home_team ? escapeHtml(match.home_team) : "";
+  const awayName = match?.away_team ? escapeHtml(match.away_team) : "";
   averageEl.innerHTML = `
     <span class="match-average-label">Середній прогноз</span>
-    <span class="match-average-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+    <div class="match-average-line">
+      ${homeName ? `<span class="team-name">${homeName}</span>` : ""}
+      <span class="match-average-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+      ${awayName ? `<span class="team-name">${awayName}</span>` : ""}
+    </div>
   `;
 }
 
@@ -778,7 +785,7 @@ function renderMatchesList(matches: Match[]): string {
       const statusLine = finished
         ? `<p class="muted small">Матч завершено.</p>`
         : closed
-          ? `<p class="muted small">Прогнози закрито.</p>`
+          ? `<p class="muted small status-closed">Прогнози закрито.</p>`
           : "";
       const form = closed || predicted
         ? ""
@@ -817,11 +824,12 @@ function renderMatchesList(matches: Match[]): string {
               Прогнози
             </button>
           `}
-          ${statusLine}
+          ${closed ? "" : statusLine}
           ${form}
           <div class="predictions" data-predictions data-match-id="${match.id}" ${
             predicted ? "data-auto-open='true'" : ""
           }></div>
+          ${closed ? statusLine : ""}
         </article>
       `;
     })
