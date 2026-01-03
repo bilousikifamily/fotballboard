@@ -351,10 +351,21 @@ h1 {
   border-radius: 14px;
   padding: 10px 12px;
   display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.summary-line {
+  display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+}
+
+.summary-time {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
 }
 
 .team-name {
@@ -371,6 +382,12 @@ h1 {
   align-items: center;
   justify-content: space-between;
   font-size: 0.85rem;
+}
+
+.prediction-row.self {
+  background: rgba(11, 125, 102, 0.1);
+  border-radius: 10px;
+  padding: 6px 8px;
 }
 
 .prediction-name {

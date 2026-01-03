@@ -648,41 +648,73 @@ function renderPredictionsPanel(match: Match | undefined, predictions: Predictio
   }
 
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
-  const filtered = currentUserId
+  const self = currentUserId
+    ? predictions.find((item) => item.user_id === currentUserId) || null
+    : null;
+  const others = currentUserId
     ? predictions.filter((item) => item.user_id !== currentUserId)
     : predictions;
   const summary = match
     ? `
       <div class="prediction-summary">
-        <span class="team-name">${escapeHtml(match.home_team)}</span>
-        <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
-        <span class="team-name">${escapeHtml(match.away_team)}</span>
+        <div class="summary-line">
+          <span class="team-name">${escapeHtml(match.home_team)}</span>
+          <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+          <span class="team-name">${escapeHtml(match.away_team)}</span>
+        </div>
+        <div class="summary-time">${formatKyivDateTime(match.kickoff_at)}</div>
       </div>
     `
     : `
       <div class="prediction-summary">
-        <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+        <div class="summary-line">
+          <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+        </div>
       </div>
     `;
 
-  const rows = filtered.length
-    ? filtered
-      .map((item) => {
-        const name = formatPredictionName(item.user);
-        return `
-          <div class="prediction-row">
-            <span class="prediction-name">${escapeHtml(name)}</span>
-            <span class="prediction-score">${item.home_pred}:${item.away_pred}</span>
-          </div>
-        `;
-      })
-      .join("")
-    : `<p class="muted small">Немає прогнозів інших гравців.</p>`;
+  const rows = renderPredictionRows(self, others);
 
   return `
     ${summary}
     <div class="predictions-list">${rows}</div>
   `;
+}
+
+function renderPredictionRows(self: PredictionView | null, others: PredictionView[]): string {
+  const rows: string[] = [];
+
+  if (self) {
+    const name = formatPredictionName(self.user);
+    rows.push(`
+      <div class="prediction-row self">
+        <span class="prediction-name">${escapeHtml(name)}</span>
+        <span class="prediction-score">${self.home_pred}:${self.away_pred}</span>
+      </div>
+    `);
+  }
+
+  if (others.length) {
+    rows.push(
+      others
+        .map((item) => {
+          const name = formatPredictionName(item.user);
+          return `
+            <div class="prediction-row">
+              <span class="prediction-name">${escapeHtml(name)}</span>
+              <span class="prediction-score">${item.home_pred}:${item.away_pred}</span>
+            </div>
+          `;
+        })
+        .join("")
+    );
+  }
+
+  if (!rows.length) {
+    return `<p class="muted small">Поки що немає прогнозів.</p>`;
+  }
+
+  return rows.join("");
 }
 
 function getAveragePrediction(predictions: PredictionView[]): { homeAvg: number; awayAvg: number } {
@@ -745,10 +777,6 @@ function renderMatchesList(matches: Match[]): string {
         : closed
           ? `<p class="muted small">Прогнози закрито.</p>`
           : "";
-      const predictedNote = predicted
-        ? `<p class="muted small">Ваш прогноз вже збережено.</p>`
-        : "";
-
       const form = closed || predicted
         ? ""
         : `
@@ -784,7 +812,6 @@ function renderMatchesList(matches: Match[]): string {
             Прогнози
           </button>
           ${statusLine}
-          ${predictedNote}
           ${form}
           <div class="predictions" data-predictions data-match-id="${match.id}" ${
             predicted ? "data-auto-open='true'" : ""
