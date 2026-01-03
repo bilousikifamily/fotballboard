@@ -70,17 +70,12 @@ function renderMessage(message: string, note = "This WebApp should be opened fro
 }
 
 function renderUser(user?: TelegramWebAppUser): void {
-  const displayName = user?.username ? `@${user.username}` : user?.first_name || "Unknown";
+  const displayName = user?.first_name?.trim() || (user?.username ? `@${user.username}` : "");
   const safeName = escapeHtml(displayName);
-  const avatar = user?.photo_url
-    ? `<img class="avatar" src="${escapeAttribute(user.photo_url)}" alt="Avatar" />`
-    : `<div class="avatar placeholder"></div>`;
 
   app.innerHTML = `
     <main class="card">
-      ${avatar}
-      <h1>${safeName}</h1>
-      <pre class="debug">${user ? escapeHtml(JSON.stringify(user, null, 2)) : "{}"}</pre>
+      ${safeName ? `<h1>${safeName}</h1>` : ""}
     </main>
   `;
 }

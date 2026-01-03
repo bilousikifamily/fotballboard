@@ -1,6 +1,10 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
 interface Env {
   BOT_TOKEN: string;
   WEBAPP_URL: string;
+  SUPABASE_URL?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
 export default {
@@ -34,6 +38,11 @@ export default {
       const valid = await validateInitData(initData, env.BOT_TOKEN);
       if (!valid.ok) {
         return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      if (valid.user) {
+        const supabase = createSupabaseClient(env);
+        await storeUser(supabase, valid.user);
       }
 
       return jsonResponse({ ok: true, user: valid.user }, 200, corsHeaders());
@@ -148,6 +157,41 @@ async function computeTelegramHash(dataCheckString: string, botToken: string): P
   );
   const signature = await crypto.subtle.sign("HMAC", secretKey, encoder.encode(dataCheckString));
   return bufferToHex(signature);
+}
+
+function createSupabaseClient(env: Env): SupabaseClient | null {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { "X-Client-Info": "tg-webapp-worker" } }
+  });
+}
+
+async function storeUser(supabase: SupabaseClient | null, user: TelegramUser): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+
+  try {
+    const payload = {
+      id: user.id,
+      username: user.username ?? null,
+      first_name: user.first_name ?? null,
+      last_name: user.last_name ?? null,
+      photo_url: user.photo_url ?? null,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from("users").upsert(payload, { onConflict: "id" });
+    if (error) {
+      console.error("Failed to store user", error);
+    }
+  } catch (error) {
+    console.error("Failed to store user", error);
+  }
 }
 
 function bufferToHex(buffer: ArrayBuffer): string {
