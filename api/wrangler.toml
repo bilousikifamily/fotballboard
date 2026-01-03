@@ -3,4 +3,4 @@ main = "src/index.ts"
 compatibility_date = "2024-02-08"
 
 [vars]
-WEBAPP_URL = "https://your-pages-domain.pages.dev"
+WEBAPP_URL = "https://fotballboard.pages.dev"
