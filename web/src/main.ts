@@ -46,6 +46,7 @@ type Match = {
   status: string;
   home_score?: number | null;
   away_score?: number | null;
+  has_prediction?: boolean;
 };
 
 type PredictionUser = {
@@ -460,6 +461,16 @@ function bindMatchActions(): void {
       }
     });
   });
+
+  const autoContainers = app.querySelectorAll<HTMLElement>("[data-predictions][data-auto-open='true']");
+  autoContainers.forEach((container) => {
+    const matchIdRaw = container.dataset.matchId || "";
+    const matchId = Number.parseInt(matchIdRaw, 10);
+    if (!Number.isFinite(matchId)) {
+      return;
+    }
+    void togglePredictions(matchId, container, { forceOpen: true });
+  });
 }
 
 function setupScoreControls(form: HTMLFormElement): void {
@@ -554,6 +565,15 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
     });
     const data = (await response.json()) as PredictionResponse;
     if (!response.ok || !data.ok) {
+      if (data.error === "already_predicted") {
+        form.classList.add("is-hidden");
+        const container = app.querySelector<HTMLElement>(
+          `[data-predictions][data-match-id="${matchId}"]`
+        );
+        if (container) {
+          await togglePredictions(matchId, container, { forceReload: true, forceOpen: true });
+        }
+      }
       if (status) {
         status.textContent = getPredictionError(data.error);
       }
@@ -697,6 +717,8 @@ function getPredictionError(error: string | undefined): string {
       return "Матч завершено.";
     case "match_not_found":
       return "Матч не знайдено.";
+    case "already_predicted":
+      return "Ви вже зробили прогноз.";
     default:
       return "Не вдалося зберегти прогноз.";
   }
@@ -713,6 +735,7 @@ function renderMatchesList(matches: Match[]): string {
       const kickoff = formatKyivDateTime(match.kickoff_at);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
+      const predicted = Boolean(match.has_prediction);
       const result =
         finished && match.home_score !== null && match.away_score !== null
           ? `<div class="match-result">${match.home_score}:${match.away_score}</div>`
@@ -722,8 +745,11 @@ function renderMatchesList(matches: Match[]): string {
         : closed
           ? `<p class="muted small">Прогнози закрито.</p>`
           : "";
+      const predictedNote = predicted
+        ? `<p class="muted small">Ваш прогноз вже збережено.</p>`
+        : "";
 
-      const form = closed
+      const form = closed || predicted
         ? ""
         : `
           <form class="prediction-form" data-prediction-form data-match-id="${match.id}">
@@ -758,8 +784,11 @@ function renderMatchesList(matches: Match[]): string {
             Прогнози
           </button>
           ${statusLine}
+          ${predictedNote}
           ${form}
-          <div class="predictions" data-predictions data-match-id="${match.id}"></div>
+          <div class="predictions" data-predictions data-match-id="${match.id}" ${
+            predicted ? "data-auto-open='true'" : ""
+          }></div>
         </article>
       `;
     })

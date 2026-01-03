@@ -121,7 +121,20 @@ export default {
           return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
         }
 
-        return jsonResponse({ ok: true, matches }, 200, corsHeaders());
+        let matchesWithPrediction = matches;
+        if (auth.user && matches.length) {
+          const predicted = await listUserPredictedMatches(
+            supabase,
+            auth.user.id,
+            matches.map((match) => match.id)
+          );
+          matchesWithPrediction = matches.map((match) => ({
+            ...match,
+            has_prediction: predicted.has(match.id)
+          }));
+        }
+
+        return jsonResponse({ ok: true, matches: matchesWithPrediction }, 200, corsHeaders());
       }
 
       if (request.method !== "POST") {
@@ -217,7 +230,12 @@ export default {
         return jsonResponse({ ok: false, error: "prediction_closed" }, 400, corsHeaders());
       }
 
-      const prediction = await upsertPrediction(supabase, auth.user.id, matchId, body);
+      const existing = await findPrediction(supabase, auth.user.id, matchId);
+      if (existing) {
+        return jsonResponse({ ok: false, error: "already_predicted" }, 409, corsHeaders());
+      }
+
+      const prediction = await insertPrediction(supabase, auth.user.id, matchId, body);
       if (!prediction) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -604,6 +622,34 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
   }
 }
 
+async function listUserPredictedMatches(
+  supabase: SupabaseClient,
+  userId: number,
+  matchIds: number[]
+): Promise<Set<number>> {
+  if (!matchIds.length) {
+    return new Set();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("match_id")
+      .eq("user_id", userId)
+      .in("match_id", matchIds);
+
+    if (error) {
+      console.error("Failed to fetch user predictions", error);
+      return new Set();
+    }
+
+    return new Set((data as Array<{ match_id: number }>).map((row) => row.match_id));
+  } catch (error) {
+    console.error("Failed to fetch user predictions", error);
+    return new Set();
+  }
+}
+
 async function getMatch(supabase: SupabaseClient, matchId: number): Promise<DbMatch | null> {
   try {
     const { data, error } = await supabase
@@ -633,7 +679,31 @@ function canPredict(kickoffAt?: string | null): boolean {
   return Date.now() <= cutoffMs;
 }
 
-async function upsertPrediction(
+async function findPrediction(
+  supabase: SupabaseClient,
+  userId: number,
+  matchId: number
+): Promise<DbPrediction | null> {
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("id, user_id, match_id, home_pred, away_pred, points")
+      .eq("user_id", userId)
+      .eq("match_id", matchId)
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data as DbPrediction;
+  } catch (error) {
+    console.error("Failed to fetch prediction", error);
+    return null;
+  }
+}
+
+async function insertPrediction(
   supabase: SupabaseClient,
   userId: number,
   matchId: number,
@@ -648,7 +718,7 @@ async function upsertPrediction(
   try {
     const { data, error } = await supabase
       .from("predictions")
-      .upsert({
+      .insert({
         user_id: userId,
         match_id: matchId,
         home_pred: home,
@@ -988,6 +1058,7 @@ interface DbMatch {
   status: string;
   home_score?: number | null;
   away_score?: number | null;
+  has_prediction?: boolean;
 }
 
 interface DbPrediction {
