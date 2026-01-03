@@ -38,12 +38,16 @@ export default {
         return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
       }
 
+      const supabase = createSupabaseClient(env);
+      let isAdmin = false;
       if (valid.user) {
-        const supabase = createSupabaseClient(env);
         await storeUser(supabase, valid.user);
+        if (supabase) {
+          isAdmin = await checkAdmin(supabase, valid.user.id);
+        }
       }
 
-      return jsonResponse({ ok: true, user: valid.user }, 200, corsHeaders());
+      return jsonResponse({ ok: true, user: valid.user, admin: isAdmin }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/leaderboard" || url.pathname === "/api/users") {
