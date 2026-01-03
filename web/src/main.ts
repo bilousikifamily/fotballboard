@@ -812,7 +812,7 @@ function renderMatchesList(matches: Match[]): string {
         `;
 
       return `
-        <article class="match">
+        <article class="match ${predicted ? "has-prediction" : ""}">
           <div class="match-header">
             <div class="match-title">${title}</div>
             <div class="match-time">${kickoff}</div>

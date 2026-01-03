@@ -231,6 +231,11 @@ h1 {
   text-align: center;
 }
 
+.match.has-prediction .match-title,
+.match.has-prediction .match-time {
+  display: none;
+}
+
 .status-closed {
   margin-top: 6px;
 }
