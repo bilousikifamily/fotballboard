@@ -435,6 +435,7 @@ function bindMatchActions(): void {
       event.preventDefault();
       await submitPrediction(form);
     });
+    setupScoreControls(form);
   });
 
   const toggles = app.querySelectorAll<HTMLButtonElement>("[data-predictions-toggle]");
@@ -451,6 +452,35 @@ function bindMatchActions(): void {
       if (container) {
         void togglePredictions(matchId, container);
       }
+    });
+  });
+}
+
+function setupScoreControls(form: HTMLFormElement): void {
+  const controls = form.querySelectorAll<HTMLElement>("[data-score-control]");
+  controls.forEach((control) => {
+    const input = control.querySelector<HTMLInputElement>("input[type=hidden]");
+    const valueEl = control.querySelector<HTMLElement>("[data-score-value]");
+    const inc = control.querySelector<HTMLButtonElement>("[data-score-inc]");
+    const dec = control.querySelector<HTMLButtonElement>("[data-score-dec]");
+    if (!input || !valueEl || !inc || !dec) {
+      return;
+    }
+
+    const update = (nextValue: number) => {
+      const safeValue = Math.max(0, Math.min(20, nextValue));
+      input.value = String(safeValue);
+      valueEl.textContent = String(safeValue);
+    };
+
+    inc.addEventListener("click", () => {
+      const current = parseScore(input.value) ?? 0;
+      update(current + 1);
+    });
+
+    dec.addEventListener("click", () => {
+      const current = parseScore(input.value) ?? 0;
+      update(current - 1);
     });
   });
 }
@@ -623,10 +653,20 @@ function renderMatchesList(matches: Match[]): string {
         ? ""
         : `
           <form class="prediction-form" data-prediction-form data-match-id="${match.id}">
-            <div class="score-inputs">
-              <input type="number" min="0" name="home_pred" placeholder="0" />
-              <span>:</span>
-              <input type="number" min="0" name="away_pred" placeholder="0" />
+            <div class="score-controls">
+              <div class="score-control" data-score-control>
+                <button class="score-btn" type="button" data-score-inc>+</button>
+                <div class="score-value" data-score-value>0</div>
+                <button class="score-btn" type="button" data-score-dec>-</button>
+                <input type="hidden" name="home_pred" value="0" />
+              </div>
+              <span class="score-separator">:</span>
+              <div class="score-control" data-score-control>
+                <button class="score-btn" type="button" data-score-inc>+</button>
+                <div class="score-value" data-score-value>0</div>
+                <button class="score-btn" type="button" data-score-dec>-</button>
+                <input type="hidden" name="away_pred" value="0" />
+              </div>
             </div>
             <button class="button small-button" type="submit">Прогноз</button>
             <p class="muted small" data-prediction-status></p>

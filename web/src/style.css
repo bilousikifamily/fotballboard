@@ -264,6 +264,50 @@ h1 {
   justify-items: center;
 }
 
+.score-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.score-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  min-width: 64px;
+}
+
+.score-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(108, 111, 122, 0.2);
+  background: #f8f6f1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.score-btn:active {
+  transform: translateY(1px);
+}
+
+.score-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.score-separator {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .score-inputs {
   display: flex;
   align-items: center;
