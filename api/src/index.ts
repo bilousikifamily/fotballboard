@@ -489,7 +489,9 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
   try {
     const { data, error } = await supabase
       .from("predictions")
-      .select("id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url)")
+      .select(
+        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url)"
+      )
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
 
@@ -500,6 +502,7 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
 
     return (data as PredictionRow[]).map((row) => ({
       id: row.id,
+      user_id: row.user_id,
       home_pred: row.home_pred,
       away_pred: row.away_pred,
       points: row.points ?? 0,
@@ -998,6 +1001,7 @@ interface DbPrediction {
 
 interface PredictionRow {
   id: number;
+  user_id: number;
   home_pred: number;
   away_pred: number;
   points?: number | null;
@@ -1013,6 +1017,7 @@ interface PredictionRow {
 
 interface PredictionView {
   id: number;
+  user_id: number;
   home_pred: number;
   away_pred: number;
   points: number;

@@ -58,6 +58,7 @@ type PredictionUser = {
 
 type PredictionView = {
   id: number;
+  user_id: number;
   home_pred: number;
   away_pred: number;
   points: number;
@@ -566,6 +567,7 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
     const container = app.querySelector<HTMLElement>(
       `[data-predictions][data-match-id="${matchId}"]`
     );
+    form.classList.add("is-hidden");
     if (container) {
       await togglePredictions(matchId, container, { forceReload: true, forceOpen: true });
     }
@@ -611,7 +613,7 @@ async function togglePredictions(
 
     const match = matchesById.get(matchId);
     container.innerHTML = renderPredictionsPanel(match, data.predictions);
-    if (form && data.predictions.some((item) => item.user?.id === currentUserId)) {
+    if (form && data.predictions.some((item) => item.user_id === currentUserId)) {
       form.classList.add("is-hidden");
     }
     predictionsLoaded.add(matchId);
@@ -626,6 +628,9 @@ function renderPredictionsPanel(match: Match | undefined, predictions: Predictio
   }
 
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
+  const filtered = currentUserId
+    ? predictions.filter((item) => item.user_id !== currentUserId)
+    : predictions;
   const summary = match
     ? `
       <div class="prediction-summary">
@@ -640,17 +645,19 @@ function renderPredictionsPanel(match: Match | undefined, predictions: Predictio
       </div>
     `;
 
-  const rows = predictions
-    .map((item) => {
-      const name = formatPredictionName(item.user);
-      return `
-        <div class="prediction-row">
-          <span class="prediction-name">${escapeHtml(name)}</span>
-          <span class="prediction-score">${item.home_pred}:${item.away_pred}</span>
-        </div>
-      `;
-    })
-    .join("");
+  const rows = filtered.length
+    ? filtered
+      .map((item) => {
+        const name = formatPredictionName(item.user);
+        return `
+          <div class="prediction-row">
+            <span class="prediction-name">${escapeHtml(name)}</span>
+            <span class="prediction-score">${item.home_pred}:${item.away_pred}</span>
+          </div>
+        `;
+      })
+      .join("")
+    : `<p class="muted small">Немає прогнозів інших гравців.</p>`;
 
   return `
     ${summary}
