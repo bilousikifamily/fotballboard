@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 # fotballboard
-=======
-# Telegram Bot + WebApp Starter (Cloudflare)
 
 ## Structure
 ```
@@ -16,8 +13,20 @@ tg-webapp-starter/
 
 ## Env / secrets
 - `BOT_TOKEN` (Worker secret)
+- `SUPABASE_URL` (Worker secret)
+- `SUPABASE_SERVICE_ROLE_KEY` (Worker secret)
 - `WEBAPP_URL` (Worker var: Cloudflare Pages URL)
 - `VITE_API_BASE` (Web env: Worker URL)
+
+## Secrets setup (Cloudflare Workers)
+```
+cd api
+npx wrangler login
+npx wrangler secret put BOT_TOKEN
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler deploy
+```
 
 ## 1) Create a bot (BotFather)
 1. Open BotFather in Telegram.
@@ -28,9 +37,6 @@ tg-webapp-starter/
 ```
 cd api
 npm install
-
-# set secret
-npx wrangler secret put BOT_TOKEN
 
 # set WebApp URL (Cloudflare Pages URL)
 # update wrangler.toml or pass as --var
@@ -81,4 +87,3 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 ## Notes
 - The WebApp never sees the bot token.
 - `/api/auth` validates `initData` using Telegram HMAC algorithm.
->>>>>>> c3e1199 (initial project setup)
