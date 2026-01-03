@@ -40,14 +40,26 @@ export default {
 
       const supabase = createSupabaseClient(env);
       let isAdmin = false;
+      let stats: UserStats | null = null;
       if (valid.user) {
         await storeUser(supabase, valid.user);
         if (supabase) {
           isAdmin = await checkAdmin(supabase, valid.user.id);
+          stats = await getUserStats(supabase, valid.user.id);
         }
       }
 
-      return jsonResponse({ ok: true, user: valid.user, admin: isAdmin }, 200, corsHeaders());
+      return jsonResponse(
+        {
+          ok: true,
+          user: valid.user,
+          admin: isAdmin,
+          points_total: stats?.points_total ?? 0,
+          rank: stats?.rank ?? null
+        },
+        200,
+        corsHeaders()
+      );
     }
 
     if (url.pathname === "/api/leaderboard" || url.pathname === "/api/users") {
@@ -73,7 +85,8 @@ export default {
         await storeUser(supabase, auth.user);
       }
 
-      const users = await listLeaderboard(supabase);
+      const limit = parseLimit(url.searchParams.get("limit"), 10, 200);
+      const users = await listLeaderboard(supabase, limit);
       if (!users) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -143,13 +156,35 @@ export default {
       if (request.method === "OPTIONS") {
         return corsResponse();
       }
-      if (request.method !== "POST") {
-        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
-      }
 
       const supabase = createSupabaseClient(env);
       if (!supabase) {
         return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      if (request.method === "GET") {
+        const initDataHeader = getInitDataFromHeaders(request);
+        const auth = await authenticateInitData(initDataHeader, env.BOT_TOKEN);
+        if (!auth.ok) {
+          return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+        }
+
+        const matchIdParam = url.searchParams.get("match_id");
+        const matchId = parseInteger(matchIdParam);
+        if (matchId === null) {
+          return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+        }
+
+        const predictions = await listPredictions(supabase, matchId);
+        if (!predictions) {
+          return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+        }
+
+        return jsonResponse({ ok: true, predictions }, 200, corsHeaders());
+      }
+
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
       }
 
       const body = await readJson<PredictionPayload>(request);
@@ -401,14 +436,14 @@ async function storeUser(supabase: SupabaseClient | null, user: TelegramUser): P
   }
 }
 
-async function listLeaderboard(supabase: SupabaseClient): Promise<StoredUser[] | null> {
+async function listLeaderboard(supabase: SupabaseClient, limit: number): Promise<StoredUser[] | null> {
   try {
     const { data, error } = await supabase
       .from("users")
       .select("id, username, first_name, last_name, photo_url, points_total, updated_at")
       .order("points_total", { ascending: false })
       .order("updated_at", { ascending: false })
-      .limit(200);
+      .limit(limit);
 
     if (error) {
       console.error("Failed to fetch users", error);
@@ -418,6 +453,68 @@ async function listLeaderboard(supabase: SupabaseClient): Promise<StoredUser[] |
     return (data as StoredUser[]) ?? [];
   } catch (error) {
     console.error("Failed to fetch users", error);
+    return null;
+  }
+}
+
+async function getUserStats(supabase: SupabaseClient, userId: number): Promise<UserStats | null> {
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("points_total")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (userError || !userData) {
+      return null;
+    }
+
+    const points = typeof userData.points_total === "number" ? userData.points_total : 0;
+    const { count, error: countError } = await supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .gt("points_total", points);
+
+    if (countError) {
+      return { points_total: points, rank: null };
+    }
+
+    return { points_total: points, rank: (count ?? 0) + 1 };
+  } catch {
+    return null;
+  }
+}
+
+async function listPredictions(supabase: SupabaseClient, matchId: number): Promise<PredictionView[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url)")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch predictions", error);
+      return null;
+    }
+
+    return (data as PredictionRow[]).map((row) => ({
+      id: row.id,
+      home_pred: row.home_pred,
+      away_pred: row.away_pred,
+      points: row.points ?? 0,
+      user: row.users
+        ? {
+          id: row.users.id,
+          username: row.users.username ?? null,
+          first_name: row.users.first_name ?? null,
+          last_name: row.users.last_name ?? null,
+          photo_url: row.users.photo_url ?? null
+        }
+        : null
+    }));
+  } catch (error) {
+    console.error("Failed to fetch predictions", error);
     return null;
   }
 }
@@ -694,6 +791,17 @@ function parseInteger(value: unknown): number | null {
   return null;
 }
 
+function parseLimit(value: string | null, fallback: number, max: number): number {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.min(parsed, max);
+}
+
 function getKyivDayRange(dateStr: string): { start: string; end: string } | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return null;
@@ -843,6 +951,11 @@ interface StoredUser {
   updated_at?: string | null;
 }
 
+interface UserStats {
+  points_total: number;
+  rank: number | null;
+}
+
 interface CreateMatchPayload {
   initData?: string;
   home_team?: string;
@@ -881,4 +994,33 @@ interface DbPrediction {
   home_pred: number;
   away_pred: number;
   points?: number | null;
+}
+
+interface PredictionRow {
+  id: number;
+  home_pred: number;
+  away_pred: number;
+  points?: number | null;
+  created_at?: string | null;
+  users?: {
+    id: number;
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    photo_url?: string | null;
+  } | null;
+}
+
+interface PredictionView {
+  id: number;
+  home_pred: number;
+  away_pred: number;
+  points: number;
+  user: {
+    id: number;
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    photo_url?: string | null;
+  } | null;
 }

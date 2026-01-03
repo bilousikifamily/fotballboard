@@ -24,7 +24,8 @@ body {
 }
 
 #app {
-  width: min(420px, 90vw);
+  width: min(520px, 92vw);
+  padding: 24px 0 40px;
 }
 
 .card {
@@ -35,6 +36,25 @@ body {
   box-shadow: 0 24px 60px rgba(15, 15, 15, 0.12);
   display: grid;
   gap: 16px;
+  justify-items: center;
+}
+
+.layout {
+  display: grid;
+  gap: 18px;
+}
+
+.panel {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 22px 20px;
+  box-shadow: 0 24px 60px rgba(15, 15, 15, 0.12);
+  display: grid;
+  gap: 14px;
+}
+
+.center {
+  text-align: center;
   justify-items: center;
 }
 
@@ -72,6 +92,33 @@ h1 {
 
 .small {
   font-size: 0.85rem;
+}
+
+.stats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  background: #f8f6f1;
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .muted {
@@ -133,14 +180,6 @@ h1 {
   box-shadow: 0 8px 16px rgba(11, 125, 102, 0.2);
 }
 
-.matches,
-.admin {
-  width: 100%;
-  text-align: left;
-  display: grid;
-  gap: 12px;
-}
-
 .section-header {
   display: flex;
   align-items: center;
@@ -151,6 +190,16 @@ h1 {
 .section-header h2 {
   margin: 0;
   font-size: 1.1rem;
+}
+
+.matches,
+.leaderboard,
+.admin {
+  width: 100%;
+}
+
+.matches {
+  text-align: center;
 }
 
 .date-input {
@@ -165,21 +214,23 @@ h1 {
 .matches-list {
   display: grid;
   gap: 12px;
+  justify-items: center;
 }
 
 .match {
+  width: 100%;
   background: #f8f6f1;
-  border-radius: 16px;
-  padding: 14px 16px;
+  border-radius: 18px;
+  padding: 16px 18px;
   display: grid;
   gap: 10px;
+  text-align: center;
 }
 
 .match-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
 }
 
 .match-title {
@@ -199,15 +250,25 @@ h1 {
   font-weight: 600;
 }
 
+.link-button {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .prediction-form {
   display: grid;
   gap: 8px;
+  justify-items: center;
 }
 
 .score-inputs {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: center;
 }
 
 .score-inputs input {
@@ -217,6 +278,81 @@ h1 {
   border: 1px solid rgba(108, 111, 122, 0.2);
   text-align: center;
   font-family: inherit;
+}
+
+.predictions {
+  display: none;
+  width: 100%;
+}
+
+.predictions.is-open {
+  display: block;
+}
+
+.predictions-list {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.prediction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.prediction-name {
+  font-weight: 500;
+}
+
+.prediction-score {
+  font-weight: 600;
+}
+
+.leaderboard-list {
+  width: 100%;
+  display: none;
+}
+
+.leaderboard-list.is-open {
+  display: block;
+}
+
+.leaderboard-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 24px 36px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: #f8f6f1;
+  border-radius: 14px;
+  padding: 8px 10px;
+}
+
+.leaderboard-name {
+  font-weight: 500;
+}
+
+.leaderboard-rank {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.leaderboard-points {
+  font-weight: 600;
+}
+
+.admin-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .admin-form {
@@ -241,62 +377,17 @@ h1 {
   font-family: inherit;
 }
 
-.users {
-  width: 100%;
-  display: none;
-}
-
-.users.is-open {
-  display: block;
-}
-
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  border-radius: 16px;
-  background: #f8f6f1;
-  padding: 12px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-  text-align: left;
-}
-
-th,
-td {
-  padding: 10px 8px;
-}
-
-.points {
-  font-weight: 600;
-  text-align: right;
-}
-
-thead th {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-tbody tr + tr {
-  border-top: 1px solid rgba(108, 111, 122, 0.15);
-}
-
 .table-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .table-avatar.placeholder::after {
-  width: 16px;
-  height: 16px;
-  box-shadow: 0 0 0 6px rgba(11, 125, 102, 0.08);
+  width: 14px;
+  height: 14px;
+  box-shadow: 0 0 0 5px rgba(11, 125, 102, 0.08);
 }
 
 @keyframes spin {
