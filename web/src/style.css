@@ -264,6 +264,10 @@ h1 {
   justify-items: center;
 }
 
+.prediction-form.is-hidden {
+  display: none;
+}
+
 .score-controls {
   display: flex;
   align-items: center;
@@ -330,7 +334,8 @@ h1 {
 }
 
 .predictions.is-open {
-  display: block;
+  display: grid;
+  gap: 10px;
 }
 
 .predictions-list {
@@ -339,6 +344,26 @@ h1 {
   padding: 10px 12px;
   display: grid;
   gap: 8px;
+}
+
+.prediction-summary {
+  background: rgba(11, 125, 102, 0.08);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.team-name {
+  font-weight: 600;
+}
+
+.summary-score {
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .prediction-row {

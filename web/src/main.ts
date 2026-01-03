@@ -80,6 +80,7 @@ let currentDate = "";
 let isAdmin = false;
 let currentUserId: number | null = null;
 const predictionsLoaded = new Set<number>();
+const matchesById = new Map<number, Match>();
 
 const tg = window.Telegram?.WebApp;
 if (tg?.ready) {
@@ -312,6 +313,10 @@ async function loadMatches(date: string): Promise<void> {
     }
 
     predictionsLoaded.clear();
+    matchesById.clear();
+    data.matches.forEach((match) => {
+      matchesById.set(match.id, match);
+    });
     container.innerHTML = renderMatchesList(data.matches);
     bindMatchActions();
     renderAdminMatchOptions(data.matches);
@@ -557,6 +562,13 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
     if (status) {
       status.textContent = "Збережено ✅";
     }
+
+    const container = app.querySelector<HTMLElement>(
+      `[data-predictions][data-match-id="${matchId}"]`
+    );
+    if (container) {
+      await togglePredictions(matchId, container, { forceReload: true, forceOpen: true });
+    }
   } catch {
     if (status) {
       status.textContent = "Не вдалося зберегти прогноз.";
@@ -564,9 +576,19 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
   }
 }
 
-async function togglePredictions(matchId: number, container: HTMLElement): Promise<void> {
-  if (predictionsLoaded.has(matchId)) {
-    container.classList.toggle("is-open");
+async function togglePredictions(
+  matchId: number,
+  container: HTMLElement,
+  options: { forceOpen?: boolean; forceReload?: boolean } = {}
+): Promise<void> {
+  const form = app.querySelector<HTMLFormElement>(`[data-prediction-form][data-match-id="${matchId}"]`);
+
+  if (predictionsLoaded.has(matchId) && !options.forceReload) {
+    if (options.forceOpen) {
+      container.classList.add("is-open");
+    } else {
+      container.classList.toggle("is-open");
+    }
     return;
   }
 
@@ -587,20 +609,38 @@ async function togglePredictions(matchId: number, container: HTMLElement): Promi
       return;
     }
 
-    container.innerHTML = renderPredictionsList(data.predictions);
+    const match = matchesById.get(matchId);
+    container.innerHTML = renderPredictionsPanel(match, data.predictions);
+    if (form && data.predictions.some((item) => item.user?.id === currentUserId)) {
+      form.classList.add("is-hidden");
+    }
     predictionsLoaded.add(matchId);
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити прогнози.</p>`;
   }
 }
 
-function renderPredictionsList(predictions: PredictionView[]): string {
-  const filtered = predictions.filter((item) => !currentUserId || item.user?.id !== currentUserId);
-  if (!filtered.length) {
+function renderPredictionsPanel(match: Match | undefined, predictions: PredictionView[]): string {
+  if (!predictions.length) {
     return `<p class="muted small">Поки що немає прогнозів.</p>`;
   }
 
-  const rows = filtered
+  const { homeAvg, awayAvg } = getAveragePrediction(predictions);
+  const summary = match
+    ? `
+      <div class="prediction-summary">
+        <span class="team-name">${escapeHtml(match.home_team)}</span>
+        <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+        <span class="team-name">${escapeHtml(match.away_team)}</span>
+      </div>
+    `
+    : `
+      <div class="prediction-summary">
+        <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
+      </div>
+    `;
+
+  const rows = predictions
     .map((item) => {
       const name = formatPredictionName(item.user);
       return `
@@ -612,7 +652,34 @@ function renderPredictionsList(predictions: PredictionView[]): string {
     })
     .join("");
 
-  return `<div class="predictions-list">${rows}</div>`;
+  return `
+    ${summary}
+    <div class="predictions-list">${rows}</div>
+  `;
+}
+
+function getAveragePrediction(predictions: PredictionView[]): { homeAvg: number; awayAvg: number } {
+  const total = predictions.reduce(
+    (acc, item) => {
+      acc.home += item.home_pred;
+      acc.away += item.away_pred;
+      return acc;
+    },
+    { home: 0, away: 0 }
+  );
+
+  const count = predictions.length || 1;
+  return {
+    homeAvg: total.home / count,
+    awayAvg: total.away / count
+  };
+}
+
+function formatAverageValue(value: number): string {
+  return new Intl.NumberFormat("uk-UA", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(value);
 }
 
 function getPredictionError(error: string | undefined): string {
