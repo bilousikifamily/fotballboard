@@ -133,12 +133,12 @@ async function computeTelegramHash(dataCheckString: string, botToken: string): P
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(botToken),
+    encoder.encode("WebAppData"),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
   );
-  const secret = await crypto.subtle.sign("HMAC", key, encoder.encode("WebAppData"));
+  const secret = await crypto.subtle.sign("HMAC", key, encoder.encode(botToken));
   const secretKey = await crypto.subtle.importKey(
     "raw",
     secret,
