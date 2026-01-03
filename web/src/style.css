@@ -94,6 +94,76 @@ h1 {
   animation: spin 1s linear infinite;
 }
 
+.actions {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+}
+
+.button {
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 12px 26px rgba(11, 125, 102, 0.25);
+}
+
+.button:active {
+  transform: translateY(1px);
+  box-shadow: 0 8px 16px rgba(11, 125, 102, 0.2);
+}
+
+.users {
+  width: 100%;
+  display: none;
+}
+
+.users.is-open {
+  display: block;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 16px;
+  background: #f8f6f1;
+  padding: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 10px 8px;
+}
+
+thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+tbody tr + tr {
+  border-top: 1px solid rgba(108, 111, 122, 0.15);
+}
+
+.table-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

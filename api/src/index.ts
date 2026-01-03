@@ -48,6 +48,27 @@ export default {
       return jsonResponse({ ok: true, user: valid.user }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/users") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const users = await listUsers(supabase);
+      if (!users) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, users }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/tg/webhook") {
       if (request.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
@@ -71,7 +92,7 @@ export default {
 function corsHeaders(): HeadersInit {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type"
   };
 }
@@ -194,6 +215,26 @@ async function storeUser(supabase: SupabaseClient | null, user: TelegramUser): P
   }
 }
 
+async function listUsers(supabase: SupabaseClient): Promise<StoredUser[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, username, first_name, last_name, photo_url, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      console.error("Failed to fetch users", error);
+      return null;
+    }
+
+    return (data as StoredUser[]) ?? [];
+  } catch (error) {
+    console.error("Failed to fetch users", error);
+    return null;
+  }
+}
+
 function bufferToHex(buffer: ArrayBuffer): string {
   return Array.from(new Uint8Array(buffer))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -274,4 +315,13 @@ interface TelegramUser {
   first_name?: string;
   last_name?: string;
   photo_url?: string;
+}
+
+interface StoredUser {
+  id: number;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  photo_url?: string | null;
+  updated_at?: string | null;
 }
