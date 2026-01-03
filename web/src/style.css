@@ -350,35 +350,34 @@ h1 {
   gap: 8px;
 }
 
-.prediction-summary {
+.match-average {
+  display: none;
+  grid-template-columns: 1fr;
+  gap: 6px;
   background: rgba(11, 125, 102, 0.08);
-  border-radius: 14px;
+  border: 1px solid rgba(11, 125, 102, 0.2);
+  border-radius: 16px;
   padding: 10px 12px;
-  display: grid;
-  gap: 8px;
-  font-size: 0.9rem;
 }
 
-.summary-line {
+.match-average.is-visible {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 8px;
 }
 
-.summary-time {
-  font-size: 0.8rem;
+.match-average-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--muted);
-  text-align: center;
 }
 
-.team-name {
-  font-weight: 600;
-}
-
-.summary-score {
+.match-average-score {
+  display: inline-block;
   font-weight: 700;
   color: var(--accent);
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+  animation: scorePulse 2.8s ease-in-out infinite;
 }
 
 .prediction-row {
@@ -483,5 +482,23 @@ h1 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes scorePulse {
+  0%,
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(11, 125, 102, 0.25);
+  }
+  50% {
+    transform: scale(1.06);
+    text-shadow: 0 0 18px rgba(11, 125, 102, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary-score {
+    animation: none;
   }
 }

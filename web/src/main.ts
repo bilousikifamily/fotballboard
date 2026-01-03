@@ -632,8 +632,8 @@ async function togglePredictions(
       return;
     }
 
-    const match = matchesById.get(matchId);
-    container.innerHTML = renderPredictionsPanel(match, data.predictions);
+    updateMatchAverage(matchId, data.predictions);
+    container.innerHTML = renderPredictionsPanel(data.predictions);
     if (form && data.predictions.some((item) => item.user_id === currentUserId)) {
       form.classList.add("is-hidden");
     }
@@ -643,42 +643,44 @@ async function togglePredictions(
   }
 }
 
-function renderPredictionsPanel(match: Match | undefined, predictions: PredictionView[]): string {
+function renderPredictionsPanel(predictions: PredictionView[]): string {
   if (!predictions.length) {
     return `<p class="muted small">Поки що немає прогнозів.</p>`;
   }
 
-  const { homeAvg, awayAvg } = getAveragePrediction(predictions);
   const self = currentUserId
     ? predictions.find((item) => item.user_id === currentUserId) || null
     : null;
   const others = currentUserId
     ? predictions.filter((item) => item.user_id !== currentUserId)
     : predictions;
-  const summary = match
-    ? `
-      <div class="prediction-summary">
-        <div class="summary-line">
-          <span class="team-name">${escapeHtml(match.home_team)}</span>
-          <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
-          <span class="team-name">${escapeHtml(match.away_team)}</span>
-        </div>
-        <div class="summary-time">${formatKyivDateTime(match.kickoff_at)}</div>
-      </div>
-    `
-    : `
-      <div class="prediction-summary">
-        <div class="summary-line">
-          <span class="summary-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
-        </div>
-      </div>
-    `;
 
   const rows = renderPredictionRows(self, others);
 
   return `
-    ${summary}
     <div class="predictions-list">${rows}</div>
+  `;
+}
+
+function updateMatchAverage(matchId: number, predictions: PredictionView[]): void {
+  const averageEl = app.querySelector<HTMLElement>(
+    `[data-match-average][data-match-id="${matchId}"]`
+  );
+  if (!averageEl) {
+    return;
+  }
+
+  if (!predictions.length) {
+    averageEl.classList.remove("is-visible");
+    averageEl.innerHTML = "";
+    return;
+  }
+
+  const { homeAvg, awayAvg } = getAveragePrediction(predictions);
+  averageEl.classList.add("is-visible");
+  averageEl.innerHTML = `
+    <span class="match-average-label">Середній прогноз</span>
+    <span class="match-average-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
   `;
 }
 
@@ -809,6 +811,7 @@ function renderMatchesList(matches: Match[]): string {
             <div class="match-time">${kickoff}</div>
             ${result}
           </div>
+          <div class="match-average" data-match-average data-match-id="${match.id}"></div>
           ${predicted ? "" : `
             <button class="link-button" type="button" data-predictions-toggle data-match-id="${match.id}">
               Прогнози
