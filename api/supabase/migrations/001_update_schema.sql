@@ -33,3 +33,17 @@ create table if not exists predictions (
   updated_at timestamptz not null default now(),
   unique (user_id, match_id)
 );
+
+alter table users add column if not exists admin boolean default false;
+alter table users add column if not exists points_total int default 0;
+alter table users add column if not exists created_at timestamptz default now();
+
+alter table matches add column if not exists status text default 'scheduled';
+alter table matches add column if not exists home_score int;
+alter table matches add column if not exists away_score int;
+alter table matches add column if not exists created_by bigint references users(id);
+
+alter table predictions add column if not exists points int default 0;
+alter table predictions add column if not exists updated_at timestamptz default now();
+
+create unique index if not exists predictions_user_match_unique on predictions (user_id, match_id);

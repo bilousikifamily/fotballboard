@@ -37,7 +37,7 @@ create table if not exists users (
   first_name text,
   last_name text,
   photo_url text,
-  role text not null default 'player',
+  admin boolean not null default false,
   points_total int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -70,9 +70,14 @@ create table if not exists predictions (
 
 If you already have a `users` table, run:
 ```sql
-alter table users add column if not exists role text default 'player';
+alter table users add column if not exists admin boolean default false;
 alter table users add column if not exists points_total int default 0;
 alter table users add column if not exists created_at timestamptz default now();
+```
+
+For incremental updates, you can also run:
+```
+api/supabase/migrations/001_update_schema.sql
 ```
 
 ## 1) Create a bot (BotFather)
@@ -130,7 +135,7 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 - `GET /healthcheck` -> `{ ok: true }`
 - `POST /api/auth` -> validates Telegram `initData`
 - `GET /api/leaderboard` -> list users by points (requires `X-Telegram-InitData`)
-- `GET /api/matches?date=YYYY-MM-DD` -> list matches (requires `X-Telegram-InitData`)
+- `GET /api/matches?date=YYYY-MM-DD` -> list matches (Kyiv time, requires `X-Telegram-InitData`)
 - `POST /api/matches` -> admin creates match
 - `POST /api/predictions` -> user submits prediction
 - `POST /api/matches/result` -> admin sets final score + awards points

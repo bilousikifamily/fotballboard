@@ -422,7 +422,7 @@ async function checkAdmin(supabase: SupabaseClient, userId: number): Promise<boo
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("role")
+      .select("admin")
       .eq("id", userId)
       .maybeSingle();
 
@@ -430,7 +430,7 @@ async function checkAdmin(supabase: SupabaseClient, userId: number): Promise<boo
       return false;
     }
 
-    return data.role === "admin";
+    return Boolean((data as { admin?: boolean | null }).admin);
   } catch {
     return false;
   }
@@ -481,9 +481,10 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
       .order("kickoff_at", { ascending: true });
 
     if (date) {
-      const start = new Date(`${date}T00:00:00.000Z`);
-      const end = new Date(`${date}T23:59:59.999Z`);
-      query = query.gte("kickoff_at", start.toISOString()).lte("kickoff_at", end.toISOString());
+      const range = getKyivDayRange(date);
+      if (range) {
+        query = query.gte("kickoff_at", range.start).lte("kickoff_at", range.end);
+      }
     }
 
     const { data, error } = await query;
@@ -689,6 +690,62 @@ function parseInteger(value: unknown): number | null {
   return null;
 }
 
+function getKyivDayRange(dateStr: string): { start: string; end: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return null;
+  }
+
+  const start = getKyivStart(dateStr);
+  const nextDate = addDays(dateStr, 1);
+  const end = new Date(getKyivStart(nextDate).getTime() - 1);
+
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function getKyivStart(dateStr: string): Date {
+  const base = new Date(`${dateStr}T00:00:00Z`);
+  const offsetMs = getTimeZoneOffset(base, "Europe/Kyiv");
+  return new Date(base.getTime() - offsetMs);
+}
+
+function getTimeZoneOffset(date: Date, timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  const parts = formatter.formatToParts(date);
+  const values: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      values[part.type] = part.value;
+    }
+  }
+
+  const asUTC = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second)
+  );
+
+  return asUTC - date.getTime();
+}
+
+function addDays(dateStr: string, days: number): string {
+  const base = new Date(`${dateStr}T00:00:00Z`);
+  const next = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+  return next.toISOString().slice(0, 10);
+}
+
 function bufferToHex(buffer: ArrayBuffer): string {
   return Array.from(new Uint8Array(buffer))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -777,6 +834,7 @@ interface StoredUser {
   first_name?: string | null;
   last_name?: string | null;
   photo_url?: string | null;
+  admin?: boolean | null;
   points_total?: number | null;
   updated_at?: string | null;
 }
