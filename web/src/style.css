@@ -146,6 +146,11 @@ td {
   padding: 10px 8px;
 }
 
+.points {
+  font-weight: 600;
+  text-align: right;
+}
+
 thead th {
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -162,6 +167,12 @@ tbody tr + tr {
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.table-avatar.placeholder::after {
+  width: 16px;
+  height: 16px;
+  box-shadow: 0 0 0 6px rgba(11, 125, 102, 0.08);
 }
 
 @keyframes spin {

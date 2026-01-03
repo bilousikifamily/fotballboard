@@ -28,6 +28,53 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 npx wrangler deploy
 ```
 
+## Supabase schema
+Run this SQL in Supabase (SQL editor):
+```sql
+create table if not exists users (
+  id bigint primary key,
+  username text,
+  first_name text,
+  last_name text,
+  photo_url text,
+  role text not null default 'player',
+  points_total int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists matches (
+  id bigserial primary key,
+  home_team text not null,
+  away_team text not null,
+  kickoff_at timestamptz not null,
+  status text not null default 'scheduled',
+  home_score int,
+  away_score int,
+  created_by bigint references users(id),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists predictions (
+  id bigserial primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  match_id bigint not null references matches(id) on delete cascade,
+  home_pred int not null,
+  away_pred int not null,
+  points int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, match_id)
+);
+```
+
+If you already have a `users` table, run:
+```sql
+alter table users add column if not exists role text default 'player';
+alter table users add column if not exists points_total int default 0;
+alter table users add column if not exists created_at timestamptz default now();
+```
+
 ## 1) Create a bot (BotFather)
 1. Open BotFather in Telegram.
 2. Run `/newbot` and follow steps.
@@ -82,6 +129,11 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 ## Endpoints
 - `GET /healthcheck` -> `{ ok: true }`
 - `POST /api/auth` -> validates Telegram `initData`
+- `GET /api/leaderboard` -> list users by points (requires `X-Telegram-InitData`)
+- `GET /api/matches?date=YYYY-MM-DD` -> list matches (requires `X-Telegram-InitData`)
+- `POST /api/matches` -> admin creates match
+- `POST /api/predictions` -> user submits prediction
+- `POST /api/matches/result` -> admin sets final score + awards points
 - `POST /tg/webhook` -> Telegram updates
 
 ## Notes

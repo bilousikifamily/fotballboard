@@ -4,16 +4,17 @@ type AuthResponse =
   | { ok: true; user?: TelegramWebAppUser }
   | { ok: false; error: string };
 
-type UsersResponse =
-  | { ok: true; users: StoredUser[] }
+type LeaderboardResponse =
+  | { ok: true; users: LeaderboardUser[] }
   | { ok: false; error: string };
 
-type StoredUser = {
+type LeaderboardUser = {
   id: number;
   username?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   photo_url?: string | null;
+  points_total?: number | null;
   updated_at?: string | null;
 };
 
@@ -106,7 +107,7 @@ function renderUser(user?: TelegramWebAppUser): void {
   const button = app.querySelector<HTMLButtonElement>(".button");
   if (button) {
     button.addEventListener("click", () => {
-      void loadUsers();
+      void loadLeaderboard();
     });
   }
 }
@@ -127,7 +128,7 @@ function escapeAttribute(value: string): string {
     .replaceAll(">", "&gt;");
 }
 
-async function loadUsers(): Promise<void> {
+async function loadLeaderboard(): Promise<void> {
   if (!apiBase) {
     return;
   }
@@ -146,17 +147,20 @@ async function loadUsers(): Promise<void> {
   container.classList.add("is-open");
 
   try {
-    const response = await fetch(`${apiBase}/api/users`, {
+    const response = await fetch(`${apiBase}/api/leaderboard`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" }
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-InitData": window.Telegram?.WebApp?.initData || ""
+      }
     });
-    const data = (await response.json()) as UsersResponse;
+    const data = (await response.json()) as LeaderboardResponse;
     if (!response.ok || !data.ok) {
       renderUsersError(container);
       return;
     }
 
-    container.innerHTML = renderUsersTable(data.users);
+    container.innerHTML = renderLeaderboardTable(data.users);
     container.classList.add("is-open");
     usersLoaded = true;
   } catch {
@@ -168,23 +172,24 @@ function renderUsersError(container: HTMLElement): void {
   container.innerHTML = `<p class="muted">Не вдалося завантажити користувачів.</p>`;
 }
 
-function renderUsersTable(users: StoredUser[]): string {
+function renderLeaderboardTable(users: LeaderboardUser[]): string {
   if (!users.length) {
     return `<p class="muted">Поки що немає користувачів.</p>`;
   }
 
   const rows = users
-    .map((user) => {
+    .map((user, index) => {
       const name = formatUserName(user);
+      const points = typeof user.points_total === "number" ? user.points_total : 0;
       const avatar = user.photo_url
         ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
         : `<div class="table-avatar placeholder"></div>`;
-      const updatedAt = user.updated_at ? escapeHtml(new Date(user.updated_at).toLocaleString()) : "";
       return `
         <tr>
+          <td class="muted">${index + 1}</td>
           <td>${avatar}</td>
           <td>${escapeHtml(name)}</td>
-          <td class="muted">${updatedAt}</td>
+          <td class="points">${points}</td>
         </tr>
       `;
     })
@@ -195,9 +200,10 @@ function renderUsersTable(users: StoredUser[]): string {
       <table>
         <thead>
           <tr>
+            <th>#</th>
             <th></th>
             <th>Користувач</th>
-            <th>Оновлено</th>
+            <th>Бали</th>
           </tr>
         </thead>
         <tbody>
@@ -225,7 +231,7 @@ function formatTelegramName(user?: TelegramWebAppUser): string {
   return "";
 }
 
-function formatUserName(user: StoredUser): string {
+function formatUserName(user: LeaderboardUser): string {
   const first = user.first_name?.trim() ?? "";
   const last = user.last_name?.trim() ?? "";
   const full = [first, last].filter(Boolean).join(" ").trim();
