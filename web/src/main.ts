@@ -228,9 +228,10 @@ function renderUser(user: TelegramWebAppUser | undefined, stats: UserStats, admi
           <h2>Матчі</h2>
           <input class="date-input" type="date" value="${safeDate}" data-date />
         </div>
-        <p class="muted small">Прогнози приймаються за 60 хв до старту.</p>
         <div class="matches-list" data-matches></div>
       </section>
+
+      <p class="muted small notice">Прогнози приймаються за 60 хв до старту.</p>
 
       <section class="panel leaderboard center">
         <button class="button" type="button" data-leaderboard>ТАБЛИЦЯ</button>
@@ -808,9 +809,11 @@ function renderMatchesList(matches: Match[]): string {
             <div class="match-time">${kickoff}</div>
             ${result}
           </div>
-          <button class="link-button" type="button" data-predictions-toggle data-match-id="${match.id}">
-            Прогнози
-          </button>
+          ${predicted ? "" : `
+            <button class="link-button" type="button" data-predictions-toggle data-match-id="${match.id}">
+              Прогнози
+            </button>
+          `}
           ${statusLine}
           ${form}
           <div class="predictions" data-predictions data-match-id="${match.id}" ${
