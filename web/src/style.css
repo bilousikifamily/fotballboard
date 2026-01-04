@@ -440,13 +440,23 @@ h1 {
 }
 
 .matches-list {
-  display: grid;
-  gap: 12px;
-  justify-items: center;
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 6px 32px 16px;
+  margin: 0 -32px;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 32px;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  overscroll-behavior-x: contain;
 }
 
 .match {
-  width: 100%;
+  flex: 0 0 min(86%, 360px);
+  max-width: 360px;
   background: var(--surface);
   border-radius: 18px;
   padding: 16px 18px;
@@ -454,6 +464,21 @@ h1 {
   gap: 10px;
   text-align: center;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.matches-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.matches-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.matches-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
 }
 
 .match.has-prediction .match-time {
