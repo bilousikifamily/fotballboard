@@ -1558,7 +1558,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 async function handleUpdate(update: TelegramUpdate, env: Env): Promise<void> {
-  const message = update.message;
+  const message = getUpdateMessage(update);
   if (!message || !message.chat?.id) {
     return;
   }
@@ -1578,6 +1578,10 @@ async function handleUpdate(update: TelegramUpdate, env: Env): Promise<void> {
       inline_keyboard: [[{ text: "Open WebApp", web_app: { url: env.WEBAPP_URL } }]]
     });
   }
+}
+
+function getUpdateMessage(update: TelegramUpdate): TelegramMessage | undefined {
+  return update.message ?? update.edited_message ?? update.channel_post ?? update.edited_channel_post;
 }
 
 function extractCommand(
@@ -1675,6 +1679,9 @@ function formatPointsLabel(points: number): string {
 
 interface TelegramUpdate {
   message?: TelegramMessage;
+  edited_message?: TelegramMessage;
+  channel_post?: TelegramMessage;
+  edited_channel_post?: TelegramMessage;
 }
 
 interface TelegramMessage {
