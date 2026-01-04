@@ -2004,7 +2004,7 @@ function renderLeaderboardList(users: LeaderboardUser[]): string {
       const name = formatUserName(user);
       const points = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
       if (lastPoints === null || points !== lastPoints) {
-        currentRank = index + 1;
+        currentRank += 1;
         lastPoints = points;
       }
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
