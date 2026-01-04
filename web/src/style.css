@@ -447,13 +447,15 @@ h1 {
 }
 
 .matches-list {
+  --match-card-width: clamp(280px, 86vw, 360px);
   display: flex;
   gap: 14px;
   overflow-x: auto;
-  padding: 6px 32px 16px;
+  padding: 6px calc((100vw - var(--match-card-width)) / 2 + 10vw) 16px;
   margin: 0;
   scroll-snap-type: x mandatory;
-  scroll-padding: 32px;
+  scroll-padding-left: calc((100vw - var(--match-card-width)) / 2 + 10vw);
+  scroll-padding-right: calc((100vw - var(--match-card-width)) / 2 + 10vw);
   -webkit-overflow-scrolling: touch;
   cursor: grab;
   scrollbar-width: thin;
@@ -462,8 +464,8 @@ h1 {
 }
 
 .match {
-  flex: 0 0 min(86%, 360px);
-  max-width: 360px;
+  flex: 0 0 var(--match-card-width);
+  max-width: var(--match-card-width);
   background: var(--surface);
   border-radius: 18px;
   padding: 16px 18px;
