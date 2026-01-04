@@ -59,8 +59,9 @@ body {
 }
 
 .notice-ticker {
-  width: 100%;
-  height: calc(2 * 1.2em);
+  --notice-line-height: 1.3;
+  width: 80vw;
+  height: calc(2 * 1em * var(--notice-line-height));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,11 +71,14 @@ body {
   font-size: 0.85rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  line-height: var(--notice-line-height);
+  justify-self: center;
 }
 
 .notice-ticker-text {
   display: inline-block;
-  white-space: nowrap;
+  width: 100%;
+  white-space: pre-line;
   transform: translateX(0);
   animation: noticeTicker 6s ease-in-out infinite;
   will-change: transform;
