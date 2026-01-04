@@ -206,6 +206,7 @@ body {
   display: flex;
   gap: 12px;
   justify-content: space-between;
+  margin-top: -6px;
 }
 
 .onboarding-actions .button {
@@ -860,6 +861,10 @@ h1 {
   background: var(--surface);
   color: var(--ink);
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.onboarding-form .field input {
+  font-size: 1.275rem;
 }
 
 .field select {

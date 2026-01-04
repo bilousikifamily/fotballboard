@@ -242,17 +242,17 @@ function renderOnboarding(
 
   const renderStep = (statusMessage = ""): void => {
     const stepTitle = `Крок ${state.step} з 4`;
+    const headerTitle = getOnboardingTitle(state.step);
     const header = `
       <div class="onboarding-header">
         <span class="onboarding-step">${stepTitle}</span>
-        <h1>Налаштуй профіль</h1>
+        <h1>${escapeHtml(headerTitle)}</h1>
       </div>
     `;
 
     let body = "";
     if (state.step === 1) {
       body = `
-        <p class="muted onboarding-question">Хто краще Реал чи Барселона?</p>
         <div class="logo-grid">
           ${renderClubChoice({
             id: "real_madrid",
@@ -450,6 +450,21 @@ function renderOnboarding(
   };
 
   renderStep();
+}
+
+function getOnboardingTitle(step: number): string {
+  switch (step) {
+    case 1:
+      return "ХТО КРАЩЕ?";
+    case 2:
+      return "ОБЕРИ УКРАЇНСЬКИЙ КЛУБ";
+    case 3:
+      return "ОБЕРИ ЄВРОПЕЙСЬКИЙ КЛУБ";
+    case 4:
+      return "ВВЕДИ НІКНЕЙМ";
+    default:
+      return "ОБЕРИ ЄВРОПЕЙСЬКИЙ КЛУБ";
+  }
 }
 
 async function submitOnboarding(
