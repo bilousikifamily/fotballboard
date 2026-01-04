@@ -211,9 +211,10 @@ body {
 
 .avatar-logo {
   object-fit: contain;
-  border-radius: 24px;
-  background: var(--surface);
-  padding: 12px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  border: none;
 }
 
 .placeholder {
@@ -664,9 +665,9 @@ h1 {
 
 .table-avatar.logo-avatar {
   object-fit: contain;
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 3px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .table-avatar.placeholder::after {
