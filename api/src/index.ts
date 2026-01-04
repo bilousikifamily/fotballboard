@@ -405,9 +405,13 @@ export default {
         return jsonResponse({ ok: false, error: "bad_score" }, 400, corsHeaders());
       }
 
-      const updated = await applyMatchResult(supabase, matchId, homeScore, awayScore);
-      if (!updated) {
+      const result = await applyMatchResult(supabase, matchId, homeScore, awayScore);
+      if (!result.ok) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      if (result.notifications.length) {
+        await notifyUsersAboutMatchResult(env, result.notifications);
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -929,10 +933,10 @@ async function applyMatchResult(
   matchId: number,
   homeScore: number,
   awayScore: number
-): Promise<boolean> {
+): Promise<MatchResultOutcome> {
   const match = await getMatch(supabase, matchId);
   if (!match) {
-    return false;
+    return { ok: false, notifications: [] };
   }
 
   const { error: updateError } = await supabase
@@ -946,7 +950,7 @@ async function applyMatchResult(
 
   if (updateError) {
     console.error("Failed to update match", updateError);
-    return false;
+    return { ok: false, notifications: [] };
   }
 
   const { data: predictions, error: predError } = await supabase
@@ -956,7 +960,7 @@ async function applyMatchResult(
 
   if (predError) {
     console.error("Failed to fetch predictions", predError);
-    return false;
+    return { ok: false, notifications: [] };
   }
 
   const deltas = new Map<number, number>();
@@ -985,7 +989,7 @@ async function applyMatchResult(
   }
 
   if (deltas.size === 0) {
-    return true;
+    return { ok: true, notifications: [] };
   }
 
   const userIds = Array.from(deltas.keys());
@@ -996,8 +1000,10 @@ async function applyMatchResult(
 
   if (usersError) {
     console.error("Failed to fetch users for scoring", usersError);
-    return false;
+    return { ok: false, notifications: [] };
   }
+
+  const notifications: MatchResultNotification[] = [];
 
   for (const user of (users as StoredUser[]) ?? []) {
     const delta = deltas.get(user.id) ?? 0;
@@ -1011,10 +1017,21 @@ async function applyMatchResult(
       .eq("id", user.id);
     if (error) {
       console.error("Failed to update user points", error);
+      continue;
     }
+
+    notifications.push({
+      user_id: user.id,
+      delta,
+      total_points: nextPoints,
+      home_team: match.home_team,
+      away_team: match.away_team,
+      home_score: homeScore,
+      away_score: awayScore
+    });
   }
 
-  return true;
+  return { ok: true, notifications };
 }
 
 async function saveUserOnboarding(
@@ -1381,6 +1398,40 @@ async function sendMessage(
   });
 }
 
+async function notifyUsersAboutMatchResult(
+  env: Env,
+  notifications: MatchResultNotification[]
+): Promise<void> {
+  for (const notification of notifications) {
+    const message = formatMatchResultMessage(notification);
+    await sendMessage(env, notification.user_id, message);
+  }
+}
+
+function formatMatchResultMessage(notification: MatchResultNotification): string {
+  const absDelta = Math.abs(notification.delta);
+  const pointsLabel = formatPointsLabel(absDelta);
+
+  if (notification.delta > 0) {
+    return `Тобі нараховано ${absDelta} ${pointsLabel}`;
+  }
+
+  return `Ти втратив ${absDelta} ${pointsLabel}`;
+}
+
+function formatPointsLabel(points: number): string {
+  const absPoints = Math.abs(points);
+  const mod10 = absPoints % 10;
+  const mod100 = absPoints % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return "бал";
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "бали";
+  }
+  return "балів";
+}
+
 interface TelegramUpdate {
   message?: TelegramMessage;
 }
@@ -1535,4 +1586,19 @@ interface OnboardingPayload {
 interface AvatarPayload {
   initData?: string;
   avatar_choice?: string | null;
+}
+
+interface MatchResultNotification {
+  user_id: number;
+  delta: number;
+  total_points: number;
+  home_team: string;
+  away_team: string;
+  home_score: number;
+  away_score: number;
+}
+
+interface MatchResultOutcome {
+  ok: boolean;
+  notifications: MatchResultNotification[];
 }
