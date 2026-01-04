@@ -712,10 +712,34 @@ async function createMatch(
   userId: number,
   payload: CreateMatchPayload
 ): Promise<DbMatch | null> {
-  const home = payload.home_team?.trim();
-  const away = payload.away_team?.trim();
   const kickoffAt = payload.kickoff_at?.trim();
-  if (!home || !away || !kickoffAt) {
+  if (!kickoffAt) {
+    return null;
+  }
+
+  const leagueId = normalizeLeagueId(payload.league_id);
+  const homeClubId = normalizeClubId(payload.home_club_id);
+  const awayClubId = normalizeClubId(payload.away_club_id);
+
+  let home = payload.home_team?.trim() ?? "";
+  let away = payload.away_team?.trim() ?? "";
+
+  if (leagueId || homeClubId || awayClubId) {
+    if (!leagueId || !homeClubId || !awayClubId) {
+      return null;
+    }
+    if (homeClubId === awayClubId) {
+      return null;
+    }
+    if (!home) {
+      home = formatClubLabel(homeClubId);
+    }
+    if (!away) {
+      away = formatClubLabel(awayClubId);
+    }
+  }
+
+  if (!home || !away) {
     return null;
   }
 
@@ -725,11 +749,16 @@ async function createMatch(
       .insert({
         home_team: home,
         away_team: away,
+        league_id: leagueId ?? null,
+        home_club_id: homeClubId ?? null,
+        away_club_id: awayClubId ?? null,
         kickoff_at: kickoffAt,
         status: "scheduled",
         created_by: userId
       })
-      .select("id, home_team, away_team, kickoff_at, status, home_score, away_score")
+      .select(
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score"
+      )
       .single();
 
     if (error) {
@@ -748,7 +777,9 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
   try {
     let query = supabase
       .from("matches")
-      .select("id, home_team, away_team, kickoff_at, status, home_score, away_score")
+      .select(
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score"
+      )
       .order("kickoff_at", { ascending: true });
 
     if (date) {
@@ -803,7 +834,9 @@ async function getMatch(supabase: SupabaseClient, matchId: number): Promise<DbMa
   try {
     const { data, error } = await supabase
       .from("matches")
-      .select("id, home_team, away_team, kickoff_at, status, home_score, away_score")
+      .select(
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score"
+      )
       .eq("id", matchId)
       .single();
     if (error || !data) {
@@ -1090,6 +1123,60 @@ function normalizeClubId(value: unknown): string | null {
   return /^[a-z0-9-]+$/.test(trimmed) ? trimmed : null;
 }
 
+const MATCH_LEAGUES = new Set([
+  "ukrainian-premier-league",
+  "english-premier-league",
+  "la-liga",
+  "serie-a",
+  "bundesliga",
+  "ligue-1"
+]);
+
+const CLUB_NAME_OVERRIDES: Record<string, string> = {
+  "as-monaco": "AS Monaco",
+  "as-saint-etienne": "AS Saint-Etienne",
+  "fc-heidenheim": "FC Heidenheim",
+  "le-havre-ac": "Le Havre AC",
+  "mainz-05": "Mainz 05",
+  "paris-saint-germain": "Paris Saint-Germain",
+  "rc-lens": "RC Lens",
+  "rc-strasbourg-alsace": "RC Strasbourg Alsace",
+  "rb-leipzig": "RB Leipzig",
+  "st-pauli": "St. Pauli",
+  "vfb-stuttgart": "VfB Stuttgart",
+  "vfl-bochum": "VfL Bochum",
+  "lnz-cherkasy": "LNZ Cherkasy",
+  "west-ham": "West Ham",
+  "nottingham-forest": "Nottingham Forest",
+  "como-1907": "Como 1907"
+};
+
+function normalizeLeagueId(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 64) {
+    return null;
+  }
+  return MATCH_LEAGUES.has(trimmed) ? trimmed : null;
+}
+
+function formatClubLabel(slug: string): string {
+  const override = CLUB_NAME_OVERRIDES[slug];
+  if (override) {
+    return override;
+  }
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 const AVATAR_LEAGUES = new Set([
   "la-liga",
   "ukrainian-premier-league",
@@ -1340,6 +1427,9 @@ interface CreateMatchPayload {
   initData?: string;
   home_team?: string;
   away_team?: string;
+  league_id?: string;
+  home_club_id?: string;
+  away_club_id?: string;
   kickoff_at?: string;
 }
 
@@ -1361,6 +1451,9 @@ interface DbMatch {
   id: number;
   home_team: string;
   away_team: string;
+  league_id?: string | null;
+  home_club_id?: string | null;
+  away_club_id?: string | null;
   kickoff_at: string;
   status: string;
   home_score?: number | null;

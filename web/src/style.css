@@ -413,7 +413,38 @@ h1 {
 }
 
 .match-title {
+  width: 100%;
+}
+
+.match-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.match-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.match-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.match-name {
   font-weight: 600;
+}
+
+.match-vs {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
 }
 
 .match-time {
@@ -655,7 +686,8 @@ h1 {
   font-size: 0.85rem;
 }
 
-.field input {
+.field input,
+.field select {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--outline-light);
@@ -663,6 +695,10 @@ h1 {
   background: var(--surface);
   color: var(--ink);
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.field select {
+  appearance: none;
 }
 
 .table-avatar {

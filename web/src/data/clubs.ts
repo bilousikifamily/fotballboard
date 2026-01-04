@@ -5,6 +5,8 @@ export type LeagueId =
   | "bundesliga"
   | "ligue-1";
 
+export type AllLeagueId = LeagueId | "ukrainian-premier-league";
+
 export const UA_CLUBS: string[] = [
   "dnipro",
   "dynamo-kyiv",
@@ -130,4 +132,9 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "stade-de-reims",
     "toulouse"
   ]
+};
+
+export const ALL_CLUBS: Record<AllLeagueId, string[]> = {
+  "ukrainian-premier-league": UA_CLUBS,
+  ...EU_CLUBS
 };

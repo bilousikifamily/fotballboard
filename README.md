@@ -53,6 +53,9 @@ create table if not exists matches (
   id bigserial primary key,
   home_team text not null,
   away_team text not null,
+  league_id text,
+  home_club_id text,
+  away_club_id text,
   kickoff_at timestamptz not null,
   status text not null default 'scheduled',
   home_score int,
@@ -85,6 +88,9 @@ alter table users add column if not exists eu_club_id text;
 alter table users add column if not exists nickname text;
 alter table users add column if not exists avatar_choice text;
 alter table users add column if not exists onboarding_completed_at timestamptz;
+alter table matches add column if not exists league_id text;
+alter table matches add column if not exists home_club_id text;
+alter table matches add column if not exists away_club_id text;
 ```
 
 For incremental updates, you can also run:

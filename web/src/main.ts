@@ -1,5 +1,5 @@
 import "./style.css";
-import { EU_CLUBS, UA_CLUBS, type LeagueId } from "./data/clubs";
+import { ALL_CLUBS, EU_CLUBS, UA_CLUBS, type AllLeagueId, type LeagueId } from "./data/clubs";
 
 type AuthResponse =
   | {
@@ -52,6 +52,9 @@ type Match = {
   id: number;
   home_team: string;
   away_team: string;
+  league_id?: string | null;
+  home_club_id?: string | null;
+  away_club_id?: string | null;
   kickoff_at: string;
   status: string;
   home_score?: number | null;
@@ -114,6 +117,15 @@ const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "serie-a", label: "Серія A", flag: "🇮🇹" },
   { id: "bundesliga", label: "Бундесліга", flag: "🇩🇪" },
   { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
+];
+
+const MATCH_LEAGUES: Array<{ id: AllLeagueId; label: string }> = [
+  { id: "ukrainian-premier-league", label: "УПЛ" },
+  { id: "english-premier-league", label: "АПЛ" },
+  { id: "la-liga", label: "Ла Ліга" },
+  { id: "serie-a", label: "Серія A" },
+  { id: "bundesliga", label: "Бундесліга" },
+  { id: "ligue-1", label: "Ліга 1" }
 ];
 
 const tg = window.Telegram?.WebApp;
@@ -633,6 +645,40 @@ function findEuropeanClubLeague(clubId: string): LeagueId | null {
   return null;
 }
 
+function findClubLeague(clubId: string): AllLeagueId | null {
+  const entries = Object.entries(ALL_CLUBS) as Array<[AllLeagueId, string[]]>;
+  for (const [leagueId, clubs] of entries) {
+    if (clubs.includes(clubId)) {
+      return leagueId;
+    }
+  }
+  return null;
+}
+
+function getMatchTeamInfo(match: Match): {
+  homeName: string;
+  awayName: string;
+  homeLogo: string | null;
+  awayLogo: string | null;
+} {
+  const homeClubId = match.home_club_id ?? null;
+  const awayClubId = match.away_club_id ?? null;
+  const resolvedLeague =
+    (match.league_id as AllLeagueId | null) ||
+    (homeClubId ? findClubLeague(homeClubId) : null) ||
+    (awayClubId ? findClubLeague(awayClubId) : null);
+
+  const homeName = homeClubId ? formatClubName(homeClubId) : match.home_team;
+  const awayName = awayClubId ? formatClubName(awayClubId) : match.away_team;
+
+  const homeLogo =
+    homeClubId && resolvedLeague ? getClubLogoPath(resolvedLeague, homeClubId) : null;
+  const awayLogo =
+    awayClubId && resolvedLeague ? getClubLogoPath(resolvedLeague, awayClubId) : null;
+
+  return { homeName, awayName, homeLogo, awayLogo };
+}
+
 function buildAvatarOptions(onboarding: OnboardingInfo | null): AvatarOption[] {
   if (!onboarding) {
     return [];
@@ -787,6 +833,9 @@ function renderUser(
     : "";
   const safeDate = escapeAttribute(date || getKyivDateString());
   const rankText = stats.rank ? `#${stats.rank}` : "—";
+  const leagueOptions = MATCH_LEAGUES.map(
+    (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
+  ).join("");
 
   const adminSection = admin
     ? `
@@ -800,12 +849,18 @@ function renderUser(
         </div>
         <form class="admin-form" data-admin-form>
           <label class="field">
+            <span>Ліга</span>
+            <select name="league_id" data-admin-league required>
+              ${leagueOptions}
+            </select>
+          </label>
+          <label class="field">
             <span>Команда 1</span>
-            <input type="text" name="home_team" required />
+            <select name="home_club_id" data-admin-home required></select>
           </label>
           <label class="field">
             <span>Команда 2</span>
-            <input type="text" name="away_team" required />
+            <select name="away_club_id" data-admin-away required></select>
           </label>
           <label class="field">
             <span>Початок (Київ)</span>
@@ -914,6 +969,7 @@ function renderUser(
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
 
     if (toggleAdd && form) {
+      setupAdminMatchForm(form);
       toggleAdd.addEventListener("click", () => {
         form.classList.toggle("is-open");
       });
@@ -980,17 +1036,30 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
   }
 
   const status = form.querySelector<HTMLElement>("[data-admin-status]");
-  const home = form.querySelector<HTMLInputElement>("input[name=home_team]")?.value.trim() || "";
-  const away = form.querySelector<HTMLInputElement>("input[name=away_team]")?.value.trim() || "";
+  const leagueId = form.querySelector<HTMLSelectElement>("select[name=league_id]")?.value || "";
+  const homeClubId =
+    form.querySelector<HTMLSelectElement>("select[name=home_club_id]")?.value || "";
+  const awayClubId =
+    form.querySelector<HTMLSelectElement>("select[name=away_club_id]")?.value || "";
   const kickoffRaw = form.querySelector<HTMLInputElement>("input[name=kickoff_at]")?.value.trim() || "";
   const kickoff = toKyivISOString(kickoffRaw);
 
-  if (!home || !away || !kickoff) {
+  if (!leagueId || !homeClubId || !awayClubId || !kickoff) {
     if (status) {
       status.textContent = "Заповніть всі поля.";
     }
     return;
   }
+
+  if (homeClubId === awayClubId) {
+    if (status) {
+      status.textContent = "Оберіть різні команди.";
+    }
+    return;
+  }
+
+  const home = formatClubName(homeClubId);
+  const away = formatClubName(awayClubId);
 
   if (status) {
     status.textContent = "Створення...";
@@ -1004,6 +1073,9 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
         initData,
         home_team: home,
         away_team: away,
+        league_id: leagueId,
+        home_club_id: homeClubId,
+        away_club_id: awayClubId,
         kickoff_at: kickoff
       })
     });
@@ -1149,6 +1221,42 @@ function setupScoreControls(form: HTMLFormElement): void {
   });
 }
 
+function setupAdminMatchForm(form: HTMLFormElement): void {
+  const leagueSelect = form.querySelector<HTMLSelectElement>("[data-admin-league]");
+  const homeSelect = form.querySelector<HTMLSelectElement>("[data-admin-home]");
+  const awaySelect = form.querySelector<HTMLSelectElement>("[data-admin-away]");
+  if (!leagueSelect || !homeSelect || !awaySelect) {
+    return;
+  }
+
+  const renderClubOptions = (leagueId: AllLeagueId): string => {
+    const clubs = ALL_CLUBS[leagueId] ?? [];
+    const options = clubs
+      .map((clubId) => `<option value="${clubId}">${escapeHtml(formatClubName(clubId))}</option>`)
+      .join("");
+    return `<option value="">Обери клуб</option>${options}`;
+  };
+
+  const setClubOptions = (leagueId: AllLeagueId): void => {
+    homeSelect.innerHTML = renderClubOptions(leagueId);
+    awaySelect.innerHTML = renderClubOptions(leagueId);
+  };
+
+  const initialLeague = (leagueSelect.value as AllLeagueId) || MATCH_LEAGUES[0]?.id;
+  if (initialLeague) {
+    leagueSelect.value = initialLeague;
+    setClubOptions(initialLeague);
+  }
+
+  leagueSelect.addEventListener("change", () => {
+    const leagueId = leagueSelect.value as AllLeagueId;
+    if (!leagueId) {
+      return;
+    }
+    setClubOptions(leagueId);
+  });
+}
+
 function renderAdminMatchOptions(matches: Match[]): void {
   const select = app.querySelector<HTMLSelectElement>("[data-admin-match]");
   if (!select) {
@@ -1164,7 +1272,8 @@ function renderAdminMatchOptions(matches: Match[]): void {
   select.disabled = false;
   select.innerHTML = matches
     .map((match) => {
-      const title = `${match.home_team} — ${match.away_team}`;
+      const { homeName, awayName } = getMatchTeamInfo(match);
+      const title = `${homeName} — ${awayName}`;
       const kickoff = formatKyivDateTime(match.kickoff_at);
       return `<option value="${match.id}">${escapeHtml(title)} (${kickoff})</option>`;
     })
@@ -1325,14 +1434,17 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
   averageEl.classList.add("is-visible");
   const match = matchesById.get(matchId);
-  const homeName = match?.home_team ? escapeHtml(match.home_team) : "";
-  const awayName = match?.away_team ? escapeHtml(match.away_team) : "";
+  const { homeName, awayName } = match
+    ? getMatchTeamInfo(match)
+    : { homeName: "", awayName: "" };
+  const safeHome = homeName ? escapeHtml(homeName) : "";
+  const safeAway = awayName ? escapeHtml(awayName) : "";
   averageEl.innerHTML = `
     <span class="match-average-label">Середній прогноз</span>
     <div class="match-average-line">
-      ${homeName ? `<span class="team-name">${homeName}</span>` : ""}
+      ${safeHome ? `<span class="team-name">${safeHome}</span>` : ""}
       <span class="match-average-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
-      ${awayName ? `<span class="team-name">${awayName}</span>` : ""}
+      ${safeAway ? `<span class="team-name">${safeAway}</span>` : ""}
     </div>
   `;
 }
@@ -1412,6 +1524,34 @@ function getPredictionError(error: string | undefined): string {
   }
 }
 
+function renderMatchTeams(match: Match): string {
+  const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
+  const safeHome = escapeHtml(homeName);
+  const safeAway = escapeHtml(awayName);
+  const homeAlt = escapeAttribute(homeName);
+  const awayAlt = escapeAttribute(awayName);
+  const homeLogoMarkup = homeLogo
+    ? `<img class="match-logo" src="${escapeAttribute(homeLogo)}" alt="${homeAlt}" />`
+    : "";
+  const awayLogoMarkup = awayLogo
+    ? `<img class="match-logo" src="${escapeAttribute(awayLogo)}" alt="${awayAlt}" />`
+    : "";
+
+  return `
+    <div class="match-teams">
+      <div class="match-team">
+        ${homeLogoMarkup}
+        <span class="match-name">${safeHome}</span>
+      </div>
+      <span class="match-vs">vs</span>
+      <div class="match-team">
+        ${awayLogoMarkup}
+        <span class="match-name">${safeAway}</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderMatchesList(matches: Match[]): string {
   if (!matches.length) {
     return `<p class="muted">Немає матчів на цю дату.</p>`;
@@ -1419,7 +1559,7 @@ function renderMatchesList(matches: Match[]): string {
 
   return matches
     .map((match) => {
-      const title = `${escapeHtml(match.home_team)} — ${escapeHtml(match.away_team)}`;
+      const title = renderMatchTeams(match);
       const kickoff = formatKyivDateTime(match.kickoff_at);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
