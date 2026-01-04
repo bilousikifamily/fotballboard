@@ -57,6 +57,103 @@ body {
   gap: 14px;
 }
 
+.onboarding-panel {
+  gap: 18px;
+}
+
+.onboarding-header {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.onboarding-step {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.onboarding-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.onboarding-actions .button {
+  flex: 1;
+}
+
+.logo-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.logo-choice {
+  border: 1px solid transparent;
+  background: #f8f6f1;
+  border-radius: 18px;
+  padding: 12px 8px;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.logo-choice.is-selected {
+  border-color: rgba(11, 125, 102, 0.6);
+  box-shadow: 0 12px 26px rgba(11, 125, 102, 0.2);
+  transform: translateY(-1px);
+}
+
+.logo-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.logo-name {
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--ink);
+}
+
+.league-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flag-button {
+  border: 1px solid rgba(108, 111, 122, 0.2);
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 8px 6px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.flag-button.is-active {
+  border-color: var(--accent);
+  background: rgba(11, 125, 102, 0.08);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.flag-icon {
+  font-size: 1.1rem;
+}
+
+.onboarding-form {
+  display: grid;
+  gap: 12px;
+}
+
 .center {
   text-align: center;
   justify-items: center;
@@ -182,6 +279,12 @@ h1 {
 .button:active {
   transform: translateY(1px);
   box-shadow: 0 8px 16px rgba(11, 125, 102, 0.2);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .section-header {
@@ -516,6 +619,16 @@ h1 {
   50% {
     transform: scale(1.06);
     text-shadow: 0 0 18px rgba(11, 125, 102, 0.3);
+  }
+}
+
+@media (max-width: 520px) {
+  .logo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .league-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

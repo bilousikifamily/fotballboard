@@ -39,6 +39,11 @@ create table if not exists users (
   photo_url text,
   admin boolean not null default false,
   points_total int not null default 0,
+  classico_choice text,
+  ua_club_id text,
+  eu_club_id text,
+  nickname text,
+  onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -73,6 +78,11 @@ If you already have a `users` table, run:
 alter table users add column if not exists admin boolean default false;
 alter table users add column if not exists points_total int default 0;
 alter table users add column if not exists created_at timestamptz default now();
+alter table users add column if not exists classico_choice text;
+alter table users add column if not exists ua_club_id text;
+alter table users add column if not exists eu_club_id text;
+alter table users add column if not exists nickname text;
+alter table users add column if not exists onboarding_completed_at timestamptz;
 ```
 
 For incremental updates, you can also run:
@@ -138,6 +148,7 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 - `GET /api/matches?date=YYYY-MM-DD` -> list matches (Kyiv time, requires `X-Telegram-InitData`)
 - `POST /api/matches` -> admin creates match
 - `POST /api/predictions` -> user submits prediction
+- `POST /api/onboarding` -> save onboarding profile data
 - `POST /api/matches/result` -> admin sets final score + awards points
 - `POST /tg/webhook` -> Telegram updates
 

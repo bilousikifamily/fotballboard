@@ -41,11 +41,13 @@ export default {
       const supabase = createSupabaseClient(env);
       let isAdmin = false;
       let stats: UserStats | null = null;
+      let onboarding: UserOnboarding | null = null;
       if (valid.user) {
         await storeUser(supabase, valid.user);
         if (supabase) {
           isAdmin = await checkAdmin(supabase, valid.user.id);
           stats = await getUserStats(supabase, valid.user.id);
+          onboarding = await getUserOnboarding(supabase, valid.user.id);
         }
       }
 
@@ -55,11 +57,70 @@ export default {
           user: valid.user,
           admin: isAdmin,
           points_total: stats?.points_total ?? 0,
-          rank: stats?.rank ?? null
+          rank: stats?.rank ?? null,
+          onboarding
         },
         200,
         corsHeaders()
       );
+    }
+
+    if (url.pathname === "/api/onboarding") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<OnboardingPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+
+      const nickname = normalizeNickname(body.nickname);
+      if (!nickname) {
+        return jsonResponse({ ok: false, error: "bad_nickname" }, 400, corsHeaders());
+      }
+
+      const classicoChoice = normalizeClassicoChoice(body.classico_choice);
+      if (body.classico_choice !== undefined && body.classico_choice !== null && classicoChoice === null) {
+        return jsonResponse({ ok: false, error: "bad_classico_choice" }, 400, corsHeaders());
+      }
+
+      const uaClubId = normalizeClubId(body.ua_club_id);
+      if (body.ua_club_id !== undefined && body.ua_club_id !== null && uaClubId === null) {
+        return jsonResponse({ ok: false, error: "bad_ua_club" }, 400, corsHeaders());
+      }
+
+      const euClubId = normalizeClubId(body.eu_club_id);
+      if (body.eu_club_id !== undefined && body.eu_club_id !== null && euClubId === null) {
+        return jsonResponse({ ok: false, error: "bad_eu_club" }, 400, corsHeaders());
+      }
+
+      const saved = await saveUserOnboarding(supabase, auth.user.id, {
+        classico_choice: classicoChoice,
+        ua_club_id: uaClubId,
+        eu_club_id: euClubId,
+        nickname
+      });
+      if (!saved) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/leaderboard" || url.pathname === "/api/users") {
@@ -458,7 +519,7 @@ async function listLeaderboard(supabase: SupabaseClient, limit: number): Promise
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("id, username, first_name, last_name, photo_url, points_total, updated_at")
+      .select("id, username, first_name, last_name, photo_url, points_total, updated_at, nickname")
       .order("points_total", { ascending: false })
       .order("updated_at", { ascending: false })
       .limit(limit);
@@ -503,12 +564,35 @@ async function getUserStats(supabase: SupabaseClient, userId: number): Promise<U
   }
 }
 
+async function getUserOnboarding(supabase: SupabaseClient, userId: number): Promise<UserOnboarding | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("classico_choice, ua_club_id, eu_club_id, nickname, onboarding_completed_at")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) {
+      return null;
+    }
+    const completedAt = (data as UserOnboardingRow).onboarding_completed_at ?? null;
+    return {
+      classico_choice: data.classico_choice ?? null,
+      ua_club_id: data.ua_club_id ?? null,
+      eu_club_id: data.eu_club_id ?? null,
+      nickname: data.nickname ?? null,
+      completed: Boolean(completedAt)
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function listPredictions(supabase: SupabaseClient, matchId: number): Promise<PredictionView[] | null> {
   try {
     const { data, error } = await supabase
       .from("predictions")
       .select(
-        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url)"
+        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url, nickname)"
       )
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
@@ -530,7 +614,8 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
           username: row.users.username ?? null,
           first_name: row.users.first_name ?? null,
           last_name: row.users.last_name ?? null,
-          photo_url: row.users.photo_url ?? null
+          photo_url: row.users.photo_url ?? null,
+          nickname: row.users.nickname ?? null
         }
         : null
     }));
@@ -833,6 +918,34 @@ async function applyMatchResult(
   return true;
 }
 
+async function saveUserOnboarding(
+  supabase: SupabaseClient,
+  userId: number,
+  payload: OnboardingPayload
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        classico_choice: payload.classico_choice ?? null,
+        ua_club_id: payload.ua_club_id ?? null,
+        eu_club_id: payload.eu_club_id ?? null,
+        nickname: payload.nickname ?? null,
+        onboarding_completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", userId);
+    if (error) {
+      console.error("Failed to save onboarding", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to save onboarding", error);
+    return false;
+  }
+}
+
 function scorePrediction(homePred: number, awayPred: number, homeScore: number, awayScore: number): number {
   if (homePred === homeScore && awayPred === awayScore) {
     return 5;
@@ -862,6 +975,41 @@ function parseInteger(value: unknown): number | null {
     }
   }
   return null;
+}
+
+function normalizeClassicoChoice(value: unknown): "real_madrid" | "barcelona" | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (value === "real_madrid" || value === "barcelona") {
+    return value;
+  }
+  return null;
+}
+
+function normalizeClubId(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 64) {
+    return null;
+  }
+  return /^[a-z0-9-]+$/.test(trimmed) ? trimmed : null;
+}
+
+function normalizeNickname(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 24) {
+    return null;
+  }
+  return trimmed;
 }
 
 function parseLimit(value: string | null, fallback: number, max: number): number {
@@ -1019,9 +1167,14 @@ interface StoredUser {
   first_name?: string | null;
   last_name?: string | null;
   photo_url?: string | null;
+  nickname?: string | null;
   admin?: boolean | null;
   points_total?: number | null;
   updated_at?: string | null;
+  classico_choice?: string | null;
+  ua_club_id?: string | null;
+  eu_club_id?: string | null;
+  onboarding_completed_at?: string | null;
 }
 
 interface UserStats {
@@ -1083,6 +1236,7 @@ interface PredictionRow {
     first_name?: string | null;
     last_name?: string | null;
     photo_url?: string | null;
+    nickname?: string | null;
   } | null;
 }
 
@@ -1098,5 +1252,30 @@ interface PredictionView {
     first_name?: string | null;
     last_name?: string | null;
     photo_url?: string | null;
+    nickname?: string | null;
   } | null;
+}
+
+interface UserOnboarding {
+  classico_choice?: string | null;
+  ua_club_id?: string | null;
+  eu_club_id?: string | null;
+  nickname?: string | null;
+  completed: boolean;
+}
+
+interface UserOnboardingRow {
+  classico_choice?: string | null;
+  ua_club_id?: string | null;
+  eu_club_id?: string | null;
+  nickname?: string | null;
+  onboarding_completed_at?: string | null;
+}
+
+interface OnboardingPayload {
+  initData?: string;
+  classico_choice?: string | null;
+  ua_club_id?: string | null;
+  eu_club_id?: string | null;
+  nickname?: string | null;
 }

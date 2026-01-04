@@ -1,7 +1,15 @@
 import "./style.css";
+import { EU_CLUBS, UA_CLUBS, type LeagueId } from "./data/clubs";
 
 type AuthResponse =
-  | { ok: true; user?: TelegramWebAppUser; admin?: boolean; points_total?: number; rank?: number | null }
+  | {
+      ok: true;
+      user?: TelegramWebAppUser;
+      admin?: boolean;
+      points_total?: number;
+      rank?: number | null;
+      onboarding?: OnboardingInfo | null;
+    }
   | { ok: false; error: string };
 
 type LeaderboardResponse =
@@ -34,6 +42,7 @@ type LeaderboardUser = {
   first_name?: string | null;
   last_name?: string | null;
   photo_url?: string | null;
+  nickname?: string | null;
   points_total?: number | null;
   updated_at?: string | null;
 };
@@ -55,6 +64,7 @@ type PredictionUser = {
   first_name?: string | null;
   last_name?: string | null;
   photo_url?: string | null;
+  nickname?: string | null;
 };
 
 type PredictionView = {
@@ -71,6 +81,14 @@ type UserStats = {
   points: number;
 };
 
+type OnboardingInfo = {
+  classico_choice?: string | null;
+  ua_club_id?: string | null;
+  eu_club_id?: string | null;
+  nickname?: string | null;
+  completed?: boolean;
+};
+
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
   throw new Error("Missing #app element");
@@ -81,8 +99,17 @@ let leaderboardLoaded = false;
 let currentDate = "";
 let isAdmin = false;
 let currentUserId: number | null = null;
+let currentNickname: string | null = null;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
+
+const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
+  { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
+  { id: "la-liga", label: "Ла Ліга", flag: "🇪🇸" },
+  { id: "serie-a", label: "Серія A", flag: "🇮🇹" },
+  { id: "bundesliga", label: "Бундесліга", flag: "🇩🇪" },
+  { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
+];
 
 const tg = window.Telegram?.WebApp;
 if (tg?.ready) {
@@ -126,7 +153,15 @@ async function bootstrap(data: string): Promise<void> {
       points: typeof payload.points_total === "number" ? payload.points_total : 0
     };
 
-    renderUser(payload.user, stats, isAdmin, currentDate);
+    const onboarding = payload.onboarding ?? { completed: false };
+    currentNickname = onboarding.nickname ?? null;
+
+    if (!onboarding.completed) {
+      renderOnboarding(payload.user, stats, onboarding);
+      return;
+    }
+
+    renderUser(payload.user, stats, isAdmin, currentDate, currentNickname);
     await loadMatches(currentDate);
   } catch {
     renderMessage("Network error", "Check your connection and try again.");
@@ -154,8 +189,354 @@ function renderMessage(message: string, note = "This WebApp should be opened fro
   `;
 }
 
-function renderUser(user: TelegramWebAppUser | undefined, stats: UserStats, admin: boolean, date: string): void {
-  const displayName = formatTelegramName(user);
+function renderOnboarding(
+  user: TelegramWebAppUser | undefined,
+  stats: UserStats,
+  onboarding: OnboardingInfo
+): void {
+  const state = {
+    step: 1,
+    classicoChoice:
+      onboarding.classico_choice === "real_madrid" || onboarding.classico_choice === "barcelona"
+        ? onboarding.classico_choice
+        : null,
+    uaClubId: onboarding.ua_club_id ?? null,
+    euClubId: onboarding.eu_club_id ?? null,
+    euLeague: "english-premier-league" as LeagueId,
+    nickname: onboarding.nickname ?? ""
+  };
+
+  const renderStep = (statusMessage = ""): void => {
+    const stepTitle = `Крок ${state.step} з 4`;
+    const header = `
+      <div class="onboarding-header">
+        <span class="onboarding-step">${stepTitle}</span>
+        <h1>Налаштуй профіль</h1>
+      </div>
+    `;
+
+    let body = "";
+    if (state.step === 1) {
+      body = `
+        <p class="muted">Обери між Реалом та Барселоною або пропусти.</p>
+        <div class="logo-grid">
+          ${renderClubChoice({
+            id: "real_madrid",
+            name: "Реал Мадрид",
+            logo: getClubLogoPath("la-liga", "real-madrid"),
+            selected: state.classicoChoice === "real_madrid",
+            dataAttr: "data-classico-choice"
+          })}
+          ${renderClubChoice({
+            id: "barcelona",
+            name: "Барселона",
+            logo: getClubLogoPath("la-liga", "barcelona"),
+            selected: state.classicoChoice === "barcelona",
+            dataAttr: "data-classico-choice"
+          })}
+        </div>
+        <button class="button secondary" type="button" data-classico-skip>Пропустити</button>
+      `;
+    } else if (state.step === 2) {
+      body = `
+        <p class="muted">Обери український клуб або пропусти.</p>
+        <div class="logo-grid">
+          ${UA_CLUBS.map((clubId) =>
+            renderClubChoice({
+              id: clubId,
+              name: formatClubName(clubId),
+              logo: getClubLogoPath("ukrainian-premier-league", clubId),
+              selected: state.uaClubId === clubId,
+              dataAttr: "data-ua-choice"
+            })
+          ).join("")}
+        </div>
+        <button class="button secondary" type="button" data-ua-skip>Пропустити</button>
+      `;
+    } else if (state.step === 3) {
+      const leagueTabs = EUROPEAN_LEAGUES.map((league) => {
+        const isActive = league.id === state.euLeague;
+        return `
+          <button class="flag-button ${isActive ? "is-active" : ""}" type="button" data-eu-league="${
+            league.id
+          }">
+            <span class="flag-icon">${league.flag}</span>
+            <span>${escapeHtml(league.label)}</span>
+          </button>
+        `;
+      }).join("");
+
+      body = `
+        <p class="muted">Обери європейський клуб або пропусти.</p>
+        <div class="league-tabs">${leagueTabs}</div>
+        <div class="logo-grid">
+          ${EU_CLUBS[state.euLeague].map((clubId) =>
+            renderClubChoice({
+              id: clubId,
+              name: formatClubName(clubId),
+              logo: getClubLogoPath(state.euLeague, clubId),
+              selected: state.euClubId === clubId,
+              dataAttr: "data-eu-choice"
+            })
+          ).join("")}
+        </div>
+        <button class="button secondary" type="button" data-eu-skip>Пропустити</button>
+      `;
+    } else {
+      body = `
+        <p class="muted">Вкажи нікнейм для підписа.</p>
+        <form class="onboarding-form" data-onboarding-form>
+          <label class="field">
+            <span>Нікнейм</span>
+            <input type="text" name="nickname" maxlength="24" value="${escapeAttribute(
+              state.nickname
+            )}" required />
+          </label>
+          <button class="button" type="submit">Зберегти</button>
+          <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
+        </form>
+      `;
+    }
+
+    const actions = `
+      <div class="onboarding-actions">
+        <button class="button secondary" type="button" data-onboarding-back ${
+          state.step === 1 ? "disabled" : ""
+        }>Назад</button>
+        ${
+          state.step < 4
+            ? `<button class="button" type="button" data-onboarding-next>Далі</button>`
+            : ""
+        }
+      </div>
+    `;
+
+    app.innerHTML = `
+      <main class="layout onboarding">
+        <section class="panel onboarding-panel">
+          ${header}
+          ${body}
+          ${actions}
+        </section>
+      </main>
+    `;
+
+    const nextButton = app.querySelector<HTMLButtonElement>("[data-onboarding-next]");
+    if (nextButton) {
+      nextButton.addEventListener("click", () => {
+        state.step = Math.min(4, state.step + 1);
+        renderStep();
+      });
+    }
+
+    const backButton = app.querySelector<HTMLButtonElement>("[data-onboarding-back]");
+    if (backButton) {
+      backButton.addEventListener("click", () => {
+        if (state.step === 1) {
+          return;
+        }
+        state.step = Math.max(1, state.step - 1);
+        renderStep();
+      });
+    }
+
+    app.querySelectorAll<HTMLButtonElement>("[data-classico-choice]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const choice = button.dataset.classicoChoice;
+        if (choice === "real_madrid" || choice === "barcelona") {
+          state.classicoChoice = choice;
+        }
+        renderStep();
+      });
+    });
+
+    const classicoSkip = app.querySelector<HTMLButtonElement>("[data-classico-skip]");
+    if (classicoSkip) {
+      classicoSkip.addEventListener("click", () => {
+        state.classicoChoice = null;
+        renderStep();
+      });
+    }
+
+    app.querySelectorAll<HTMLButtonElement>("[data-ua-choice]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const clubId = button.dataset.uaChoice || null;
+        state.uaClubId = clubId;
+        renderStep();
+      });
+    });
+
+    const uaSkip = app.querySelector<HTMLButtonElement>("[data-ua-skip]");
+    if (uaSkip) {
+      uaSkip.addEventListener("click", () => {
+        state.uaClubId = null;
+        renderStep();
+      });
+    }
+
+    app.querySelectorAll<HTMLButtonElement>("[data-eu-league]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextLeague = button.dataset.euLeague as LeagueId | undefined;
+        if (!nextLeague || nextLeague === state.euLeague) {
+          return;
+        }
+        state.euLeague = nextLeague;
+        state.euClubId = null;
+        renderStep();
+      });
+    });
+
+    app.querySelectorAll<HTMLButtonElement>("[data-eu-choice]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const clubId = button.dataset.euChoice || null;
+        state.euClubId = clubId;
+        renderStep();
+      });
+    });
+
+    const euSkip = app.querySelector<HTMLButtonElement>("[data-eu-skip]");
+    if (euSkip) {
+      euSkip.addEventListener("click", () => {
+        state.euClubId = null;
+        renderStep();
+      });
+    }
+
+    const form = app.querySelector<HTMLFormElement>("[data-onboarding-form]");
+    if (form) {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const nicknameInput = form.querySelector<HTMLInputElement>("input[name=nickname]");
+        state.nickname = nicknameInput?.value ?? "";
+        void submitOnboarding(state, user, stats);
+      });
+    }
+  };
+
+  renderStep();
+}
+
+async function submitOnboarding(
+  state: {
+    classicoChoice: "real_madrid" | "barcelona" | null;
+    uaClubId: string | null;
+    euClubId: string | null;
+    nickname: string;
+  },
+  user: TelegramWebAppUser | undefined,
+  stats: UserStats
+): Promise<void> {
+  const status = app.querySelector<HTMLElement>("[data-onboarding-status]");
+  const nickname = state.nickname.trim();
+  if (nickname.length < 2) {
+    if (status) {
+      status.textContent = "Нікнейм має містити мінімум 2 символи.";
+    }
+    return;
+  }
+
+  if (!apiBase) {
+    if (status) {
+      status.textContent = "Не вдалося зберегти налаштування.";
+    }
+    return;
+  }
+
+  if (status) {
+    status.textContent = "Збереження...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/onboarding`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData,
+        classico_choice: state.classicoChoice,
+        ua_club_id: state.uaClubId,
+        eu_club_id: state.euClubId,
+        nickname
+      })
+    });
+    const data = (await response.json()) as { ok: boolean; error?: string };
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося зберегти налаштування.";
+      }
+      return;
+    }
+
+    currentNickname = nickname;
+    renderUser(user, stats, isAdmin, currentDate, currentNickname);
+    await loadMatches(currentDate);
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося зберегти налаштування.";
+    }
+  }
+}
+
+function renderClubChoice(options: {
+  id: string;
+  name: string;
+  logo: string;
+  selected: boolean;
+  dataAttr: string;
+}): string {
+  const safeName = escapeHtml(options.name);
+  const safeLogo = escapeAttribute(options.logo);
+  return `
+    <button class="logo-choice ${options.selected ? "is-selected" : ""}" type="button" ${
+      options.dataAttr
+    }="${escapeAttribute(options.id)}">
+      <img class="logo-img" src="${safeLogo}" alt="${safeName}" />
+      <span class="logo-name">${safeName}</span>
+    </button>
+  `;
+}
+
+function getClubLogoPath(leagueId: string, clubId: string): string {
+  return `/logos/football-logos/${leagueId}/${clubId}.png`;
+}
+
+const CLUB_NAME_OVERRIDES: Record<string, string> = {
+  "as-monaco": "AS Monaco",
+  "as-saint-etienne": "AS Saint-Etienne",
+  "fc-heidenheim": "FC Heidenheim",
+  "le-havre-ac": "Le Havre AC",
+  "mainz-05": "Mainz 05",
+  "paris-saint-germain": "Paris Saint-Germain",
+  "rc-lens": "RC Lens",
+  "rc-strasbourg-alsace": "RC Strasbourg Alsace",
+  "rb-leipzig": "RB Leipzig",
+  "st-pauli": "St. Pauli",
+  "vfb-stuttgart": "VfB Stuttgart",
+  "vfl-bochum": "VfL Bochum",
+  "lnz-cherkasy": "LNZ Cherkasy",
+  "west-ham": "West Ham",
+  "nottingham-forest": "Nottingham Forest"
+};
+
+function formatClubName(slug: string): string {
+  const override = CLUB_NAME_OVERRIDES[slug];
+  if (override) {
+    return override;
+  }
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function renderUser(
+  user: TelegramWebAppUser | undefined,
+  stats: UserStats,
+  admin: boolean,
+  date: string,
+  nickname?: string | null
+): void {
+  const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
   const avatar = user?.photo_url
     ? `<img class="avatar" src="${escapeAttribute(user.photo_url)}" alt="Avatar" />`
@@ -940,6 +1321,9 @@ function formatTelegramName(user?: TelegramWebAppUser): string {
 }
 
 function formatUserName(user: LeaderboardUser): string {
+  if (user.nickname) {
+    return user.nickname;
+  }
   const first = user.first_name?.trim() ?? "";
   const last = user.last_name?.trim() ?? "";
   const full = [first, last].filter(Boolean).join(" ").trim();
@@ -955,6 +1339,9 @@ function formatUserName(user: LeaderboardUser): string {
 function formatPredictionName(user: PredictionUser | null): string {
   if (!user) {
     return "Гравець";
+  }
+  if (user.nickname) {
+    return user.nickname;
   }
   const first = user.first_name?.trim() ?? "";
   const last = user.last_name?.trim() ?? "";
