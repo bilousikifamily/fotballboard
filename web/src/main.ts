@@ -69,6 +69,7 @@ type PredictionUser = {
   last_name?: string | null;
   photo_url?: string | null;
   nickname?: string | null;
+  points_total?: number | null;
 };
 
 type PredictionView = {
@@ -112,6 +113,7 @@ let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
+const TOP_PREDICTIONS_LIMIT = 4;
 
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -1456,11 +1458,15 @@ function renderPredictionsPanel(predictions: PredictionView[]): string {
   const self = currentUserId
     ? predictions.find((item) => item.user_id === currentUserId) || null
     : null;
+  if (!self) {
+    return `<p class="muted small">Поки що немає прогнозів.</p>`;
+  }
   const others = currentUserId
     ? predictions.filter((item) => item.user_id !== currentUserId)
     : predictions;
 
-  const rows = renderPredictionRows(self, others);
+  const topPredictions = getTopPredictions(others, TOP_PREDICTIONS_LIMIT);
+  const rows = renderPredictionRows(self, topPredictions);
 
   return `
     <div class="predictions-list">${rows}</div>
@@ -1528,6 +1534,11 @@ function renderPredictionRows(self: PredictionView | null, others: PredictionVie
     );
   }
 
+  const placeholdersNeeded = Math.max(0, TOP_PREDICTIONS_LIMIT - others.length);
+  for (let i = 0; i < placeholdersNeeded; i += 1) {
+    rows.push(renderPredictionPlaceholderRow());
+  }
+
   if (!rows.length) {
     return `<p class="muted small">Поки що немає прогнозів.</p>`;
   }
@@ -1535,6 +1546,30 @@ function renderPredictionRows(self: PredictionView | null, others: PredictionVie
   return rows.join("");
 }
 
+function renderPredictionPlaceholderRow(): string {
+  return `
+    <div class="prediction-row placeholder">
+      <span class="prediction-name">Очікуємо прогноз</span>
+      <span class="prediction-score">--:--</span>
+    </div>
+  `;
+}
+
+function getTopPredictions(predictions: PredictionView[], limit: number): PredictionView[] {
+  return [...predictions]
+    .sort((a, b) => {
+      const pointsDiff = getUserPointsTotal(b.user) - getUserPointsTotal(a.user);
+      if (pointsDiff !== 0) {
+        return pointsDiff;
+      }
+      return a.user_id - b.user_id;
+    })
+    .slice(0, limit);
+}
+
+function getUserPointsTotal(user: PredictionUser | null): number {
+  return typeof user?.points_total === "number" ? user.points_total : 0;
+}
 function getAveragePrediction(predictions: PredictionView[]): { homeAvg: number; awayAvg: number } {
   const total = predictions.reduce(
     (acc, item) => {
@@ -1645,11 +1680,6 @@ function renderMatchesList(matches: Match[]): string {
             ${result}
           </div>
           <div class="match-average" data-match-average data-match-id="${match.id}"></div>
-          ${predicted ? "" : `
-            <button class="link-button" type="button" data-predictions-toggle data-match-id="${match.id}">
-              Прогнози
-            </button>
-          `}
           ${closed ? "" : statusLine}
           ${form}
           <div class="predictions" data-predictions data-match-id="${match.id}" ${

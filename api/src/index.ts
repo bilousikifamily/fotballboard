@@ -662,7 +662,7 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
     const { data, error } = await supabase
       .from("predictions")
       .select(
-        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url, nickname)"
+        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url, nickname, points_total)"
       )
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
@@ -685,7 +685,8 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
           first_name: row.users.first_name ?? null,
           last_name: row.users.last_name ?? null,
           photo_url: row.users.photo_url ?? null,
-          nickname: row.users.nickname ?? null
+          nickname: row.users.nickname ?? null,
+          points_total: row.users.points_total ?? null
         }
         : null
     }));
@@ -1537,6 +1538,7 @@ interface PredictionRow {
     last_name?: string | null;
     photo_url?: string | null;
     nickname?: string | null;
+    points_total?: number | null;
   } | null;
 }
 
@@ -1553,6 +1555,7 @@ interface PredictionView {
     last_name?: string | null;
     photo_url?: string | null;
     nickname?: string | null;
+    points_total?: number | null;
   } | null;
 }
 

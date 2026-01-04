@@ -785,6 +785,10 @@ h1 {
   padding: 6px 8px;
 }
 
+.prediction-row.placeholder {
+  color: var(--muted);
+}
+
 .prediction-name {
   font-weight: 500;
 }
