@@ -855,7 +855,8 @@ function renderUser(
   const logoStackMarkup = logoOptions.length
     ? renderLogoStack(resolvedLogoOrder)
     : renderAvatarContent(user, currentAvatarChoice);
-  const logoOrderMenuMarkup = logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder) : "";
+  const logoOrderMenuMarkup =
+    logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder, currentNickname ?? displayName) : "";
   const safeDate = escapeAttribute(date || getKyivDateString());
   const rankText = stats.rank ? `#${stats.rank}` : "—";
   const leagueOptions = MATCH_LEAGUES.map(
@@ -915,7 +916,7 @@ function renderUser(
     <main class="layout">
       <section class="panel profile center">
         ${logoStackMarkup}
-        ${safeName ? `<h1>${safeName}</h1>` : ""}
+        ${safeName ? `<h1 data-profile-name>${safeName}</h1>` : ""}
         ${logoOrderMenuMarkup}
         <div class="stats">
           <div class="stat">
@@ -1031,6 +1032,9 @@ function setupLogoOrderControls(): void {
 
   let activeChoice: string | null = null;
   const status = menu.querySelector<HTMLElement>("[data-logo-order-status]");
+  const nicknameStatus = menu.querySelector<HTMLElement>("[data-nickname-status]");
+  const nicknameInput = menu.querySelector<HTMLInputElement>("[data-nickname-input]");
+  const nicknameSave = menu.querySelector<HTMLButtonElement>("[data-nickname-save]");
 
   const updateMenuState = (choice: string): void => {
     const order = currentLogoOrder ?? [];
@@ -1055,6 +1059,9 @@ function setupLogoOrderControls(): void {
     activeChoice = choice;
     if (status) {
       status.textContent = "";
+    }
+    if (nicknameStatus) {
+      nicknameStatus.textContent = "";
     }
     updateMenuState(choice);
     menu.classList.add("is-open");
@@ -1093,6 +1100,36 @@ function setupLogoOrderControls(): void {
     closeMenu();
     void submitLogoOrder(nextOrder, status);
   });
+
+  if (nicknameSave && nicknameInput) {
+    const saveHandler = (): void => {
+      const nextNickname = normalizeLocalNickname(nicknameInput.value);
+      if (!nextNickname) {
+        if (nicknameStatus) {
+          nicknameStatus.textContent = "Нікнейм має містити від 2 до 24 символів.";
+        }
+        return;
+      }
+      if (nextNickname === currentNickname) {
+        if (nicknameStatus) {
+          nicknameStatus.textContent = "Нікнейм без змін.";
+        }
+        return;
+      }
+      if (nicknameStatus) {
+        nicknameStatus.textContent = "";
+      }
+      void submitNickname(nextNickname, nicknameStatus);
+    };
+
+    nicknameSave.addEventListener("click", saveHandler);
+    nicknameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveHandler();
+      }
+    });
+  }
 
   document.addEventListener("click", (event) => {
     if (!menu.classList.contains("is-open")) {
@@ -1165,10 +1202,11 @@ function renderLogoSlot(option: AvatarOption | null, position: LogoPosition): st
   `;
 }
 
-function renderLogoOrderMenu(logoOrder: AvatarOption[]): string {
+function renderLogoOrderMenu(logoOrder: AvatarOption[], nickname: string): string {
   if (logoOrder.length < 2) {
     return "";
   }
+  const safeNickname = escapeAttribute(nickname);
   const options = LOGO_POSITIONS.map(
     (position) => `
       <button class="logo-order-option" type="button" data-logo-position="${position}">
@@ -1182,7 +1220,15 @@ function renderLogoOrderMenu(logoOrder: AvatarOption[]): string {
       <div class="logo-order-options">
         ${options}
       </div>
+      <div class="logo-nickname-field">
+        <label class="logo-nickname-label" for="nickname-input">Нікнейм</label>
+        <input id="nickname-input" type="text" maxlength="24" value="${safeNickname}" data-nickname-input />
+        <button class="button secondary small-button logo-nickname-save" type="button" data-nickname-save>
+          Зберегти
+        </button>
+      </div>
       <p class="muted small" data-logo-order-status></p>
+      <p class="muted small" data-nickname-status></p>
     </div>
   `;
 }
@@ -1255,6 +1301,78 @@ async function submitLogoOrder(
   } catch {
     if (statusEl) {
       statusEl.textContent = "Не вдалося зберегти порядок.";
+    }
+  }
+}
+
+function normalizeLocalNickname(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 24) {
+    return null;
+  }
+  return trimmed;
+}
+
+async function submitNickname(
+  nickname: string,
+  statusEl?: HTMLElement | null
+): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.textContent = "Збереження...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/nickname`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData,
+        nickname
+      })
+    });
+    const data = (await response.json()) as { ok: boolean; error?: string };
+    if (!response.ok || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = "Не вдалося зберегти нікнейм.";
+      }
+      return;
+    }
+
+    currentNickname = nickname;
+    if (currentOnboarding) {
+      currentOnboarding.nickname = nickname;
+    }
+
+    const profileName = app.querySelector<HTMLElement>("[data-profile-name]");
+    if (profileName) {
+      profileName.textContent = nickname;
+    }
+
+    const nicknameInput = app.querySelector<HTMLInputElement>("[data-nickname-input]");
+    if (nicknameInput) {
+      nicknameInput.value = nickname;
+    }
+
+    app.querySelectorAll<HTMLElement>(".prediction-row.self .prediction-name").forEach((el) => {
+      el.textContent = nickname;
+    });
+
+    const leaderboardName = app.querySelector<HTMLElement>(".leaderboard-row.is-self .leaderboard-name");
+    if (leaderboardName) {
+      leaderboardName.textContent = nickname;
+    }
+    leaderboardLoaded = false;
+
+    if (statusEl) {
+      statusEl.textContent = "Збережено ✅";
+    }
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося зберегти нікнейм.";
     }
   }
 }

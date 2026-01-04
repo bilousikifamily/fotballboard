@@ -253,6 +253,35 @@ body {
   overflow: hidden;
 }
 
+.logo-nickname-field {
+  display: grid;
+  gap: 6px;
+}
+
+.logo-nickname-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.logo-nickname-field input {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-light);
+  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.logo-nickname-save {
+  width: 100%;
+}
+
 .logo-order-option {
   border: none;
   padding: 10px 0;

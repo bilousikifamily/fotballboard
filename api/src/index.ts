@@ -252,6 +252,44 @@ export default {
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/nickname") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<NicknamePayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+
+      const nickname = normalizeNickname(body.nickname);
+      if (!nickname) {
+        return jsonResponse({ ok: false, error: "bad_nickname" }, 400, corsHeaders());
+      }
+
+      const saved = await saveUserNickname(supabase, auth.user.id, nickname);
+      if (!saved) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/leaderboard" || url.pathname === "/api/users") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -1178,6 +1216,30 @@ async function saveUserLogoOrder(
   }
 }
 
+async function saveUserNickname(
+  supabase: SupabaseClient,
+  userId: number,
+  nickname: string
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        nickname,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", userId);
+    if (error) {
+      console.error("Failed to save nickname", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to save nickname", error);
+    return false;
+  }
+}
+
 function scorePrediction(homePred: number, awayPred: number, homeScore: number, awayScore: number): number {
   if (homePred === homeScore && awayPred === awayScore) {
     return 5;
@@ -1736,6 +1798,11 @@ interface AvatarPayload {
 interface LogoOrderPayload {
   initData?: string;
   logo_order?: string[] | null;
+}
+
+interface NicknamePayload {
+  initData?: string;
+  nickname?: string | null;
 }
 
 interface MatchResultNotification {
