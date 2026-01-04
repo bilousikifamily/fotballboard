@@ -484,13 +484,15 @@ h1 {
 
 .matches {
   text-align: center;
-  width: 120vw;
-  max-width: none;
-  margin-left: calc(50% - 60vw);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
 .matches .section-header {
   justify-content: center;
+  padding: 0 20px 12px;
 }
 
 .date-input {
