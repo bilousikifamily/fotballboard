@@ -1563,19 +1563,30 @@ async function handleUpdate(update: TelegramUpdate, env: Env): Promise<void> {
     return;
   }
 
-  const text = message.text || "";
+  const text = message.text?.trim();
   if (!text) {
     return;
   }
 
-  if (text.startsWith("/start")) {
-    await sendMessage(env, message.chat.id, "Готово ✅ Натисни кнопку, щоб відкрити WebApp", {
-      inline_keyboard: [[{ text: "Open WebApp", web_app: { url: env.WEBAPP_URL } }]]
-    });
+  const command = extractCommand(text);
+  if (!command) {
     return;
   }
 
-  await sendMessage(env, message.chat.id, "ok");
+  if (command === "start" || command === "app" || command === "webapp") {
+    await sendMessage(env, message.chat.id, "Готово ✅ Натисни кнопку, щоб відкрити WebApp", {
+      inline_keyboard: [[{ text: "Open WebApp", web_app: { url: env.WEBAPP_URL } }]]
+    });
+  }
+}
+
+function extractCommand(text: string): string | null {
+  if (!text.startsWith("/")) {
+    return null;
+  }
+  const token = text.split(/\s+/)[0] ?? "";
+  const raw = token.slice(1).split("@")[0]?.trim().toLowerCase();
+  return raw || null;
 }
 
 async function sendMessage(
