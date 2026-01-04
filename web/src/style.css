@@ -40,7 +40,7 @@ body {
 }
 
 #app {
-  width: min(520px, 92vw);
+  width: min(520px, 92vw, 92vh);
   padding: 24px 0 40px;
 }
 
@@ -686,6 +686,25 @@ h1 {
 
 .match.has-prediction .match-time {
   display: none;
+}
+
+@media (orientation: landscape) {
+  #app {
+    width: min(520px, 92vh);
+  }
+
+  .matches-list {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    scroll-padding-left: 0;
+    scroll-padding-right: 0;
+  }
+
+  .matches-list::before,
+  .matches-list::after {
+    display: none;
+  }
 }
 
 .status-closed {
