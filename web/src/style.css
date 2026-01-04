@@ -156,10 +156,15 @@ body {
   height: 120px;
   display: grid;
   place-items: center;
+  --logo-center-size: 108px;
+  --logo-left-size: 86px;
+  --logo-right-size: 72px;
+  --logo-overlap: 20px;
 }
 
 .logo-slot {
   position: absolute;
+  top: 50%;
   border: none;
   background: none;
   padding: 0;
@@ -177,22 +182,28 @@ body {
 }
 
 .logo-slot.center {
-  width: 108px;
-  height: 108px;
+  width: var(--logo-center-size);
+  height: var(--logo-center-size);
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 3;
 }
 
 .logo-slot.left {
-  width: 86px;
-  height: 86px;
-  left: 6%;
+  width: var(--logo-left-size);
+  height: var(--logo-left-size);
+  left: calc(
+    50% - (var(--logo-center-size) / 2 + var(--logo-left-size) - var(--logo-overlap))
+  );
+  transform: translateY(-50%);
   z-index: 2;
 }
 
 .logo-slot.right {
-  width: 72px;
-  height: 72px;
-  right: 6%;
+  width: var(--logo-right-size);
+  height: var(--logo-right-size);
+  left: calc(50% + (var(--logo-center-size) / 2 - var(--logo-overlap)));
+  transform: translateY(-50%);
   z-index: 1;
 }
 
@@ -218,30 +229,47 @@ body {
   gap: 8px;
 }
 
+.logo-order-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
 .logo-order-menu.is-open {
   display: grid;
 }
 
 .logo-order-options {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid var(--outline-light);
+  background: var(--surface-strong);
+  overflow: hidden;
 }
 
 .logo-order-option {
-  border: 1px solid var(--outline-light);
-  border-radius: 12px;
-  padding: 8px 10px;
-  background: var(--surface-strong);
+  border: none;
+  padding: 10px 0;
+  background: transparent;
   color: var(--ink);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.18em;
   cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.logo-order-option + .logo-order-option {
+  border-left: 1px solid var(--outline-light);
 }
 
 .logo-order-option.is-selected {
-  border-color: rgba(255, 122, 26, 0.8);
+  background: rgba(255, 122, 26, 0.16);
   transform: translateY(-1px);
 }
 

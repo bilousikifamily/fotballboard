@@ -120,9 +120,9 @@ const TOP_PREDICTIONS_LIMIT = 4;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
 type LogoPosition = typeof LOGO_POSITIONS[number];
 const LOGO_POSITION_LABELS: Record<LogoPosition, string> = {
-  center: "1 — центр",
-  left: "2 — зліва",
-  right: "3 — справа"
+  center: "1",
+  left: "2",
+  right: "3"
 };
 
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
@@ -1178,7 +1178,7 @@ function renderLogoOrderMenu(logoOrder: AvatarOption[]): string {
   ).join("");
   return `
     <div class="logo-order-menu" data-logo-order-menu>
-      <p class="muted small">Обери позицію логотипа</p>
+      <p class="logo-order-title">ОБЕРИ ПОЗИЦІЮ ЛОГОТИПІВ</p>
       <div class="logo-order-options">
         ${options}
       </div>
