@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@200&family=Seymour+One&family=Space+Grotesk:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300&family=Space+Grotesk:wght@400;600&display=swap");
 
 :root {
   color-scheme: dark;
@@ -139,7 +139,7 @@ body {
   font-size: 1.2rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-family: "Seymour One", "Space Grotesk", system-ui, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 400;
 }
 
@@ -928,7 +928,7 @@ h1 {
 
 .prediction-name {
   font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
-  font-weight: 200;
+  font-weight: 300;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -953,7 +953,7 @@ h1 {
 
 .leaderboard-row {
   display: grid;
-  grid-template-columns: 24px 36px 1fr auto;
+  grid-template-columns: 24px 1fr auto;
   align-items: center;
   gap: 8px;
   background: var(--surface);
@@ -962,21 +962,33 @@ h1 {
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
-.leaderboard-row.is-self .leaderboard-name {
-  color: var(--accent);
-  text-shadow: 0 0 12px rgba(255, 122, 26, 0.4);
+.leaderboard-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .leaderboard-name {
   font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
-  font-weight: 200;
+  font-weight: 300;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.leaderboard-name {
-  font-weight: 500;
+.leaderboard-row.is-self {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 122, 26, 0.7),
+    rgba(255, 154, 31, 0.7)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 26px rgba(255, 122, 26, 0.3);
 }
+
+.leaderboard-row.is-self .leaderboard-name {
+  color: #ffffff;
+}
+
 
 .leaderboard-rank {
   color: var(--muted);

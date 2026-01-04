@@ -1997,10 +1997,16 @@ function renderLeaderboardList(users: LeaderboardUser[]): string {
     return `<p class="muted small">Поки що немає користувачів.</p>`;
   }
 
+  let lastPoints: number | null = null;
+  let currentRank = 0;
   const rows = users
     .map((user, index) => {
       const name = formatUserName(user);
       const points = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
+      if (lastPoints === null || points !== lastPoints) {
+        currentRank = index + 1;
+        lastPoints = points;
+      }
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
       const avatar = avatarLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
@@ -2010,9 +2016,11 @@ function renderLeaderboardList(users: LeaderboardUser[]): string {
       const isSelf = currentUserId === user.id;
       return `
         <div class="leaderboard-row ${isSelf ? "is-self" : ""}">
-          <span class="leaderboard-rank">${index + 1}</span>
-          ${avatar}
-          <span class="leaderboard-name">${escapeHtml(name)}</span>
+          <span class="leaderboard-rank">${currentRank}</span>
+          <div class="leaderboard-identity">
+            ${avatar}
+            <span class="leaderboard-name">${escapeHtml(name)}</span>
+          </div>
           <span class="leaderboard-points">${points}</span>
         </div>
       `;
