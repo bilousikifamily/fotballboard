@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@200&family=Seymour+One&family=Space+Grotesk:wght@400;600&display=swap");
 
 :root {
   color-scheme: dark;
@@ -139,6 +139,8 @@ body {
   font-size: 1.2rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  font-family: "Seymour One", "Space Grotesk", system-ui, sans-serif;
+  font-weight: 400;
 }
 
 .panel.profile .avatar {
@@ -611,6 +613,10 @@ h1 {
   width: 100%;
 }
 
+.leaderboard .button {
+  width: 100%;
+}
+
 .matches {
   text-align: center;
   background: transparent;
@@ -650,9 +656,12 @@ h1 {
   scroll-padding-right: calc((100vw - var(--match-card-width)) / 2);
   -webkit-overflow-scrolling: touch;
   cursor: grab;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-width: none;
   overscroll-behavior-x: contain;
+}
+
+.matches-list::-webkit-scrollbar {
+  display: none;
 }
 
 .matches-list::before,
@@ -918,7 +927,10 @@ h1 {
 }
 
 .prediction-name {
-  font-weight: 500;
+  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
+  font-weight: 200;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .prediction-score {
@@ -948,6 +960,18 @@ h1 {
   border-radius: 14px;
   padding: 8px 10px;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.leaderboard-row.is-self .leaderboard-name {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(255, 122, 26, 0.4);
+}
+
+.leaderboard-name {
+  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
+  font-weight: 200;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .leaderboard-name {

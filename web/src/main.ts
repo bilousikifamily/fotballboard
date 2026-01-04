@@ -2007,8 +2007,9 @@ function renderLeaderboardList(users: LeaderboardUser[]): string {
         : user.photo_url
         ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
         : `<div class="table-avatar placeholder"></div>`;
+      const isSelf = currentUserId === user.id;
       return `
-        <div class="leaderboard-row">
+        <div class="leaderboard-row ${isSelf ? "is-self" : ""}">
           <span class="leaderboard-rank">${index + 1}</span>
           ${avatar}
           <span class="leaderboard-name">${escapeHtml(name)}</span>
