@@ -109,6 +109,7 @@ let currentUser: TelegramWebAppUser | undefined;
 let currentNickname: string | null = null;
 let currentAvatarChoice: string | null = null;
 let currentOnboarding: OnboardingInfo | null = null;
+let noticeRuleIndex = 0;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 
@@ -127,6 +128,13 @@ const MATCH_LEAGUES: Array<{ id: AllLeagueId; label: string }> = [
   { id: "serie-a", label: "Серія A" },
   { id: "bundesliga", label: "Бундесліга" },
   { id: "ligue-1", label: "Ліга 1" }
+];
+
+const NOTICE_RULES = [
+  "Прогнози приймаються за 60 хв до старту матча",
+  "Вгаданный результат +1 бал",
+  "Вгаданий рахунок +5 балів",
+  "Не вгаданный результат -1 бал"
 ];
 
 const tg = window.Telegram?.WebApp;
@@ -905,7 +913,11 @@ function renderUser(
         ${avatarPickerMarkup}
       </section>
 
-      <p class="muted small notice">Прогнози приймаються за 60 хв до старту.</p>
+      <div class="notice-ticker" aria-live="polite">
+        <span class="notice-ticker-text" data-notice-text>
+          ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
+        </span>
+      </div>
 
       <section class="panel matches">
         <div class="section-header">
@@ -941,6 +953,8 @@ function renderUser(
       void loadMatches(nextDate);
     });
   }
+
+  setupNoticeTicker();
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
   const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
@@ -1190,6 +1204,29 @@ function bindMatchActions(): void {
     }
     void togglePredictions(matchId, container, { forceOpen: true });
   });
+}
+
+function setupNoticeTicker(): void {
+  const textEl = app.querySelector<HTMLElement>("[data-notice-text]");
+  if (!textEl || NOTICE_RULES.length === 0) {
+    return;
+  }
+
+  noticeRuleIndex = 0;
+  textEl.textContent = formatNoticeRule(NOTICE_RULES[noticeRuleIndex]);
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  textEl.addEventListener("animationiteration", () => {
+    noticeRuleIndex = (noticeRuleIndex + 1) % NOTICE_RULES.length;
+    textEl.textContent = formatNoticeRule(NOTICE_RULES[noticeRuleIndex]);
+  });
+}
+
+function formatNoticeRule(rule: string): string {
+  return rule.toUpperCase();
 }
 
 

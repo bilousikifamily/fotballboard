@@ -58,6 +58,53 @@ body {
   text-align: center;
 }
 
+.notice-ticker {
+  width: 100%;
+  height: calc(2 * 1.2em);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.notice-ticker-text {
+  display: inline-block;
+  white-space: nowrap;
+  transform: translateX(0);
+  animation: noticeTicker 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes noticeTicker {
+  0% {
+    transform: translateX(120vw);
+    opacity: 0;
+  }
+  8% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  92% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-120vw);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice-ticker-text {
+    animation: none;
+  }
+}
+
 .panel {
   background: var(--card);
   border-radius: 24px;
