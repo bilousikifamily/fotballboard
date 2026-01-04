@@ -1434,17 +1434,23 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
   averageEl.classList.add("is-visible");
   const match = matchesById.get(matchId);
-  const { homeName, awayName } = match
+  const { homeName, awayName, homeLogo, awayLogo } = match
     ? getMatchTeamInfo(match)
-    : { homeName: "", awayName: "" };
-  const safeHome = homeName ? escapeHtml(homeName) : "";
-  const safeAway = awayName ? escapeHtml(awayName) : "";
+    : { homeName: "", awayName: "", homeLogo: null, awayLogo: null };
+  const homeAlt = escapeAttribute(homeName);
+  const awayAlt = escapeAttribute(awayName);
+  const homeLogoMarkup = homeLogo
+    ? `<img class="match-logo" src="${escapeAttribute(homeLogo)}" alt="${homeAlt}" />`
+    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${homeAlt}"></div>`;
+  const awayLogoMarkup = awayLogo
+    ? `<img class="match-logo" src="${escapeAttribute(awayLogo)}" alt="${awayAlt}" />`
+    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${awayAlt}"></div>`;
   averageEl.innerHTML = `
     <span class="match-average-label">Середній прогноз</span>
     <div class="match-average-line">
-      ${safeHome ? `<span class="team-name">${safeHome}</span>` : ""}
+      ${homeLogoMarkup}
       <span class="match-average-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
-      ${safeAway ? `<span class="team-name">${safeAway}</span>` : ""}
+      ${awayLogoMarkup}
     </div>
   `;
 }
@@ -1526,28 +1532,19 @@ function getPredictionError(error: string | undefined): string {
 
 function renderMatchTeams(match: Match): string {
   const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
-  const safeHome = escapeHtml(homeName);
-  const safeAway = escapeHtml(awayName);
   const homeAlt = escapeAttribute(homeName);
   const awayAlt = escapeAttribute(awayName);
   const homeLogoMarkup = homeLogo
     ? `<img class="match-logo" src="${escapeAttribute(homeLogo)}" alt="${homeAlt}" />`
-    : "";
+    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${homeAlt}"></div>`;
   const awayLogoMarkup = awayLogo
     ? `<img class="match-logo" src="${escapeAttribute(awayLogo)}" alt="${awayAlt}" />`
-    : "";
+    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${awayAlt}"></div>`;
 
   return `
     <div class="match-teams">
-      <div class="match-team">
-        ${homeLogoMarkup}
-        <span class="match-name">${safeHome}</span>
-      </div>
-      <span class="match-vs">vs</span>
-      <div class="match-team">
-        ${awayLogoMarkup}
-        <span class="match-name">${safeAway}</span>
-      </div>
+      <div class="match-team">${homeLogoMarkup}</div>
+      <div class="match-team">${awayLogoMarkup}</div>
     </div>
   `;
 }
