@@ -231,7 +231,7 @@ function renderOnboarding(
     let body = "";
     if (state.step === 1) {
       body = `
-        <p class="muted">Обери між Реалом та Барселоною або пропусти.</p>
+        <p class="muted onboarding-question">Хто краще Реал чи Барселона?</p>
         <div class="logo-grid">
           ${renderClubChoice({
             id: "real_madrid",
@@ -297,7 +297,6 @@ function renderOnboarding(
       `;
     } else {
       body = `
-        <p class="muted">Вкажи нікнейм для підписа.</p>
         <form class="onboarding-form" data-onboarding-form>
           <label class="field">
             <span>Нікнейм</span>
@@ -589,7 +588,6 @@ function renderClubChoice(options: {
       options.dataAttr
     }="${escapeAttribute(options.id)}">
       <img class="logo-img" src="${safeLogo}" alt="${safeName}" />
-      <span class="logo-name">${safeName}</span>
     </button>
   `;
 }

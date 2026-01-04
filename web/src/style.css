@@ -161,6 +161,10 @@ body {
   color: var(--ink);
 }
 
+.onboarding-question {
+  text-align: center;
+}
+
 .league-tabs {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -194,6 +198,11 @@ body {
 .onboarding-form {
   display: grid;
   gap: 12px;
+}
+
+.onboarding-form .field span {
+  text-align: center;
+  width: 100%;
 }
 
 .center {
