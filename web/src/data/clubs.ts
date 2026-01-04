@@ -37,6 +37,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "everton",
     "fulham",
     "ipswich",
+    "leeds-united",
     "leicester",
     "liverpool",
     "manchester-city",
