@@ -1774,24 +1774,11 @@ function renderPredictionRows(self: PredictionView | null, others: PredictionVie
     );
   }
 
-  const placeholdersNeeded = Math.max(0, TOP_PREDICTIONS_LIMIT - others.length);
-  for (let i = 0; i < placeholdersNeeded; i += 1) {
-    rows.push(renderPredictionPlaceholderRow());
-  }
-
   if (!rows.length) {
     return `<p class="muted small">Поки що немає прогнозів.</p>`;
   }
 
   return rows.join("");
-}
-
-function renderPredictionPlaceholderRow(): string {
-  return `
-    <div class="prediction-row placeholder">
-      <span class="prediction-name">Очікуємо прогноз</span>
-    </div>
-  `;
 }
 
 function getTopPredictions(predictions: PredictionView[], limit: number): PredictionView[] {

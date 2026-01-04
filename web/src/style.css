@@ -684,19 +684,6 @@ h1 {
   scroll-snap-stop: always;
 }
 
-.matches-list::-webkit-scrollbar {
-  height: 6px;
-}
-
-.matches-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.matches-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-}
-
 .match.has-prediction .match-time {
   display: none;
 }
@@ -922,28 +909,6 @@ h1 {
   padding: 6px 8px;
 }
 
-.prediction-row.placeholder {
-  color: rgba(178, 168, 155, 0.8);
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  padding: 4px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  opacity: 0.65;
-  width: 100%;
-}
-
-.prediction-row.placeholder .prediction-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.prediction-row.placeholder .prediction-score {
-  color: rgba(178, 168, 155, 0.85);
-  line-height: 1.2;
-}
 
 .prediction-name {
   font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
