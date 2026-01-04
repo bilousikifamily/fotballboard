@@ -1437,14 +1437,8 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
   const { homeName, awayName, homeLogo, awayLogo } = match
     ? getMatchTeamInfo(match)
     : { homeName: "", awayName: "", homeLogo: null, awayLogo: null };
-  const homeAlt = escapeAttribute(homeName);
-  const awayAlt = escapeAttribute(awayName);
-  const homeLogoMarkup = homeLogo
-    ? `<img class="match-logo" src="${escapeAttribute(homeLogo)}" alt="${homeAlt}" />`
-    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${homeAlt}"></div>`;
-  const awayLogoMarkup = awayLogo
-    ? `<img class="match-logo" src="${escapeAttribute(awayLogo)}" alt="${awayAlt}" />`
-    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${awayAlt}"></div>`;
+  const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
+  const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
   averageEl.innerHTML = `
     <span class="match-average-label">Середній прогноз</span>
     <div class="match-average-line">
@@ -1530,23 +1524,11 @@ function getPredictionError(error: string | undefined): string {
   }
 }
 
-function renderMatchTeams(match: Match): string {
-  const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
-  const homeAlt = escapeAttribute(homeName);
-  const awayAlt = escapeAttribute(awayName);
-  const homeLogoMarkup = homeLogo
-    ? `<img class="match-logo" src="${escapeAttribute(homeLogo)}" alt="${homeAlt}" />`
-    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${homeAlt}"></div>`;
-  const awayLogoMarkup = awayLogo
-    ? `<img class="match-logo" src="${escapeAttribute(awayLogo)}" alt="${awayAlt}" />`
-    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${awayAlt}"></div>`;
-
-  return `
-    <div class="match-teams">
-      <div class="match-team">${homeLogoMarkup}</div>
-      <div class="match-team">${awayLogoMarkup}</div>
-    </div>
-  `;
+function renderTeamLogo(name: string, logo: string | null): string {
+  const alt = escapeAttribute(name);
+  return logo
+    ? `<img class="match-logo" src="${escapeAttribute(logo)}" alt="${alt}" />`
+    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${alt}"></div>`;
 }
 
 function renderMatchesList(matches: Match[]): string {
@@ -1556,14 +1538,22 @@ function renderMatchesList(matches: Match[]): string {
 
   return matches
     .map((match) => {
-      const title = renderMatchTeams(match);
+      const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
+      const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
+      const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
       const kickoff = formatKyivDateTime(match.kickoff_at);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
       const predicted = Boolean(match.has_prediction);
       const result =
         finished && match.home_score !== null && match.away_score !== null
-          ? `<div class="match-result">${match.home_score}:${match.away_score}</div>`
+          ? `
+            <div class="match-scoreline">
+              ${homeLogoMarkup}
+              <div class="match-result">${match.home_score}:${match.away_score}</div>
+              ${awayLogoMarkup}
+            </div>
+          `
           : "";
       const statusLine = finished
         ? `<p class="muted small">Матч завершено.</p>`
@@ -1574,20 +1564,24 @@ function renderMatchesList(matches: Match[]): string {
         ? ""
         : `
           <form class="prediction-form" data-prediction-form data-match-id="${match.id}">
-            <div class="score-controls">
-              <div class="score-control" data-score-control>
-                <button class="score-btn" type="button" data-score-inc>+</button>
-                <div class="score-value" data-score-value>0</div>
-                <button class="score-btn" type="button" data-score-dec>-</button>
-                <input type="hidden" name="home_pred" value="0" />
+            <div class="score-row">
+              ${homeLogoMarkup}
+              <div class="score-controls">
+                <div class="score-control" data-score-control>
+                  <button class="score-btn" type="button" data-score-inc>+</button>
+                  <div class="score-value" data-score-value>0</div>
+                  <button class="score-btn" type="button" data-score-dec>-</button>
+                  <input type="hidden" name="home_pred" value="0" />
+                </div>
+                <span class="score-separator">:</span>
+                <div class="score-control" data-score-control>
+                  <button class="score-btn" type="button" data-score-inc>+</button>
+                  <div class="score-value" data-score-value>0</div>
+                  <button class="score-btn" type="button" data-score-dec>-</button>
+                  <input type="hidden" name="away_pred" value="0" />
+                </div>
               </div>
-              <span class="score-separator">:</span>
-              <div class="score-control" data-score-control>
-                <button class="score-btn" type="button" data-score-inc>+</button>
-                <div class="score-value" data-score-value>0</div>
-                <button class="score-btn" type="button" data-score-dec>-</button>
-                <input type="hidden" name="away_pred" value="0" />
-              </div>
+              ${awayLogoMarkup}
             </div>
             <button class="button small-button" type="submit">Прогноз</button>
             <p class="muted small" data-prediction-status></p>
@@ -1597,7 +1591,6 @@ function renderMatchesList(matches: Match[]): string {
       return `
         <article class="match ${predicted ? "has-prediction" : ""}">
           <div class="match-header">
-            <div class="match-title">${title}</div>
             <div class="match-time">${kickoff}</div>
             ${result}
           </div>

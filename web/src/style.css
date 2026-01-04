@@ -397,7 +397,6 @@ h1 {
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
-.match.has-prediction .match-title,
 .match.has-prediction .match-time {
   display: none;
 }
@@ -412,27 +411,10 @@ h1 {
   justify-items: center;
 }
 
-.match-title {
-  width: 100%;
-}
-
-.match-teams {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: center;
-  justify-items: center;
-  gap: 24px;
-}
-
-.match-team {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 .match-logo {
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
 }
 
@@ -443,8 +425,23 @@ h1 {
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
-.match-average-line {
-  justify-items: center;
+.match-scoreline {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.score-row .score-controls {
+  justify-content: center;
 }
 
 .match-time {
