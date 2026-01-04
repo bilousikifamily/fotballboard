@@ -926,11 +926,10 @@ h1 {
   color: rgba(178, 168, 155, 0.8);
   background: rgba(255, 255, 255, 0.04);
   border-radius: 10px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   opacity: 0.65;
   width: 100%;
-  min-height: 34px;
 }
 
 .prediction-row.placeholder .prediction-name {

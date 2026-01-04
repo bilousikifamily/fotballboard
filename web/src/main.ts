@@ -1790,7 +1790,6 @@ function renderPredictionPlaceholderRow(): string {
   return `
     <div class="prediction-row placeholder">
       <span class="prediction-name">Очікуємо прогноз</span>
-      <span class="prediction-score">--:--</span>
     </div>
   `;
 }
