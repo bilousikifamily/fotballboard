@@ -110,12 +110,75 @@ export default {
         return jsonResponse({ ok: false, error: "bad_eu_club" }, 400, corsHeaders());
       }
 
+      const avatarChoice = normalizeAvatarChoice(body.avatar_choice);
+      if (body.avatar_choice !== undefined && body.avatar_choice !== null && body.avatar_choice !== "" && avatarChoice === null) {
+        return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
+      }
+
+      if (avatarChoice && !isAvatarChoiceAllowed(avatarChoice, { classicoChoice, uaClubId, euClubId })) {
+        return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
+      }
+
       const saved = await saveUserOnboarding(supabase, auth.user.id, {
         classico_choice: classicoChoice,
         ua_club_id: uaClubId,
         eu_club_id: euClubId,
-        nickname
+        nickname,
+        avatar_choice: avatarChoice
       });
+      if (!saved) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/avatar") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<AvatarPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      const avatarChoice = normalizeAvatarChoice(body.avatar_choice);
+      if (body.avatar_choice !== undefined && body.avatar_choice !== null && body.avatar_choice !== "" && avatarChoice === null) {
+        return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
+      }
+
+      if (avatarChoice) {
+        const onboarding = await getUserOnboarding(supabase, auth.user.id);
+        if (!onboarding) {
+          return jsonResponse({ ok: false, error: "user_not_found" }, 404, corsHeaders());
+        }
+
+        if (
+          !isAvatarChoiceAllowed(avatarChoice, {
+            classicoChoice: onboarding.classico_choice ?? null,
+            uaClubId: onboarding.ua_club_id ?? null,
+            euClubId: onboarding.eu_club_id ?? null
+          })
+        ) {
+          return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
+        }
+      }
+
+      const saved = await saveUserAvatarChoice(supabase, auth.user.id, avatarChoice);
       if (!saved) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -519,7 +582,7 @@ async function listLeaderboard(supabase: SupabaseClient, limit: number): Promise
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("id, username, first_name, last_name, photo_url, points_total, updated_at, nickname")
+      .select("id, username, first_name, last_name, photo_url, points_total, updated_at, nickname, avatar_choice")
       .order("points_total", { ascending: false })
       .order("updated_at", { ascending: false })
       .limit(limit);
@@ -568,7 +631,7 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("classico_choice, ua_club_id, eu_club_id, nickname, onboarding_completed_at")
+      .select("classico_choice, ua_club_id, eu_club_id, nickname, avatar_choice, onboarding_completed_at")
       .eq("id", userId)
       .maybeSingle();
     if (error || !data) {
@@ -580,6 +643,7 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
       ua_club_id: data.ua_club_id ?? null,
       eu_club_id: data.eu_club_id ?? null,
       nickname: data.nickname ?? null,
+      avatar_choice: data.avatar_choice ?? null,
       completed: Boolean(completedAt)
     };
   } catch {
@@ -931,6 +995,7 @@ async function saveUserOnboarding(
         ua_club_id: payload.ua_club_id ?? null,
         eu_club_id: payload.eu_club_id ?? null,
         nickname: payload.nickname ?? null,
+        avatar_choice: payload.avatar_choice ?? null,
         onboarding_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -942,6 +1007,30 @@ async function saveUserOnboarding(
     return true;
   } catch (error) {
     console.error("Failed to save onboarding", error);
+    return false;
+  }
+}
+
+async function saveUserAvatarChoice(
+  supabase: SupabaseClient,
+  userId: number,
+  avatarChoice: string | null
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        avatar_choice: avatarChoice ?? null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", userId);
+    if (error) {
+      console.error("Failed to save avatar choice", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to save avatar choice", error);
     return false;
   }
 }
@@ -999,6 +1088,70 @@ function normalizeClubId(value: unknown): string | null {
     return null;
   }
   return /^[a-z0-9-]+$/.test(trimmed) ? trimmed : null;
+}
+
+const AVATAR_LEAGUES = new Set([
+  "la-liga",
+  "ukrainian-premier-league",
+  "english-premier-league",
+  "serie-a",
+  "bundesliga",
+  "ligue-1"
+]);
+
+function normalizeAvatarChoice(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 128) {
+    return null;
+  }
+  const match = /^([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(trimmed);
+  if (!match) {
+    return null;
+  }
+  const leagueId = match[1];
+  if (!AVATAR_LEAGUES.has(leagueId)) {
+    return null;
+  }
+  return `${leagueId}/${match[2]}`;
+}
+
+function getClassicoSlug(choice: string | null): string | null {
+  if (choice === "real_madrid") {
+    return "real-madrid";
+  }
+  if (choice === "barcelona") {
+    return "barcelona";
+  }
+  return null;
+}
+
+function isAvatarChoiceAllowed(
+  avatarChoice: string,
+  selections: { classicoChoice: string | null; uaClubId: string | null; euClubId: string | null }
+): boolean {
+  const parts = avatarChoice.split("/");
+  if (parts.length !== 2) {
+    return false;
+  }
+  const clubId = parts[1];
+  const allowed = new Set<string>();
+  const classicoSlug = getClassicoSlug(selections.classicoChoice);
+  if (classicoSlug) {
+    allowed.add(classicoSlug);
+  }
+  if (selections.uaClubId) {
+    allowed.add(selections.uaClubId);
+  }
+  if (selections.euClubId) {
+    allowed.add(selections.euClubId);
+  }
+  return allowed.has(clubId);
 }
 
 function normalizeNickname(value: unknown): string | null {
@@ -1168,6 +1321,7 @@ interface StoredUser {
   last_name?: string | null;
   photo_url?: string | null;
   nickname?: string | null;
+  avatar_choice?: string | null;
   admin?: boolean | null;
   points_total?: number | null;
   updated_at?: string | null;
@@ -1261,6 +1415,7 @@ interface UserOnboarding {
   ua_club_id?: string | null;
   eu_club_id?: string | null;
   nickname?: string | null;
+  avatar_choice?: string | null;
   completed: boolean;
 }
 
@@ -1269,6 +1424,7 @@ interface UserOnboardingRow {
   ua_club_id?: string | null;
   eu_club_id?: string | null;
   nickname?: string | null;
+  avatar_choice?: string | null;
   onboarding_completed_at?: string | null;
 }
 
@@ -1278,4 +1434,10 @@ interface OnboardingPayload {
   ua_club_id?: string | null;
   eu_club_id?: string | null;
   nickname?: string | null;
+  avatar_choice?: string | null;
+}
+
+interface AvatarPayload {
+  initData?: string;
+  avatar_choice?: string | null;
 }

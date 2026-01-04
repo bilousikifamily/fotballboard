@@ -90,6 +90,35 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.avatar-button {
+  border: none;
+  background: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.avatar-button:focus-visible {
+  outline: 2px solid rgba(11, 125, 102, 0.6);
+  outline-offset: 4px;
+  border-radius: 24px;
+}
+
+.avatar-picker {
+  display: none;
+  gap: 12px;
+  width: 100%;
+}
+
+.avatar-picker.is-open {
+  display: grid;
+}
+
+.avatar-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .logo-choice {
   border: 1px solid transparent;
   background: #f8f6f1;
@@ -165,6 +194,13 @@ body {
   border-radius: 50%;
   object-fit: cover;
   border: 4px solid rgba(11, 125, 102, 0.2);
+}
+
+.avatar-logo {
+  object-fit: contain;
+  border-radius: 24px;
+  background: #f8f6f1;
+  padding: 12px;
 }
 
 .placeholder {
@@ -596,6 +632,13 @@ h1 {
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.table-avatar.logo-avatar {
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f8f6f1;
+  padding: 3px;
 }
 
 .table-avatar.placeholder::after {

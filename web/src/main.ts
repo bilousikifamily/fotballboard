@@ -43,6 +43,7 @@ type LeaderboardUser = {
   last_name?: string | null;
   photo_url?: string | null;
   nickname?: string | null;
+  avatar_choice?: string | null;
   points_total?: number | null;
   updated_at?: string | null;
 };
@@ -86,6 +87,7 @@ type OnboardingInfo = {
   ua_club_id?: string | null;
   eu_club_id?: string | null;
   nickname?: string | null;
+  avatar_choice?: string | null;
   completed?: boolean;
 };
 
@@ -99,7 +101,10 @@ let leaderboardLoaded = false;
 let currentDate = "";
 let isAdmin = false;
 let currentUserId: number | null = null;
+let currentUser: TelegramWebAppUser | undefined;
 let currentNickname: string | null = null;
+let currentAvatarChoice: string | null = null;
+let currentOnboarding: OnboardingInfo | null = null;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 
@@ -146,6 +151,7 @@ async function bootstrap(data: string): Promise<void> {
 
     isAdmin = Boolean(payload.admin);
     currentUserId = payload.user?.id ?? null;
+    currentUser = payload.user;
     currentDate = getKyivDateString();
 
     const stats: UserStats = {
@@ -154,7 +160,9 @@ async function bootstrap(data: string): Promise<void> {
     };
 
     const onboarding = payload.onboarding ?? { completed: false };
+    currentOnboarding = onboarding;
     currentNickname = onboarding.nickname ?? null;
+    currentAvatarChoice = onboarding.avatar_choice ?? null;
 
     if (!onboarding.completed) {
       renderOnboarding(payload.user, stats, onboarding);
@@ -194,6 +202,10 @@ function renderOnboarding(
   stats: UserStats,
   onboarding: OnboardingInfo
 ): void {
+  const detectedEuLeague = onboarding.eu_club_id
+    ? findEuropeanClubLeague(onboarding.eu_club_id)
+    : null;
+  const initialEuLeague = detectedEuLeague ?? ("english-premier-league" as LeagueId);
   const state = {
     step: 1,
     classicoChoice:
@@ -202,7 +214,8 @@ function renderOnboarding(
         : null,
     uaClubId: onboarding.ua_club_id ?? null,
     euClubId: onboarding.eu_club_id ?? null,
-    euLeague: "english-premier-league" as LeagueId,
+    euLeague: initialEuLeague,
+    euClubLeague: detectedEuLeague,
     nickname: onboarding.nickname ?? ""
   };
 
@@ -382,6 +395,7 @@ function renderOnboarding(
         }
         state.euLeague = nextLeague;
         state.euClubId = null;
+        state.euClubLeague = null;
         renderStep();
       });
     });
@@ -390,6 +404,7 @@ function renderOnboarding(
       button.addEventListener("click", () => {
         const clubId = button.dataset.euChoice || null;
         state.euClubId = clubId;
+        state.euClubLeague = clubId ? state.euLeague : null;
         renderStep();
       });
     });
@@ -398,6 +413,7 @@ function renderOnboarding(
     if (euSkip) {
       euSkip.addEventListener("click", () => {
         state.euClubId = null;
+        state.euClubLeague = null;
         renderStep();
       });
     }
@@ -421,6 +437,7 @@ async function submitOnboarding(
     classicoChoice: "real_madrid" | "barcelona" | null;
     uaClubId: string | null;
     euClubId: string | null;
+    euClubLeague: LeagueId | null;
     nickname: string;
   },
   user: TelegramWebAppUser | undefined,
@@ -447,6 +464,7 @@ async function submitOnboarding(
   }
 
   try {
+    const avatarChoice = getDefaultAvatarChoice(state);
     const response = await fetch(`${apiBase}/api/onboarding`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -455,7 +473,8 @@ async function submitOnboarding(
         classico_choice: state.classicoChoice,
         ua_club_id: state.uaClubId,
         eu_club_id: state.euClubId,
-        nickname
+        nickname,
+        avatar_choice: avatarChoice
       })
     });
     const data = (await response.json()) as { ok: boolean; error?: string };
@@ -467,11 +486,91 @@ async function submitOnboarding(
     }
 
     currentNickname = nickname;
+    currentAvatarChoice = avatarChoice;
+    currentUser = user;
+    currentOnboarding = {
+      classico_choice: state.classicoChoice,
+      ua_club_id: state.uaClubId,
+      eu_club_id: state.euClubId,
+      nickname,
+      avatar_choice: avatarChoice,
+      completed: true
+    };
     renderUser(user, stats, isAdmin, currentDate, currentNickname);
     await loadMatches(currentDate);
   } catch {
     if (status) {
       status.textContent = "Не вдалося зберегти налаштування.";
+    }
+  }
+}
+
+async function submitAvatarChoice(choice: string): Promise<void> {
+  if (choice === currentAvatarChoice) {
+    const picker = app.querySelector<HTMLElement>("[data-avatar-picker]");
+    const toggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
+    if (picker && toggle) {
+      picker.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+    return;
+  }
+
+  if (!apiBase) {
+    return;
+  }
+
+  const status = app.querySelector<HTMLElement>("[data-avatar-status]");
+  if (status) {
+    status.textContent = "Збереження...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/avatar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData,
+        avatar_choice: choice
+      })
+    });
+    const data = (await response.json()) as { ok: boolean; error?: string };
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося зберегти аватар.";
+      }
+      return;
+    }
+
+    currentAvatarChoice = choice;
+    if (currentOnboarding) {
+      currentOnboarding.avatar_choice = choice;
+    }
+
+    const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
+    if (avatarToggle) {
+      avatarToggle.innerHTML = renderAvatarContent(currentUser, currentAvatarChoice);
+      avatarToggle.setAttribute("aria-expanded", "false");
+    }
+
+    app.querySelectorAll<HTMLButtonElement>("[data-avatar-choice]").forEach((button) => {
+      const isSelected = button.dataset.avatarChoice === choice;
+      button.classList.toggle("is-selected", isSelected);
+    });
+
+    const picker = app.querySelector<HTMLElement>("[data-avatar-picker]");
+    if (picker) {
+      picker.classList.remove("is-open");
+    }
+
+    leaderboardLoaded = false;
+
+    if (status) {
+      status.textContent = "Збережено ✅";
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося зберегти аватар.";
     }
   }
 }
@@ -497,6 +596,125 @@ function renderClubChoice(options: {
 
 function getClubLogoPath(leagueId: string, clubId: string): string {
   return `/logos/football-logos/${leagueId}/${clubId}.png`;
+}
+
+type AvatarOption = {
+  choice: string;
+  name: string;
+  logo: string;
+};
+
+function getClassicoLogoSlug(choice: "real_madrid" | "barcelona" | null): string | null {
+  if (choice === "real_madrid") {
+    return "real-madrid";
+  }
+  if (choice === "barcelona") {
+    return "barcelona";
+  }
+  return null;
+}
+
+function getAvatarLogoPath(choice: string | null | undefined): string | null {
+  if (!choice) {
+    return null;
+  }
+  const match = /^([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(choice.trim());
+  if (!match) {
+    return null;
+  }
+  return getClubLogoPath(match[1], match[2]);
+}
+
+function findEuropeanClubLeague(clubId: string): LeagueId | null {
+  const entries = Object.entries(EU_CLUBS) as Array<[LeagueId, string[]]>;
+  for (const [leagueId, clubs] of entries) {
+    if (clubs.includes(clubId)) {
+      return leagueId;
+    }
+  }
+  return null;
+}
+
+function buildAvatarOptions(onboarding: OnboardingInfo | null): AvatarOption[] {
+  if (!onboarding) {
+    return [];
+  }
+
+  const options: AvatarOption[] = [];
+  const seen = new Set<string>();
+  const pushOption = (option: AvatarOption) => {
+    if (seen.has(option.choice)) {
+      return;
+    }
+    seen.add(option.choice);
+    options.push(option);
+  };
+  const classicoSlug = getClassicoLogoSlug(
+    onboarding.classico_choice === "real_madrid" || onboarding.classico_choice === "barcelona"
+      ? onboarding.classico_choice
+      : null
+  );
+  if (classicoSlug) {
+    pushOption({
+      choice: `la-liga/${classicoSlug}`,
+      name: formatClubName(classicoSlug),
+      logo: getClubLogoPath("la-liga", classicoSlug)
+    });
+  }
+
+  if (onboarding.ua_club_id) {
+    pushOption({
+      choice: `ukrainian-premier-league/${onboarding.ua_club_id}`,
+      name: formatClubName(onboarding.ua_club_id),
+      logo: getClubLogoPath("ukrainian-premier-league", onboarding.ua_club_id)
+    });
+  }
+
+  if (onboarding.eu_club_id) {
+    const league = findEuropeanClubLeague(onboarding.eu_club_id);
+    if (league) {
+      pushOption({
+        choice: `${league}/${onboarding.eu_club_id}`,
+        name: formatClubName(onboarding.eu_club_id),
+        logo: getClubLogoPath(league, onboarding.eu_club_id)
+      });
+    }
+  }
+
+  return options;
+}
+
+function getDefaultAvatarChoice(state: {
+  classicoChoice: "real_madrid" | "barcelona" | null;
+  uaClubId: string | null;
+  euClubId: string | null;
+  euClubLeague: LeagueId | null;
+}): string | null {
+  const classicoSlug = getClassicoLogoSlug(state.classicoChoice);
+  if (classicoSlug) {
+    return `la-liga/${classicoSlug}`;
+  }
+  if (state.uaClubId) {
+    return `ukrainian-premier-league/${state.uaClubId}`;
+  }
+  if (state.euClubId && state.euClubLeague) {
+    return `${state.euClubLeague}/${state.euClubId}`;
+  }
+  return null;
+}
+
+function renderAvatarContent(
+  user: TelegramWebAppUser | undefined,
+  avatarChoice: string | null
+): string {
+  const logoPath = getAvatarLogoPath(avatarChoice);
+  if (logoPath) {
+    return `<img class="avatar avatar-logo" src="${escapeAttribute(logoPath)}" alt="Avatar logo" />`;
+  }
+  if (user?.photo_url) {
+    return `<img class="avatar" src="${escapeAttribute(user.photo_url)}" alt="Avatar" />`;
+  }
+  return `<div class="avatar placeholder"></div>`;
 }
 
 const CLUB_NAME_OVERRIDES: Record<string, string> = {
@@ -538,9 +756,37 @@ function renderUser(
 ): void {
   const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
-  const avatar = user?.photo_url
-    ? `<img class="avatar" src="${escapeAttribute(user.photo_url)}" alt="Avatar" />`
-    : `<div class="avatar placeholder"></div>`;
+  const avatarOptions = buildAvatarOptions(currentOnboarding);
+  const avatarContent = renderAvatarContent(user, currentAvatarChoice);
+  const hasAvatarOptions = avatarOptions.length > 0;
+  const avatar = hasAvatarOptions
+    ? `
+      <button class="avatar-button" type="button" data-avatar-toggle aria-expanded="false">
+        ${avatarContent}
+      </button>
+    `
+    : avatarContent;
+  const avatarPicker = hasAvatarOptions
+    ? `
+      <div class="avatar-picker" data-avatar-picker>
+        <p class="muted small">Обери логотип для аватарки.</p>
+        <div class="logo-grid avatar-grid">
+          ${avatarOptions
+            .map((option) =>
+              renderClubChoice({
+                id: option.choice,
+                name: option.name,
+                logo: option.logo,
+                selected: option.choice === currentAvatarChoice,
+                dataAttr: "data-avatar-choice"
+              })
+            )
+            .join("")}
+        </div>
+        <p class="muted small" data-avatar-status></p>
+      </div>
+    `
+    : "";
   const safeDate = escapeAttribute(date || getKyivDateString());
   const rankText = stats.rank ? `#${stats.rank}` : "—";
 
@@ -602,6 +848,7 @@ function renderUser(
             <span class="stat-value">${stats.points}</span>
           </div>
         </div>
+        ${avatarPicker}
       </section>
 
       <p class="muted small notice">Прогнози приймаються за 60 хв до старту.</p>
@@ -641,6 +888,26 @@ function renderUser(
       void loadMatches(nextDate);
     });
   }
+
+  const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
+  const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
+  if (avatarToggle && avatarPicker) {
+    avatarToggle.addEventListener("click", () => {
+      const nextState = !avatarPicker.classList.contains("is-open");
+      avatarPicker.classList.toggle("is-open", nextState);
+      avatarToggle.setAttribute("aria-expanded", nextState ? "true" : "false");
+    });
+  }
+
+  app.querySelectorAll<HTMLButtonElement>("[data-avatar-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const choice = button.dataset.avatarChoice;
+      if (!choice) {
+        return;
+      }
+      void submitAvatarChoice(choice);
+    });
+  });
 
   if (admin) {
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
@@ -1286,7 +1553,10 @@ function renderLeaderboardList(users: LeaderboardUser[]): string {
     .map((user, index) => {
       const name = formatUserName(user);
       const points = typeof user.points_total === "number" ? user.points_total : 0;
-      const avatar = user.photo_url
+      const avatarLogo = getAvatarLogoPath(user.avatar_choice);
+      const avatar = avatarLogo
+        ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
+        : user.photo_url
         ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
         : `<div class="table-avatar placeholder"></div>`;
       return `

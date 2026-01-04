@@ -43,6 +43,7 @@ create table if not exists users (
   ua_club_id text,
   eu_club_id text,
   nickname text,
+  avatar_choice text,
   onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -82,6 +83,7 @@ alter table users add column if not exists classico_choice text;
 alter table users add column if not exists ua_club_id text;
 alter table users add column if not exists eu_club_id text;
 alter table users add column if not exists nickname text;
+alter table users add column if not exists avatar_choice text;
 alter table users add column if not exists onboarding_completed_at timestamptz;
 ```
 
@@ -149,6 +151,7 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 - `POST /api/matches` -> admin creates match
 - `POST /api/predictions` -> user submits prediction
 - `POST /api/onboarding` -> save onboarding profile data
+- `POST /api/avatar` -> update avatar logo choice
 - `POST /api/matches/result` -> admin sets final score + awards points
 - `POST /tg/webhook` -> Telegram updates
 
