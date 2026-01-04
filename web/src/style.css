@@ -68,6 +68,65 @@ body {
   gap: 14px;
 }
 
+.panel.profile {
+  padding: 18px 20px 0;
+  gap: 10px;
+  background: linear-gradient(160deg, #17181d 0%, #101114 100%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.75) inset,
+    0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+.panel.profile h1 {
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.panel.profile .avatar {
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.panel.profile .avatar-logo {
+  border: none;
+}
+
+
+.panel.profile .stats {
+  margin: 12px -20px 0;
+  padding: 10px 20px 12px;
+  width: calc(100% + 40px);
+  background: #1c1d23;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom-left-radius: 22px;
+  border-bottom-right-radius: 22px;
+  gap: 0;
+}
+
+.panel.profile .stat {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  gap: 6px;
+  border-radius: 0;
+}
+
+.panel.profile .stat + .stat {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel.profile .stat-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.panel.profile .stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
 .onboarding-panel {
   gap: 18px;
 }
