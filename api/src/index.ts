@@ -1568,7 +1568,7 @@ async function handleUpdate(update: TelegramUpdate, env: Env): Promise<void> {
     return;
   }
 
-  const command = extractCommand(text);
+  const command = extractCommand(text, message.entities);
   if (!command) {
     return;
   }
@@ -1580,12 +1580,40 @@ async function handleUpdate(update: TelegramUpdate, env: Env): Promise<void> {
   }
 }
 
-function extractCommand(text: string): string | null {
-  if (!text.startsWith("/")) {
+function extractCommand(
+  text: string,
+  entities?: Array<{ type?: string; offset?: number; length?: number }>
+): string | null {
+  const commandFromStart = extractCommandToken(text);
+  if (commandFromStart) {
+    return commandFromStart;
+  }
+  if (!entities || entities.length === 0) {
     return null;
   }
-  const token = text.split(/\s+/)[0] ?? "";
-  const raw = token.slice(1).split("@")[0]?.trim().toLowerCase();
+  for (const entity of entities) {
+    if (entity.type !== "bot_command") {
+      continue;
+    }
+    const offset = entity.offset ?? 0;
+    const length = entity.length ?? 0;
+    if (length <= 1) {
+      continue;
+    }
+    const token = text.slice(offset, offset + length);
+    const parsed = extractCommandToken(token);
+    if (parsed) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function extractCommandToken(token: string): string | null {
+  if (!token.startsWith("/")) {
+    return null;
+  }
+  const raw = token.split(/\s+/)[0]?.slice(1).split("@")[0]?.trim().toLowerCase();
   return raw || null;
 }
 
@@ -1652,6 +1680,7 @@ interface TelegramUpdate {
 interface TelegramMessage {
   message_id?: number;
   text?: string;
+  entities?: Array<{ type?: string; offset?: number; length?: number }>;
   chat?: { id?: number };
 }
 
