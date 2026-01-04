@@ -512,7 +512,7 @@ h1 {
   display: flex;
   gap: 14px;
   overflow-x: auto;
-  padding: 18px 0 22px;
+  padding: 18px 0 0;
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
