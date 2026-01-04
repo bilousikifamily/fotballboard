@@ -766,7 +766,7 @@ function renderUser(
       </button>
     `
     : avatarContent;
-  const avatarPicker = hasAvatarOptions
+  const avatarPickerMarkup = hasAvatarOptions
     ? `
       <div class="avatar-picker" data-avatar-picker>
         <p class="muted small">Обери логотип для аватарки.</p>
@@ -848,7 +848,7 @@ function renderUser(
             <span class="stat-value">${stats.points}</span>
           </div>
         </div>
-        ${avatarPicker}
+        ${avatarPickerMarkup}
       </section>
 
       <p class="muted small notice">Прогнози приймаються за 60 хв до старту.</p>
