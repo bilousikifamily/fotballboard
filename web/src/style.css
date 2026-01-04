@@ -426,6 +426,13 @@ h1 {
 
 .matches {
   text-align: center;
+  width: 120vw;
+  max-width: none;
+  margin-left: calc(50% - 60vw);
+}
+
+.matches .section-header {
+  justify-content: center;
 }
 
 .date-input {
@@ -444,7 +451,7 @@ h1 {
   gap: 14px;
   overflow-x: auto;
   padding: 6px 32px 16px;
-  margin: 0 -32px;
+  margin: 0;
   scroll-snap-type: x mandatory;
   scroll-padding: 32px;
   -webkit-overflow-scrolling: touch;

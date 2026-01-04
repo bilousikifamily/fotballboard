@@ -909,7 +909,6 @@ function renderUser(
 
       <section class="panel matches">
         <div class="section-header">
-          <h2>Матчі</h2>
           <input class="date-input" type="date" value="${safeDate}" data-date />
         </div>
         <div class="matches-list" data-matches></div>
@@ -1192,6 +1191,7 @@ function bindMatchActions(): void {
     void togglePredictions(matchId, container, { forceOpen: true });
   });
 }
+
 
 function setupScoreControls(form: HTMLFormElement): void {
   const controls = form.querySelectorAll<HTMLElement>("[data-score-control]");
