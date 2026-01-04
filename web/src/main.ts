@@ -92,6 +92,7 @@ type OnboardingInfo = {
   eu_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
+  logo_order?: string[] | null;
   completed?: boolean;
 };
 
@@ -109,11 +110,20 @@ let currentUserId: number | null = null;
 let currentUser: TelegramWebAppUser | undefined;
 let currentNickname: string | null = null;
 let currentAvatarChoice: string | null = null;
+let currentLogoOrder: string[] | null = null;
+let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const TOP_PREDICTIONS_LIMIT = 4;
+const LOGO_POSITIONS = ["center", "left", "right"] as const;
+type LogoPosition = typeof LOGO_POSITIONS[number];
+const LOGO_POSITION_LABELS: Record<LogoPosition, string> = {
+  center: "1 — центр",
+  left: "2 — зліва",
+  right: "3 — справа"
+};
 
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -186,6 +196,7 @@ async function bootstrap(data: string): Promise<void> {
     currentOnboarding = onboarding;
     currentNickname = onboarding.nickname ?? null;
     currentAvatarChoice = onboarding.avatar_choice ?? null;
+    currentLogoOrder = onboarding.logo_order ?? null;
 
     if (!onboarding.completed) {
       renderOnboarding(payload.user, stats, onboarding);
@@ -499,6 +510,14 @@ async function submitOnboarding(
 
   try {
     const avatarChoice = getDefaultAvatarChoice(state);
+    const logoOrder = getDefaultLogoOrder({
+      classico_choice: state.classicoChoice,
+      ua_club_id: state.uaClubId,
+      eu_club_id: state.euClubId,
+      nickname,
+      avatar_choice: avatarChoice,
+      completed: true
+    });
     const response = await fetch(`${apiBase}/api/onboarding`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -508,7 +527,8 @@ async function submitOnboarding(
         ua_club_id: state.uaClubId,
         eu_club_id: state.euClubId,
         nickname,
-        avatar_choice: avatarChoice
+        avatar_choice: avatarChoice,
+        logo_order: logoOrder
       })
     });
     const data = (await response.json()) as { ok: boolean; error?: string };
@@ -521,6 +541,7 @@ async function submitOnboarding(
 
     currentNickname = nickname;
     currentAvatarChoice = avatarChoice;
+    currentLogoOrder = logoOrder.length ? logoOrder : null;
     currentUser = user;
     currentOnboarding = {
       classico_choice: state.classicoChoice,
@@ -528,6 +549,7 @@ async function submitOnboarding(
       eu_club_id: state.euClubId,
       nickname,
       avatar_choice: avatarChoice,
+      logo_order: currentLogoOrder,
       completed: true
     };
     renderUser(user, stats, isAdmin, currentDate, currentNickname);
@@ -823,37 +845,17 @@ function renderUser(
 ): void {
   const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
-  const avatarOptions = buildAvatarOptions(currentOnboarding);
-  const avatarContent = renderAvatarContent(user, currentAvatarChoice);
-  const hasAvatarOptions = avatarOptions.length > 0;
-  const avatar = hasAvatarOptions
-    ? `
-      <button class="avatar-button" type="button" data-avatar-toggle aria-expanded="false">
-        ${avatarContent}
-      </button>
-    `
-    : avatarContent;
-  const avatarPickerMarkup = hasAvatarOptions
-    ? `
-      <div class="avatar-picker" data-avatar-picker>
-        <p class="muted small">Обери логотип для аватарки.</p>
-        <div class="logo-grid avatar-grid">
-          ${avatarOptions
-            .map((option) =>
-              renderClubChoice({
-                id: option.choice,
-                name: option.name,
-                logo: option.logo,
-                selected: option.choice === currentAvatarChoice,
-                dataAttr: "data-avatar-choice"
-              })
-            )
-            .join("")}
-        </div>
-        <p class="muted small" data-avatar-status></p>
-      </div>
-    `
-    : "";
+  const logoOptions = buildAvatarOptions(currentOnboarding);
+  currentLogoOptions = logoOptions;
+  const resolvedLogoOrder = resolveLogoOrder(logoOptions, currentLogoOrder ?? currentOnboarding?.logo_order ?? null);
+  currentLogoOrder = resolvedLogoOrder.length ? resolvedLogoOrder.map((option) => option.choice) : null;
+  if (currentOnboarding) {
+    currentOnboarding.logo_order = currentLogoOrder;
+  }
+  const logoStackMarkup = logoOptions.length
+    ? renderLogoStack(resolvedLogoOrder)
+    : renderAvatarContent(user, currentAvatarChoice);
+  const logoOrderMenuMarkup = logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder) : "";
   const safeDate = escapeAttribute(date || getKyivDateString());
   const rankText = stats.rank ? `#${stats.rank}` : "—";
   const leagueOptions = MATCH_LEAGUES.map(
@@ -912,8 +914,9 @@ function renderUser(
   app.innerHTML = `
     <main class="layout">
       <section class="panel profile center">
-        ${avatar}
+        ${logoStackMarkup}
         ${safeName ? `<h1>${safeName}</h1>` : ""}
+        ${logoOrderMenuMarkup}
         <div class="stats">
           <div class="stat">
             <span class="stat-label">Місце</span>
@@ -924,7 +927,6 @@ function renderUser(
             <span class="stat-value">${stats.points}</span>
           </div>
         </div>
-        ${avatarPickerMarkup}
       </section>
 
       <section class="panel matches">
@@ -969,6 +971,7 @@ function renderUser(
   }
 
   setupNoticeTicker();
+  setupLogoOrderControls();
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
   const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
@@ -1015,6 +1018,243 @@ function renderUser(
         event.preventDefault();
         void submitResult(resultForm);
       });
+    }
+  }
+}
+
+function setupLogoOrderControls(): void {
+  const stack = app.querySelector<HTMLElement>("[data-logo-stack]");
+  const menu = app.querySelector<HTMLElement>("[data-logo-order-menu]");
+  if (!stack || !menu) {
+    return;
+  }
+
+  let activeChoice: string | null = null;
+  const status = menu.querySelector<HTMLElement>("[data-logo-order-status]");
+
+  const updateMenuState = (choice: string): void => {
+    const order = currentLogoOrder ?? [];
+    const currentIndex = order.indexOf(choice);
+    menu.querySelectorAll<HTMLButtonElement>("[data-logo-position]").forEach((button) => {
+      const position = button.dataset.logoPosition as LogoPosition | undefined;
+      if (!position) {
+        return;
+      }
+      const index = LOGO_POSITIONS.indexOf(position);
+      button.disabled = index >= order.length;
+      button.classList.toggle("is-selected", index === currentIndex);
+    });
+  };
+
+  const closeMenu = (): void => {
+    menu.classList.remove("is-open");
+    activeChoice = null;
+  };
+
+  const openMenu = (choice: string): void => {
+    activeChoice = choice;
+    if (status) {
+      status.textContent = "";
+    }
+    updateMenuState(choice);
+    menu.classList.add("is-open");
+  };
+
+  stack.addEventListener("click", (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-logo-choice]");
+    if (!target || !currentLogoOrder || currentLogoOrder.length < 2) {
+      return;
+    }
+    const choice = target.dataset.logoChoice;
+    if (!choice) {
+      return;
+    }
+    openMenu(choice);
+  });
+
+  menu.addEventListener("click", (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-logo-position]");
+    if (!target || !activeChoice || !currentLogoOrder) {
+      return;
+    }
+    const position = target.dataset.logoPosition as LogoPosition | undefined;
+    if (!position) {
+      return;
+    }
+    const nextOrder = reorderLogoOrder(currentLogoOrder, activeChoice, position);
+    if (!nextOrder) {
+      return;
+    }
+    currentLogoOrder = nextOrder;
+    if (currentOnboarding) {
+      currentOnboarding.logo_order = nextOrder;
+    }
+    updateLogoStack();
+    closeMenu();
+    void submitLogoOrder(nextOrder, status);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!menu.classList.contains("is-open")) {
+      return;
+    }
+    const target = event.target as Node;
+    if (menu.contains(target) || stack.contains(target)) {
+      return;
+    }
+    closeMenu();
+  });
+}
+
+function updateLogoStack(): void {
+  const stack = app.querySelector<HTMLElement>("[data-logo-stack]");
+  if (!stack || !currentLogoOrder || currentLogoOptions.length === 0) {
+    return;
+  }
+  const resolvedOrder = resolveLogoOrder(currentLogoOptions, currentLogoOrder);
+  stack.innerHTML = renderLogoStackContent(resolvedOrder);
+}
+
+function reorderLogoOrder(order: string[], choice: string, position: LogoPosition): string[] | null {
+  const targetIndex = LOGO_POSITIONS.indexOf(position);
+  const currentIndex = order.indexOf(choice);
+  if (targetIndex === -1 || currentIndex === -1 || targetIndex >= order.length) {
+    return null;
+  }
+  if (targetIndex === currentIndex) {
+    return order;
+  }
+  const nextOrder = [...order];
+  const swapped = nextOrder[targetIndex];
+  nextOrder[targetIndex] = choice;
+  nextOrder[currentIndex] = swapped;
+  return nextOrder;
+}
+
+function renderLogoStack(logoOrder: AvatarOption[]): string {
+  return `
+    <div class="logo-stack" data-logo-stack>
+      ${renderLogoStackContent(logoOrder)}
+    </div>
+  `;
+}
+
+function renderLogoStackContent(logoOrder: AvatarOption[]): string {
+  const center = logoOrder[0] ?? null;
+  const left = logoOrder[1] ?? null;
+  const right = logoOrder[2] ?? null;
+  return [
+    renderLogoSlot(left, "left"),
+    renderLogoSlot(center, "center"),
+    renderLogoSlot(right, "right")
+  ].join("");
+}
+
+function renderLogoSlot(option: AvatarOption | null, position: LogoPosition): string {
+  if (!option) {
+    return `<div class="logo-slot ${position} is-empty" aria-hidden="true"></div>`;
+  }
+  const safeLogo = escapeAttribute(option.logo);
+  const safeName = escapeAttribute(option.name);
+  return `
+    <button class="logo-slot ${position}" type="button" data-logo-choice="${escapeAttribute(
+      option.choice
+    )}" aria-label="${safeName}">
+      <img src="${safeLogo}" alt="${safeName}" />
+    </button>
+  `;
+}
+
+function renderLogoOrderMenu(logoOrder: AvatarOption[]): string {
+  if (logoOrder.length < 2) {
+    return "";
+  }
+  const options = LOGO_POSITIONS.map(
+    (position) => `
+      <button class="logo-order-option" type="button" data-logo-position="${position}">
+        ${LOGO_POSITION_LABELS[position]}
+      </button>
+    `
+  ).join("");
+  return `
+    <div class="logo-order-menu" data-logo-order-menu>
+      <p class="muted small">Обери позицію логотипа</p>
+      <div class="logo-order-options">
+        ${options}
+      </div>
+      <p class="muted small" data-logo-order-status></p>
+    </div>
+  `;
+}
+
+function resolveLogoOrder(options: AvatarOption[], logoOrder: string[] | null): AvatarOption[] {
+  if (!options.length) {
+    return [];
+  }
+
+  const byChoice = new Map(options.map((option) => [option.choice, option]));
+  const ordered: AvatarOption[] = [];
+  const seen = new Set<string>();
+
+  if (Array.isArray(logoOrder)) {
+    for (const choice of logoOrder) {
+      const option = byChoice.get(choice);
+      if (option && !seen.has(choice)) {
+        ordered.push(option);
+        seen.add(choice);
+      }
+    }
+  }
+
+  for (const option of options) {
+    if (!seen.has(option.choice)) {
+      ordered.push(option);
+      seen.add(option.choice);
+    }
+  }
+
+  return ordered;
+}
+
+function getDefaultLogoOrder(onboarding: OnboardingInfo | null): string[] {
+  return buildAvatarOptions(onboarding).map((option) => option.choice);
+}
+
+async function submitLogoOrder(
+  logoOrder: string[],
+  statusEl?: HTMLElement | null
+): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.textContent = "Збереження...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/logo-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData,
+        logo_order: logoOrder
+      })
+    });
+    const data = (await response.json()) as { ok: boolean; error?: string };
+    if (!response.ok || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = "Не вдалося зберегти порядок.";
+      }
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.textContent = "Збережено ✅";
+    }
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося зберегти порядок.";
     }
   }
 }

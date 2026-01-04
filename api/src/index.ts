@@ -117,8 +117,20 @@ export default {
         return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
       }
 
-      if (avatarChoice && !isAvatarChoiceAllowed(avatarChoice, { classicoChoice, uaClubId, euClubId })) {
+      const onboardingSelections = { classicoChoice, uaClubId, euClubId };
+      if (avatarChoice && !isAvatarChoiceAllowed(avatarChoice, onboardingSelections)) {
         return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
+      }
+
+      let logoOrder: string[] | null = null;
+      if (body.logo_order !== undefined) {
+        logoOrder = normalizeLogoOrder(body.logo_order, onboardingSelections);
+        if (!logoOrder) {
+          return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
+        }
+        if (logoOrder.length !== getExpectedLogoCount(onboardingSelections)) {
+          return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
+        }
       }
 
       const saved = await saveUserOnboarding(supabase, auth.user.id, {
@@ -126,7 +138,8 @@ export default {
         ua_club_id: uaClubId,
         eu_club_id: euClubId,
         nickname,
-        avatar_choice: avatarChoice
+        avatar_choice: avatarChoice,
+        logo_order: logoOrder
       });
       if (!saved) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
@@ -181,6 +194,57 @@ export default {
       }
 
       const saved = await saveUserAvatarChoice(supabase, auth.user.id, avatarChoice);
+      if (!saved) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/logo-order") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<LogoOrderPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+
+      const onboarding = await getUserOnboarding(supabase, auth.user.id);
+      if (!onboarding) {
+        return jsonResponse({ ok: false, error: "user_not_found" }, 404, corsHeaders());
+      }
+
+      const onboardingSelections = {
+        classicoChoice: onboarding.classico_choice ?? null,
+        uaClubId: onboarding.ua_club_id ?? null,
+        euClubId: onboarding.eu_club_id ?? null
+      };
+      const logoOrder = normalizeLogoOrder(body.logo_order, onboardingSelections);
+      if (!logoOrder) {
+        return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
+      }
+      if (logoOrder.length !== getExpectedLogoCount(onboardingSelections)) {
+        return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
+      }
+
+      const saved = await saveUserLogoOrder(supabase, auth.user.id, logoOrder);
       if (!saved) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -637,7 +701,7 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("classico_choice, ua_club_id, eu_club_id, nickname, avatar_choice, onboarding_completed_at")
+      .select("classico_choice, ua_club_id, eu_club_id, nickname, avatar_choice, logo_order, onboarding_completed_at")
       .eq("id", userId)
       .maybeSingle();
     if (error || !data) {
@@ -650,6 +714,7 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
       eu_club_id: data.eu_club_id ?? null,
       nickname: data.nickname ?? null,
       avatar_choice: data.avatar_choice ?? null,
+      logo_order: (data as UserOnboardingRow).logo_order ?? null,
       completed: Boolean(completedAt)
     };
   } catch {
@@ -1049,6 +1114,7 @@ async function saveUserOnboarding(
         eu_club_id: payload.eu_club_id ?? null,
         nickname: payload.nickname ?? null,
         avatar_choice: payload.avatar_choice ?? null,
+        logo_order: payload.logo_order ?? null,
         onboarding_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -1084,6 +1150,30 @@ async function saveUserAvatarChoice(
     return true;
   } catch (error) {
     console.error("Failed to save avatar choice", error);
+    return false;
+  }
+}
+
+async function saveUserLogoOrder(
+  supabase: SupabaseClient,
+  userId: number,
+  logoOrder: string[]
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        logo_order: logoOrder,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", userId);
+    if (error) {
+      console.error("Failed to save logo order", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to save logo order", error);
     return false;
   }
 }
@@ -1259,6 +1349,55 @@ function isAvatarChoiceAllowed(
     allowed.add(selections.euClubId);
   }
   return allowed.has(clubId);
+}
+
+function normalizeLogoOrder(
+  value: unknown,
+  selections: { classicoChoice: string | null; uaClubId: string | null; euClubId: string | null }
+): string[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== "string") {
+      return null;
+    }
+    const normalized = normalizeAvatarChoice(item);
+    if (!normalized) {
+      return null;
+    }
+    if (!isAvatarChoiceAllowed(normalized, selections)) {
+      return null;
+    }
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+function getExpectedLogoCount(selections: {
+  classicoChoice: string | null;
+  uaClubId: string | null;
+  euClubId: string | null;
+}): number {
+  let count = 0;
+  if (selections.classicoChoice) {
+    count += 1;
+  }
+  if (selections.uaClubId) {
+    count += 1;
+  }
+  if (selections.euClubId) {
+    count += 1;
+  }
+  return count;
 }
 
 function normalizeNickname(value: unknown): string | null {
@@ -1565,6 +1704,7 @@ interface UserOnboarding {
   eu_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
+  logo_order?: string[] | null;
   completed: boolean;
 }
 
@@ -1574,6 +1714,7 @@ interface UserOnboardingRow {
   eu_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
+  logo_order?: string[] | null;
   onboarding_completed_at?: string | null;
 }
 
@@ -1584,11 +1725,17 @@ interface OnboardingPayload {
   eu_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
+  logo_order?: string[] | null;
 }
 
 interface AvatarPayload {
   initData?: string;
   avatar_choice?: string | null;
+}
+
+interface LogoOrderPayload {
+  initData?: string;
+  logo_order?: string[] | null;
 }
 
 interface MatchResultNotification {
