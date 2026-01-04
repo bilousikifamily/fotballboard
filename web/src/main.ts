@@ -913,18 +913,18 @@ function renderUser(
         ${avatarPickerMarkup}
       </section>
 
-      <div class="notice-ticker" aria-live="polite">
-        <span class="notice-ticker-text" data-notice-text>
-          ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
-        </span>
-      </div>
-
       <section class="panel matches">
         <div class="section-header">
           <input class="date-input" type="date" value="${safeDate}" data-date />
         </div>
         <div class="matches-list" data-matches></div>
       </section>
+
+      <div class="notice-ticker" aria-live="polite">
+        <span class="notice-ticker-text" data-notice-text>
+          ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
+        </span>
+      </div>
 
       <section class="panel leaderboard center">
         <button class="button" type="button" data-leaderboard>ТАБЛИЦЯ</button>
