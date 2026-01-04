@@ -273,7 +273,6 @@ function renderOnboarding(
       `;
     } else if (state.step === 2) {
       body = `
-        <p class="muted">Обери український клуб або пропусти.</p>
         <div class="logo-grid">
           ${UA_CLUBS.map((clubId) =>
             renderClubChoice({
@@ -301,7 +300,6 @@ function renderOnboarding(
       }).join("");
 
       body = `
-        <p class="muted">Обери європейський клуб або пропусти.</p>
         <div class="league-tabs">${leagueTabs}</div>
         <div class="logo-grid">
           ${EU_CLUBS[state.euLeague].map((clubId) =>
@@ -320,7 +318,6 @@ function renderOnboarding(
       body = `
         <form class="onboarding-form" data-onboarding-form>
           <label class="field">
-            <span>Нікнейм</span>
             <input type="text" name="nickname" maxlength="24" value="${escapeAttribute(
               state.nickname
             )}" required />
