@@ -451,11 +451,11 @@ h1 {
   display: flex;
   gap: 14px;
   overflow-x: auto;
-  padding: 6px calc((100vw - var(--match-card-width)) / 2 + 10vw) 16px;
+  padding: 6px calc((100vw - var(--match-card-width)) / 2) 16px;
   margin: 0;
   scroll-snap-type: x mandatory;
-  scroll-padding-left: calc((100vw - var(--match-card-width)) / 2 + 10vw);
-  scroll-padding-right: calc((100vw - var(--match-card-width)) / 2 + 10vw);
+  scroll-padding-left: calc((100vw - var(--match-card-width)) / 2);
+  scroll-padding-right: calc((100vw - var(--match-card-width)) / 2);
   -webkit-overflow-scrolling: touch;
   cursor: grab;
   scrollbar-width: thin;
