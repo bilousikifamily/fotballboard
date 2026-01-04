@@ -38,7 +38,7 @@ create table if not exists users (
   last_name text,
   photo_url text,
   admin boolean not null default false,
-  points_total int not null default 0,
+  points_total int not null default 100,
   classico_choice text,
   ua_club_id text,
   eu_club_id text,
@@ -80,7 +80,7 @@ create table if not exists predictions (
 If you already have a `users` table, run:
 ```sql
 alter table users add column if not exists admin boolean default false;
-alter table users add column if not exists points_total int default 0;
+alter table users add column if not exists points_total int default 100;
 alter table users add column if not exists created_at timestamptz default now();
 alter table users add column if not exists classico_choice text;
 alter table users add column if not exists ua_club_id text;

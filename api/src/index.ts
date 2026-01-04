@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+const STARTING_POINTS = 100;
+
 interface Env {
   BOT_TOKEN: string;
   WEBAPP_URL: string;
@@ -56,7 +58,7 @@ export default {
           ok: true,
           user: valid.user,
           admin: isAdmin,
-          points_total: stats?.points_total ?? 0,
+          points_total: stats?.points_total ?? STARTING_POINTS,
           rank: stats?.rank ?? null,
           onboarding
         },
@@ -611,7 +613,7 @@ async function getUserStats(supabase: SupabaseClient, userId: number): Promise<U
       return null;
     }
 
-    const points = typeof userData.points_total === "number" ? userData.points_total : 0;
+    const points = typeof userData.points_total === "number" ? userData.points_total : STARTING_POINTS;
     const { count, error: countError } = await supabase
       .from("users")
       .select("id", { count: "exact", head: true })
@@ -1072,7 +1074,7 @@ function scorePrediction(homePred: number, awayPred: number, homeScore: number, 
   if (homePred === homeScore && awayPred === awayScore) {
     return 5;
   }
-  return getOutcome(homePred, awayPred) === getOutcome(homeScore, awayScore) ? 1 : 0;
+  return getOutcome(homePred, awayPred) === getOutcome(homeScore, awayScore) ? 1 : -1;
 }
 
 function getOutcome(home: number, away: number): "home" | "away" | "draw" {

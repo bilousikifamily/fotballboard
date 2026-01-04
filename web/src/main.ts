@@ -100,6 +100,7 @@ if (!app) {
 }
 
 let apiBase = "";
+const STARTING_POINTS = 100;
 let leaderboardLoaded = false;
 let currentDate = "";
 let isAdmin = false;
@@ -168,7 +169,7 @@ async function bootstrap(data: string): Promise<void> {
 
     const stats: UserStats = {
       rank: payload.rank ?? null,
-      points: typeof payload.points_total === "number" ? payload.points_total : 0
+      points: typeof payload.points_total === "number" ? payload.points_total : STARTING_POINTS
     };
 
     const onboarding = payload.onboarding ?? { completed: false };
@@ -1680,7 +1681,7 @@ function renderLeaderboardList(users: LeaderboardUser[]): string {
   const rows = users
     .map((user, index) => {
       const name = formatUserName(user);
-      const points = typeof user.points_total === "number" ? user.points_total : 0;
+      const points = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
       const avatar = avatarLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`

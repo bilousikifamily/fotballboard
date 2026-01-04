@@ -5,7 +5,7 @@ create table if not exists users (
   last_name text,
   photo_url text,
   admin boolean not null default false,
-  points_total int not null default 0,
+  points_total int not null default 100,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -35,7 +35,7 @@ create table if not exists predictions (
 );
 
 alter table users add column if not exists admin boolean default false;
-alter table users add column if not exists points_total int default 0;
+alter table users add column if not exists points_total int default 100;
 alter table users add column if not exists created_at timestamptz default now();
 
 alter table matches add column if not exists status text default 'scheduled';
