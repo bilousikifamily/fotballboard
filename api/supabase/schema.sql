@@ -19,6 +19,7 @@ create table if not exists matches (
   home_score int,
   away_score int,
   created_by bigint references users(id),
+  reminder_sent_at timestamptz,
   created_at timestamptz not null default now()
 );
 

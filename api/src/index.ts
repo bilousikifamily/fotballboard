@@ -1,6 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const STARTING_POINTS = 100;
+const PREDICTION_CUTOFF_MS = 60 * 60 * 1000;
+const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
+const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
 
 interface Env {
   BOT_TOKEN: string;
@@ -534,6 +537,9 @@ export default {
     }
 
     return new Response("Not Found", { status: 404 });
+  },
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(handlePredictionReminders(env));
   }
 };
 
@@ -967,7 +973,7 @@ function canPredict(kickoffAt?: string | null): boolean {
   if (Number.isNaN(kickoffMs)) {
     return false;
   }
-  const cutoffMs = kickoffMs - 60 * 60 * 1000;
+  const cutoffMs = kickoffMs - PREDICTION_CUTOFF_MS;
   return Date.now() <= cutoffMs;
 }
 
@@ -1653,6 +1659,111 @@ async function notifyUsersAboutMatchResult(
   }
 }
 
+async function handlePredictionReminders(env: Env): Promise<void> {
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Failed to send prediction reminders: missing_supabase");
+    return;
+  }
+
+  const { start, end } = getPredictionReminderWindow(new Date());
+  const matches = await listMatchesForPredictionReminders(supabase, start, end);
+  if (!matches || matches.length === 0) {
+    return;
+  }
+
+  for (const match of matches) {
+    const users = await listUsersMissingPrediction(supabase, match.id);
+    if (!users) {
+      continue;
+    }
+
+    if (users.length > 0) {
+      const message = formatPredictionReminderMessage(match);
+      for (const user of users) {
+        await sendMessage(env, user.id, message);
+      }
+    }
+
+    const { error } = await supabase
+      .from("matches")
+      .update({ reminder_sent_at: new Date().toISOString() })
+      .eq("id", match.id)
+      .is("reminder_sent_at", null);
+    if (error) {
+      console.error("Failed to mark prediction reminder sent", error);
+    }
+  }
+}
+
+function getPredictionReminderWindow(now: Date): { start: Date; end: Date } {
+  const leadMs = PREDICTION_CUTOFF_MS + PREDICTION_REMINDER_BEFORE_CLOSE_MS;
+  const start = new Date(now.getTime() + leadMs);
+  const end = new Date(start.getTime() + PREDICTION_REMINDER_WINDOW_MS);
+  return { start, end };
+}
+
+async function listMatchesForPredictionReminders(
+  supabase: SupabaseClient,
+  start: Date,
+  end: Date
+): Promise<PredictionReminderMatch[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, home_team, away_team, kickoff_at")
+      .eq("status", "scheduled")
+      .is("reminder_sent_at", null)
+      .gte("kickoff_at", start.toISOString())
+      .lt("kickoff_at", end.toISOString())
+      .order("kickoff_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to list matches for reminders", error);
+      return null;
+    }
+
+    return (data as PredictionReminderMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list matches for reminders", error);
+    return null;
+  }
+}
+
+async function listUsersMissingPrediction(
+  supabase: SupabaseClient,
+  matchId: number
+): Promise<Array<{ id: number }> | null> {
+  try {
+    const { data: users, error: usersError } = await supabase.from("users").select("id");
+    if (usersError) {
+      console.error("Failed to fetch users for reminders", usersError);
+      return null;
+    }
+
+    const { data: predictions, error: predError } = await supabase
+      .from("predictions")
+      .select("user_id")
+      .eq("match_id", matchId);
+    if (predError) {
+      console.error("Failed to fetch predictions for reminders", predError);
+      return null;
+    }
+
+    const predicted = new Set(
+      (predictions as Array<{ user_id: number }> | null | undefined)?.map((row) => row.user_id) ?? []
+    );
+    return ((users as Array<{ id: number }> | null | undefined) ?? []).filter((user) => !predicted.has(user.id));
+  } catch (error) {
+    console.error("Failed to build reminder recipients", error);
+    return null;
+  }
+}
+
+function formatPredictionReminderMessage(match: PredictionReminderMatch): string {
+  return `До закриття прийому прогнозів на матч:\n${match.home_team} — ${match.away_team}\nзалишилась 1 година...`;
+}
+
 function formatMatchResultMessage(notification: MatchResultNotification): string {
   const absDelta = Math.abs(notification.delta);
   const pointsLabel = formatPointsLabel(absDelta);
@@ -1760,6 +1871,7 @@ interface DbMatch {
   status: string;
   home_score?: number | null;
   away_score?: number | null;
+  reminder_sent_at?: string | null;
   has_prediction?: boolean;
 }
 
@@ -1865,4 +1977,11 @@ interface MatchResultNotification {
 interface MatchResultOutcome {
   ok: boolean;
   notifications: MatchResultNotification[];
+}
+
+interface PredictionReminderMatch {
+  id: number;
+  home_team: string;
+  away_team: string;
+  kickoff_at: string;
 }

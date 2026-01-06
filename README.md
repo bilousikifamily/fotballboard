@@ -61,6 +61,7 @@ create table if not exists matches (
   home_score int,
   away_score int,
   created_by bigint references users(id),
+  reminder_sent_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -91,6 +92,7 @@ alter table users add column if not exists onboarding_completed_at timestamptz;
 alter table matches add column if not exists league_id text;
 alter table matches add column if not exists home_club_id text;
 alter table matches add column if not exists away_club_id text;
+alter table matches add column if not exists reminder_sent_at timestamptz;
 ```
 
 For incremental updates, you can also run:
