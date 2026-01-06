@@ -4,6 +4,7 @@ const STARTING_POINTS = 100;
 const PREDICTION_CUTOFF_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
+const MISSED_PREDICTION_PENALTY = -1;
 
 interface Env {
   BOT_TOKEN: string;
@@ -1075,8 +1076,10 @@ async function applyMatchResult(
 
   const deltas = new Map<number, number>();
   const updates: Array<{ id: number; points: number }> = [];
+  const predictedUserIds = new Set<number>();
 
   for (const prediction of (predictions as DbPrediction[]) ?? []) {
+    predictedUserIds.add(prediction.user_id);
     const currentPoints = prediction.points ?? 0;
     const newPoints = scorePrediction(
       prediction.home_pred,
@@ -1098,50 +1101,131 @@ async function applyMatchResult(
     }
   }
 
-  if (deltas.size === 0) {
-    return { ok: true, notifications: [] };
-  }
-
-  const userIds = Array.from(deltas.keys());
-  const { data: users, error: usersError } = await supabase
-    .from("users")
-    .select("id, points_total")
-    .in("id", userIds);
-
-  if (usersError) {
-    console.error("Failed to fetch users for scoring", usersError);
-    return { ok: false, notifications: [] };
-  }
-
   const notifications: MatchResultNotification[] = [];
-
-  for (const user of (users as StoredUser[]) ?? []) {
-    const delta = deltas.get(user.id) ?? 0;
-    if (delta === 0) {
-      continue;
-    }
-    const nextPoints = (user.points_total ?? 0) + delta;
-    const { error } = await supabase
+  if (deltas.size > 0) {
+    const userIds = Array.from(deltas.keys());
+    const { data: users, error: usersError } = await supabase
       .from("users")
-      .update({ points_total: nextPoints, updated_at: new Date().toISOString() })
-      .eq("id", user.id);
-    if (error) {
-      console.error("Failed to update user points", error);
-      continue;
+      .select("id, points_total")
+      .in("id", userIds);
+
+    if (usersError) {
+      console.error("Failed to fetch users for scoring", usersError);
+      return { ok: false, notifications: [] };
     }
 
-    notifications.push({
-      user_id: user.id,
-      delta,
-      total_points: nextPoints,
-      home_team: match.home_team,
-      away_team: match.away_team,
-      home_score: homeScore,
-      away_score: awayScore
-    });
+    for (const user of (users as StoredUser[]) ?? []) {
+      const delta = deltas.get(user.id) ?? 0;
+      if (delta === 0) {
+        continue;
+      }
+      const nextPoints = (user.points_total ?? 0) + delta;
+      const { error } = await supabase
+        .from("users")
+        .update({ points_total: nextPoints, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+      if (error) {
+        console.error("Failed to update user points", error);
+        continue;
+      }
+
+      notifications.push({
+        user_id: user.id,
+        delta,
+        total_points: nextPoints,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        home_score: homeScore,
+        away_score: awayScore
+      });
+    }
   }
+
+  const penaltyNotifications = await applyMissingPredictionPenalties(
+    supabase,
+    match,
+    predictedUserIds,
+    homeScore,
+    awayScore
+  );
+  notifications.push(...penaltyNotifications);
 
   return { ok: true, notifications };
+}
+
+async function applyMissingPredictionPenalties(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  predictedUserIds: Set<number>,
+  homeScore: number,
+  awayScore: number
+): Promise<MatchResultNotification[]> {
+  try {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, points_total");
+    if (usersError) {
+      console.error("Failed to fetch users for missing prediction penalties", usersError);
+      return [];
+    }
+
+    const { data: penalties, error: penaltiesError } = await supabase
+      .from("missed_predictions")
+      .select("user_id")
+      .eq("match_id", match.id);
+    if (penaltiesError) {
+      console.error("Failed to fetch missing prediction penalties", penaltiesError);
+      return [];
+    }
+
+    const penalizedUserIds = new Set(
+      (penalties as Array<{ user_id: number }> | null | undefined)?.map((row) => row.user_id) ?? []
+    );
+
+    const notifications: MatchResultNotification[] = [];
+    const now = new Date().toISOString();
+
+    for (const user of (users as StoredUser[]) ?? []) {
+      if (predictedUserIds.has(user.id) || penalizedUserIds.has(user.id)) {
+        continue;
+      }
+
+      const currentPoints = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
+      const nextPoints = currentPoints + MISSED_PREDICTION_PENALTY;
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ points_total: nextPoints, updated_at: now })
+        .eq("id", user.id);
+      if (updateError) {
+        console.error("Failed to apply missing prediction penalty", updateError);
+        continue;
+      }
+
+      const { error: insertError } = await supabase
+        .from("missed_predictions")
+        .insert({ user_id: user.id, match_id: match.id });
+      if (insertError) {
+        console.error("Failed to store missing prediction penalty", insertError);
+        continue;
+      }
+
+      notifications.push({
+        user_id: user.id,
+        delta: MISSED_PREDICTION_PENALTY,
+        total_points: nextPoints,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        home_score: homeScore,
+        away_score: awayScore
+      });
+    }
+
+    return notifications;
+  } catch (error) {
+    console.error("Failed to apply missing prediction penalties", error);
+    return [];
+  }
 }
 
 async function saveUserOnboarding(

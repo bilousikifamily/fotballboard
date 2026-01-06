@@ -76,6 +76,14 @@ create table if not exists predictions (
   updated_at timestamptz not null default now(),
   unique (user_id, match_id)
 );
+
+create table if not exists missed_predictions (
+  id bigserial primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  match_id bigint not null references matches(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, match_id)
+);
 ```
 
 If you already have a `users` table, run:
@@ -93,11 +101,18 @@ alter table matches add column if not exists league_id text;
 alter table matches add column if not exists home_club_id text;
 alter table matches add column if not exists away_club_id text;
 alter table matches add column if not exists reminder_sent_at timestamptz;
+create table if not exists missed_predictions (
+  id bigserial primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  match_id bigint not null references matches(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, match_id)
+);
 ```
 
 For incremental updates, you can also run:
 ```
-api/supabase/migrations/001_update_schema.sql
+api/supabase/migrations
 ```
 
 ## 1) Create a bot (BotFather)
