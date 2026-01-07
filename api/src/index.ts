@@ -1011,7 +1011,7 @@ type OddsStoreFailure =
   | "odds_empty"
   | "db_error";
 
-type OddsDebugFixture = { id?: number; home?: string; away?: string };
+type OddsDebugFixture = { id?: number; home?: string; away?: string; homeId?: number; awayId?: number };
 
 type OddsDebugInfo = {
   leagueId?: string | null;
@@ -1027,6 +1027,15 @@ type OddsDebugInfo = {
   dateStatus?: number;
   rangeStatus?: number;
   fixtureId?: number | null;
+  homeTeamId?: number | null;
+  awayTeamId?: number | null;
+  homeTeamSource?: "league" | "search" | "none";
+  awayTeamSource?: "league" | "search" | "none";
+  teamFixturesCount?: number;
+  teamFixturesSource?: "date" | "range" | "none";
+  teamFixturesSample?: OddsDebugFixture[];
+  teamDateStatus?: number;
+  teamRangeStatus?: number;
 };
 
 type OddsStoreResult =
@@ -1186,7 +1195,7 @@ function formatKyivDateString(date: Date): string {
 
 type FixturePayload = {
   fixture?: { id?: number };
-  teams?: { home?: { name?: string }; away?: { name?: string } };
+  teams?: { home?: { id?: number; name?: string }; away?: { id?: number; name?: string } };
 };
 
 type FixturesResult = {
@@ -1194,6 +1203,20 @@ type FixturesResult = {
   source: "date" | "range" | "none";
   dateStatus: number;
   rangeStatus?: number;
+};
+
+type TeamPayload = {
+  team?: { id?: number; name?: string };
+};
+
+type TeamsResult = {
+  teams: TeamPayload[];
+  status: number;
+};
+
+type TeamLookupResult = {
+  id: number | null;
+  source: "league" | "search" | "none";
 };
 
 async function findFixtureId(
@@ -1217,7 +1240,9 @@ async function findFixtureId(
     debug.fixturesSample = fixtures.slice(0, 3).map((item) => ({
       id: item.fixture?.id,
       home: item.teams?.home?.name,
-      away: item.teams?.away?.name
+      away: item.teams?.away?.name,
+      homeId: item.teams?.home?.id,
+      awayId: item.teams?.away?.id
     }));
   }
   if (env.API_FOOTBALL_DEBUG === "1") {
@@ -1254,7 +1279,180 @@ async function findFixtureId(
     return directMatch || swappedMatch;
   });
 
+  const fixtureId = match?.fixture?.id ?? null;
+  if (fixtureId) {
+    return fixtureId;
+  }
+
+  return await findFixtureIdByTeamIds(env, leagueId, season, dateParam, homeTeam, awayTeam, debug);
+}
+
+async function findFixtureIdByTeamIds(
+  env: Env,
+  leagueId: number,
+  season: number,
+  dateParam: string,
+  homeTeam: string,
+  awayTeam: string,
+  debug?: OddsDebugInfo
+): Promise<number | null> {
+  const leagueTeamsResult = await fetchTeamsForLeague(env, leagueId, season);
+  let homeTeamId = findTeamIdInList(homeTeam, leagueTeamsResult.teams);
+  let awayTeamId = findTeamIdInList(awayTeam, leagueTeamsResult.teams);
+  let homeTeamSource: TeamLookupResult["source"] = homeTeamId ? "league" : "none";
+  let awayTeamSource: TeamLookupResult["source"] = awayTeamId ? "league" : "none";
+
+  if (!homeTeamId) {
+    const searchResult = await fetchTeamsBySearch(env, homeTeam);
+    homeTeamId = findTeamIdInList(homeTeam, searchResult.teams);
+    homeTeamSource = homeTeamId ? "search" : "none";
+  }
+
+  if (!awayTeamId) {
+    const searchResult = await fetchTeamsBySearch(env, awayTeam);
+    awayTeamId = findTeamIdInList(awayTeam, searchResult.teams);
+    awayTeamSource = awayTeamId ? "search" : "none";
+  }
+
+  if (debug) {
+    debug.homeTeamId = homeTeamId ?? null;
+    debug.awayTeamId = awayTeamId ?? null;
+    debug.homeTeamSource = homeTeamSource;
+    debug.awayTeamSource = awayTeamSource;
+  }
+
+  if (!homeTeamId || !awayTeamId) {
+    return null;
+  }
+
+  let teamFixturesResult = await fetchFixturesByTeam(env, homeTeamId, dateParam);
+  if (debug) {
+    debug.teamFixturesCount = teamFixturesResult.fixtures.length;
+    debug.teamFixturesSource = teamFixturesResult.source;
+    debug.teamDateStatus = teamFixturesResult.dateStatus;
+    if (teamFixturesResult.rangeStatus !== undefined) {
+      debug.teamRangeStatus = teamFixturesResult.rangeStatus;
+    }
+    debug.teamFixturesSample = teamFixturesResult.fixtures.slice(0, 3).map((item) => ({
+      id: item.fixture?.id,
+      home: item.teams?.home?.name,
+      away: item.teams?.away?.name,
+      homeId: item.teams?.home?.id,
+      awayId: item.teams?.away?.id
+    }));
+  }
+
+  let fixtureId = findFixtureByTeamIds(teamFixturesResult.fixtures, homeTeamId, awayTeamId);
+  if (fixtureId) {
+    return fixtureId;
+  }
+
+  if (awayTeamId !== homeTeamId) {
+    teamFixturesResult = await fetchFixturesByTeam(env, awayTeamId, dateParam);
+    if (debug) {
+      debug.teamFixturesCount = teamFixturesResult.fixtures.length;
+      debug.teamFixturesSource = teamFixturesResult.source;
+      debug.teamDateStatus = teamFixturesResult.dateStatus;
+      if (teamFixturesResult.rangeStatus !== undefined) {
+        debug.teamRangeStatus = teamFixturesResult.rangeStatus;
+      }
+      debug.teamFixturesSample = teamFixturesResult.fixtures.slice(0, 3).map((item) => ({
+        id: item.fixture?.id,
+        home: item.teams?.home?.name,
+        away: item.teams?.away?.name,
+        homeId: item.teams?.home?.id,
+        awayId: item.teams?.away?.id
+      }));
+    }
+    fixtureId = findFixtureByTeamIds(teamFixturesResult.fixtures, homeTeamId, awayTeamId);
+  }
+
+  return fixtureId ?? null;
+}
+
+function findFixtureByTeamIds(fixtures: FixturePayload[], homeTeamId: number, awayTeamId: number): number | null {
+  const match = fixtures.find((item) => {
+    const fixtureHomeId = item.teams?.home?.id ?? null;
+    const fixtureAwayId = item.teams?.away?.id ?? null;
+    if (!fixtureHomeId || !fixtureAwayId) {
+      return false;
+    }
+    return (
+      (fixtureHomeId === homeTeamId && fixtureAwayId === awayTeamId)
+      || (fixtureHomeId === awayTeamId && fixtureAwayId === homeTeamId)
+    );
+  });
   return match?.fixture?.id ?? null;
+}
+
+function findTeamIdInList(teamName: string, teams: TeamPayload[]): number | null {
+  const normalizedTarget = normalizeTeamName(teamName);
+  for (const entry of teams) {
+    const apiName = entry.team?.name ?? "";
+    const normalizedApi = normalizeTeamName(apiName);
+    if (isTeamMatch(normalizedTarget, normalizedApi)) {
+      return entry.team?.id ?? null;
+    }
+  }
+  return null;
+}
+
+async function fetchTeamsForLeague(env: Env, leagueId: number, season: number): Promise<TeamsResult> {
+  const response = await fetchApiFootball(env, `/teams?league=${leagueId}&season=${season}`);
+  const status = response.status;
+  if (!response.ok) {
+    console.warn("API-Football teams error", response.status);
+    return { teams: [], status };
+  }
+  try {
+    const payload = (await response.json()) as { response?: TeamPayload[] };
+    return { teams: payload.response ?? [], status };
+  } catch (error) {
+    console.warn("API-Football teams parse error", error);
+    return { teams: [], status };
+  }
+}
+
+async function fetchTeamsBySearch(env: Env, teamName: string): Promise<TeamsResult> {
+  const response = await fetchApiFootball(env, `/teams?search=${encodeURIComponent(teamName)}`);
+  const status = response.status;
+  if (!response.ok) {
+    console.warn("API-Football teams search error", response.status);
+    return { teams: [], status };
+  }
+  try {
+    const payload = (await response.json()) as { response?: TeamPayload[] };
+    return { teams: payload.response ?? [], status };
+  } catch (error) {
+    console.warn("API-Football teams search parse error", error);
+    return { teams: [], status };
+  }
+}
+
+async function fetchFixturesByTeam(env: Env, teamId: number, dateParam: string): Promise<FixturesResult> {
+  const dateResponse = await fetchApiFootball(env, `/fixtures?date=${encodeURIComponent(dateParam)}&team=${teamId}`);
+  const dateStatus = dateResponse.status;
+  if (dateResponse.ok) {
+    const payload = (await dateResponse.json()) as { response?: FixturePayload[] };
+    if (payload.response?.length) {
+      return { fixtures: payload.response, source: "date", dateStatus };
+    }
+  }
+
+  const from = addDateDays(dateParam, -1);
+  const to = addDateDays(dateParam, 1);
+  const rangeResponse = await fetchApiFootball(
+    env,
+    `/fixtures?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&team=${teamId}`
+  );
+  const rangeStatus = rangeResponse.status;
+  if (!rangeResponse.ok) {
+    console.warn("API-Football fixtures team error", rangeResponse.status);
+    return { fixtures: [], source: "none", dateStatus, rangeStatus };
+  }
+
+  const rangePayload = (await rangeResponse.json()) as { response?: FixturePayload[] };
+  return { fixtures: rangePayload.response ?? [], source: "range", dateStatus, rangeStatus };
 }
 
 async function fetchFixtures(

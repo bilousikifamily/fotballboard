@@ -54,10 +54,19 @@ type OddsRefreshDebug = {
   normalizedAway?: string;
   fixturesCount?: number;
   fixturesSource?: "date" | "range" | "none";
-  fixturesSample?: Array<{ id?: number; home?: string; away?: string }>;
+  fixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
   dateStatus?: number;
   rangeStatus?: number;
   fixtureId?: number | null;
+  homeTeamId?: number | null;
+  awayTeamId?: number | null;
+  homeTeamSource?: "league" | "search" | "none";
+  awayTeamSource?: "league" | "search" | "none";
+  teamFixturesCount?: number;
+  teamFixturesSource?: "date" | "range" | "none";
+  teamFixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
+  teamDateStatus?: number;
+  teamRangeStatus?: number;
 };
 
 type LeaderboardUser = {
@@ -1855,6 +1864,28 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
   if (debug.rangeStatus) {
     parts.push(`range_status=${debug.rangeStatus}`);
   }
+  if (debug.homeTeamId !== undefined || debug.awayTeamId !== undefined) {
+    const homeId = debug.homeTeamId ?? "null";
+    const awayId = debug.awayTeamId ?? "null";
+    parts.push(`team_ids=${homeId}/${awayId}`);
+  }
+  if (debug.homeTeamSource || debug.awayTeamSource) {
+    const homeSource = debug.homeTeamSource ?? "none";
+    const awaySource = debug.awayTeamSource ?? "none";
+    parts.push(`team_src=${homeSource}/${awaySource}`);
+  }
+  if (debug.teamFixturesCount !== undefined) {
+    parts.push(`team_fixtures=${debug.teamFixturesCount}`);
+  }
+  if (debug.teamFixturesSource) {
+    parts.push(`team_source=${debug.teamFixturesSource}`);
+  }
+  if (debug.teamDateStatus) {
+    parts.push(`team_date_status=${debug.teamDateStatus}`);
+  }
+  if (debug.teamRangeStatus) {
+    parts.push(`team_range_status=${debug.teamRangeStatus}`);
+  }
   if (debug.fixturesSample?.length) {
     const sample = debug.fixturesSample
       .map((item) => [item.home, item.away].filter(Boolean).join(" - "))
@@ -1862,6 +1893,15 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
       .join(" | ");
     if (sample) {
       parts.push(`sample=${sample}`);
+    }
+  }
+  if (debug.teamFixturesSample?.length) {
+    const teamSample = debug.teamFixturesSample
+      .map((item) => [item.home, item.away].filter(Boolean).join(" - "))
+      .filter(Boolean)
+      .join(" | ");
+    if (teamSample) {
+      parts.push(`team_sample=${teamSample}`);
     }
   }
   return parts.length ? ` [${parts.join(" ")}]` : "";
