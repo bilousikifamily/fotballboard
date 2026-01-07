@@ -41,8 +41,24 @@ type AnnouncementResponse =
   | { ok: false; error: string };
 
 type OddsRefreshResponse =
-  | { ok: true }
-  | { ok: false; error: string; detail?: string };
+  | { ok: true; debug?: OddsRefreshDebug }
+  | { ok: false; error: string; detail?: string; debug?: OddsRefreshDebug };
+
+type OddsRefreshDebug = {
+  leagueId?: string | null;
+  apiLeagueId?: number | null;
+  kickoffAt?: string | null;
+  season?: number;
+  date?: string;
+  normalizedHome?: string;
+  normalizedAway?: string;
+  fixturesCount?: number;
+  fixturesSource?: "date" | "range" | "none";
+  fixturesSample?: Array<{ id?: number; home?: string; away?: string }>;
+  dateStatus?: number;
+  rangeStatus?: number;
+  fixtureId?: number | null;
+};
 
 type LeaderboardUser = {
   id: number;
@@ -1737,7 +1753,8 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         initData,
-        match_id: matchId
+        match_id: matchId,
+        debug: true
       })
     });
     const data = (await response.json().catch(() => null)) as OddsRefreshResponse | null;
@@ -1763,6 +1780,7 @@ function formatOddsRefreshError(payload: OddsRefreshResponse | null): string {
     return "Не вдалося підтягнути коефіцієнти.";
   }
   const suffix = payload.detail ? ` (${payload.detail})` : "";
+  const debugSuffix = formatOddsRefreshDebug(payload.debug);
   let message = "Не вдалося підтягнути коефіцієнти.";
   switch (payload.error) {
     case "missing_league_mapping":
@@ -1808,7 +1826,45 @@ function formatOddsRefreshError(payload: OddsRefreshResponse | null): string {
       message = "Не вдалося підтягнути коефіцієнти.";
       break;
   }
-  return `${message}${suffix}`;
+  return `${message}${suffix}${debugSuffix}`;
+}
+
+function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
+  if (!debug) {
+    return "";
+  }
+  const parts: string[] = [];
+  if (debug.fixturesCount !== undefined) {
+    parts.push(`fixtures=${debug.fixturesCount}`);
+  }
+  if (debug.fixturesSource) {
+    parts.push(`source=${debug.fixturesSource}`);
+  }
+  if (debug.date) {
+    parts.push(`date=${debug.date}`);
+  }
+  if (debug.season) {
+    parts.push(`season=${debug.season}`);
+  }
+  if (debug.normalizedHome && debug.normalizedAway) {
+    parts.push(`teams=${debug.normalizedHome}/${debug.normalizedAway}`);
+  }
+  if (debug.dateStatus) {
+    parts.push(`date_status=${debug.dateStatus}`);
+  }
+  if (debug.rangeStatus) {
+    parts.push(`range_status=${debug.rangeStatus}`);
+  }
+  if (debug.fixturesSample?.length) {
+    const sample = debug.fixturesSample
+      .map((item) => [item.home, item.away].filter(Boolean).join(" - "))
+      .filter(Boolean)
+      .join(" | ");
+    if (sample) {
+      parts.push(`sample=${sample}`);
+    }
+  }
+  return parts.length ? ` [${parts.join(" ")}]` : "";
 }
 
 async function publishMatchesAnnouncement(): Promise<void> {

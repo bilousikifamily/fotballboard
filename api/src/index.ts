@@ -428,7 +428,7 @@ export default {
         return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
       }
 
-      const body = await readJson<{ initData?: string; match_id?: number | string }>(request);
+      const body = await readJson<{ initData?: string; match_id?: number | string; debug?: boolean }>(request);
       if (!body) {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
@@ -458,15 +458,15 @@ export default {
         return jsonResponse({ ok: false, error: "match_not_found" }, 404, corsHeaders());
       }
 
-      const oddsResult = await fetchAndStoreOdds(env, supabase, match);
+      const oddsResult = await fetchAndStoreOdds(env, supabase, match, { debug: body.debug === true });
       if (!oddsResult.ok) {
         return jsonResponse(
-          { ok: false, error: oddsResult.reason, detail: oddsResult.detail },
+          { ok: false, error: oddsResult.reason, detail: oddsResult.detail, debug: oddsResult.debug },
           200,
           corsHeaders()
         );
       }
-      return jsonResponse({ ok: true }, 200, corsHeaders());
+      return jsonResponse({ ok: true, debug: oddsResult.debug }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/predictions") {
@@ -1011,9 +1011,27 @@ type OddsStoreFailure =
   | "odds_empty"
   | "db_error";
 
+type OddsDebugFixture = { id?: number; home?: string; away?: string };
+
+type OddsDebugInfo = {
+  leagueId?: string | null;
+  apiLeagueId?: number | null;
+  kickoffAt?: string | null;
+  season?: number;
+  date?: string;
+  normalizedHome?: string;
+  normalizedAway?: string;
+  fixturesCount?: number;
+  fixturesSource?: "date" | "range" | "none";
+  fixturesSample?: OddsDebugFixture[];
+  dateStatus?: number;
+  rangeStatus?: number;
+  fixtureId?: number | null;
+};
+
 type OddsStoreResult =
-  | { ok: true }
-  | { ok: false; reason: OddsStoreFailure; detail?: string };
+  | { ok: true; debug?: OddsDebugInfo }
+  | { ok: false; reason: OddsStoreFailure; detail?: string; debug?: OddsDebugInfo };
 
 type OddsFetchResult =
   | { ok: true; odds: unknown }
@@ -1023,38 +1041,66 @@ type OddsSaveResult =
   | { ok: true }
   | { ok: false; detail?: string };
 
-async function fetchAndStoreOdds(env: Env, supabase: SupabaseClient, match: DbMatch): Promise<OddsStoreResult> {
+async function fetchAndStoreOdds(
+  env: Env,
+  supabase: SupabaseClient,
+  match: DbMatch,
+  options?: { debug?: boolean }
+): Promise<OddsStoreResult> {
+  const debug = options?.debug
+    ? { leagueId: match.league_id ?? null, kickoffAt: match.kickoff_at ?? null }
+    : undefined;
   const leagueId = resolveApiLeagueId(env, match.league_id ?? null);
+  if (debug) {
+    debug.apiLeagueId = leagueId;
+  }
   if (!leagueId) {
     console.warn("Odds skipped: missing league mapping", match.league_id);
-    return { ok: false, reason: "missing_league_mapping" };
+    return { ok: false, reason: "missing_league_mapping", debug };
   }
 
   const kickoffDate = parseKyivDate(match.kickoff_at);
   if (!kickoffDate) {
     console.warn("Odds skipped: bad kickoff date");
-    return { ok: false, reason: "bad_kickoff_date" };
+    return { ok: false, reason: "bad_kickoff_date", debug };
   }
 
   const season = resolveSeasonForDate(kickoffDate);
   const dateParam = formatKyivDateString(kickoffDate);
-  const fixtureId = await findFixtureId(env, leagueId, season, dateParam, match.home_team, match.away_team);
+  if (debug) {
+    debug.season = season;
+    debug.date = dateParam;
+    debug.normalizedHome = normalizeTeamName(match.home_team);
+    debug.normalizedAway = normalizeTeamName(match.away_team);
+  }
+  const fixtureId = await findFixtureId(
+    env,
+    leagueId,
+    season,
+    dateParam,
+    match.home_team,
+    match.away_team,
+    debug
+  );
+  if (debug) {
+    debug.fixtureId = fixtureId ?? null;
+  }
   if (!fixtureId) {
     console.warn("Odds skipped: fixture not found", match.id);
-    return { ok: false, reason: "fixture_not_found" };
+    return { ok: false, reason: "fixture_not_found", debug };
   }
 
   const oddsResult = await fetchOdds(env, fixtureId);
   if (!oddsResult.ok) {
     console.warn("Odds skipped:", oddsResult.reason, match.id);
-    return { ok: false, reason: oddsResult.reason, detail: oddsResult.detail };
+    return { ok: false, reason: oddsResult.reason, detail: oddsResult.detail, debug };
   }
 
   const saveResult = await saveMatchOdds(supabase, match.id, leagueId, fixtureId, oddsResult.odds);
   if (!saveResult.ok) {
-    return { ok: false, reason: "db_error", detail: saveResult.detail };
+    return { ok: false, reason: "db_error", detail: saveResult.detail, debug };
   }
-  return { ok: true };
+  return { ok: true, debug };
 }
 
 function resolveApiLeagueId(env: Env, leagueId: string | null): number | null {
@@ -1138,15 +1184,42 @@ function formatKyivDateString(date: Date): string {
   }).format(date);
 }
 
+type FixturePayload = {
+  fixture?: { id?: number };
+  teams?: { home?: { name?: string }; away?: { name?: string } };
+};
+
+type FixturesResult = {
+  fixtures: FixturePayload[];
+  source: "date" | "range" | "none";
+  dateStatus: number;
+  rangeStatus?: number;
+};
+
 async function findFixtureId(
   env: Env,
   leagueId: number,
   season: number,
   dateParam: string,
   homeTeam: string,
-  awayTeam: string
+  awayTeam: string,
+  debug?: OddsDebugInfo
 ): Promise<number | null> {
-  const fixtures = await fetchFixtures(env, leagueId, season, dateParam);
+  const fixturesResult = await fetchFixtures(env, leagueId, season, dateParam);
+  const fixtures = fixturesResult.fixtures;
+  if (debug) {
+    debug.fixturesCount = fixtures.length;
+    debug.fixturesSource = fixturesResult.source;
+    debug.dateStatus = fixturesResult.dateStatus;
+    if (fixturesResult.rangeStatus !== undefined) {
+      debug.rangeStatus = fixturesResult.rangeStatus;
+    }
+    debug.fixturesSample = fixtures.slice(0, 3).map((item) => ({
+      id: item.fixture?.id,
+      home: item.teams?.home?.name,
+      away: item.teams?.away?.name
+    }));
+  }
   if (env.API_FOOTBALL_DEBUG === "1") {
     console.info("fixtures count", fixtures.length, { leagueId, season, dateParam });
   }
@@ -1189,20 +1262,21 @@ async function fetchFixtures(
   leagueId: number,
   season: number,
   dateParam: string
-): Promise<Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>> {
+): Promise<FixturesResult> {
   const dateResponse = await fetchApiFootball(
     env,
     `/fixtures?date=${encodeURIComponent(dateParam)}&league=${leagueId}&season=${season}`
   );
+  const dateStatus = dateResponse.status;
   if (dateResponse.ok) {
     const payload = (await dateResponse.json()) as {
-      response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
+      response?: FixturePayload[];
     };
     if (env.API_FOOTBALL_DEBUG === "1") {
       console.info("fixtures date response", payload.response?.length ?? 0);
     }
     if (payload.response?.length) {
-      return payload.response;
+      return { fixtures: payload.response, source: "date", dateStatus };
     }
   }
 
@@ -1212,18 +1286,19 @@ async function fetchFixtures(
     env,
     `/fixtures?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&league=${leagueId}&season=${season}`
   );
+  const rangeStatus = rangeResponse.status;
   if (!rangeResponse.ok) {
     console.warn("API-Football fixtures error", rangeResponse.status);
-    return [];
+    return { fixtures: [], source: "none", dateStatus, rangeStatus };
   }
 
   const rangePayload = (await rangeResponse.json()) as {
-    response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
+    response?: FixturePayload[];
   };
   if (env.API_FOOTBALL_DEBUG === "1") {
     console.info("fixtures range response", rangePayload.response?.length ?? 0, { from, to });
   }
-  return rangePayload.response ?? [];
+  return { fixtures: rangePayload.response ?? [], source: "range", dateStatus, rangeStatus };
 }
 
 function addDateDays(dateParam: string, delta: number): string {
