@@ -36,6 +36,10 @@ type ResultResponse =
   | { ok: true }
   | { ok: false; error: string };
 
+type AnnouncementResponse =
+  | { ok: true }
+  | { ok: false; error: string };
+
 type LeaderboardUser = {
   id: number;
   username?: string | null;
@@ -872,7 +876,9 @@ function renderUser(
         <div class="admin-actions">
           <button class="button secondary" type="button" data-admin-toggle-add>Додати матч</button>
           <button class="button secondary" type="button" data-admin-toggle-result>Ввести результат</button>
+          <button class="button secondary" type="button" data-admin-announce>Повідомити в боті</button>
         </div>
+        <p class="muted small" data-admin-announce-status></p>
         <form class="admin-form" data-admin-form>
           <label class="field">
             <span>Ліга</span>
@@ -997,6 +1003,7 @@ function renderUser(
   if (admin) {
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
+    const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
     const form = app.querySelector<HTMLFormElement>("[data-admin-form]");
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
 
@@ -1018,6 +1025,12 @@ function renderUser(
       resultForm.addEventListener("submit", (event) => {
         event.preventDefault();
         void submitResult(resultForm);
+      });
+    }
+
+    if (announceButton) {
+      announceButton.addEventListener("click", () => {
+        void publishMatchesAnnouncement();
       });
     }
   }
@@ -1536,6 +1549,49 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
   } catch {
     if (status) {
       status.textContent = "Не вдалося зберегти результат.";
+    }
+  }
+}
+
+async function publishMatchesAnnouncement(): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  const status = app.querySelector<HTMLElement>("[data-admin-announce-status]");
+  const button = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
+
+  if (status) {
+    status.textContent = "Надсилаємо...";
+  }
+  if (button) {
+    button.disabled = true;
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/matches/announcement`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData })
+    });
+    const data = (await response.json()) as AnnouncementResponse;
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося надіслати повідомлення.";
+      }
+      return;
+    }
+
+    if (status) {
+      status.textContent = "Повідомлення надіслано ✅";
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося надіслати повідомлення.";
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
     }
   }
 }

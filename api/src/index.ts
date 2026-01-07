@@ -5,6 +5,7 @@ const PREDICTION_CUTOFF_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
+const MATCHES_ANNOUNCEMENT_MESSAGE = "На тебе вже чекають прогнози на сьогоднішні матчі.";
 
 interface Env {
   BOT_TOKEN: string;
@@ -518,6 +519,47 @@ export default {
 
       if (result.notifications.length) {
         await notifyUsersAboutMatchResult(env, result.notifications);
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/matches/announcement") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<AnnouncementPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      const users = await listAllUserIds(supabase);
+      if (!users) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      for (const user of users) {
+        await sendMessage(env, user.id, MATCHES_ANNOUNCEMENT_MESSAGE);
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -1844,6 +1886,23 @@ async function listUsersMissingPrediction(
   }
 }
 
+async function listAllUserIds(
+  supabase: SupabaseClient
+): Promise<Array<{ id: number }> | null> {
+  try {
+    const { data: users, error: usersError } = await supabase.from("users").select("id");
+    if (usersError) {
+      console.error("Failed to fetch users for announcements", usersError);
+      return null;
+    }
+
+    return (users as Array<{ id: number }> | null | undefined) ?? [];
+  } catch (error) {
+    console.error("Failed to fetch users for announcements", error);
+    return null;
+  }
+}
+
 function formatPredictionReminderMessage(match: PredictionReminderMatch): string {
   return `До закриття прийому прогнозів на матч:\n${match.home_team} — ${match.away_team}\nзалишилась 1 година...`;
 }
@@ -1942,6 +2001,10 @@ interface MatchResultPayload {
   match_id: number | string;
   home_score: number | string;
   away_score: number | string;
+}
+
+interface AnnouncementPayload {
+  initData?: string;
 }
 
 interface DbMatch {
