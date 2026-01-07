@@ -1170,10 +1170,15 @@ async function findFixtureId(
         normalizedAway: normalizeTeamName(awayName)
       });
     }
-    return (
-      isTeamMatch(normalizedHome, normalizeTeamName(homeName))
-      && isTeamMatch(normalizedAway, normalizeTeamName(awayName))
-    );
+    const normalizedHomeName = normalizeTeamName(homeName);
+    const normalizedAwayName = normalizeTeamName(awayName);
+    const directMatch =
+      isTeamMatch(normalizedHome, normalizedHomeName)
+      && isTeamMatch(normalizedAway, normalizedAwayName);
+    const swappedMatch =
+      isTeamMatch(normalizedHome, normalizedAwayName)
+      && isTeamMatch(normalizedAway, normalizedHomeName);
+    return directMatch || swappedMatch;
   });
 
   return match?.fixture?.id ?? null;
