@@ -90,6 +90,8 @@ type Match = {
   status: string;
   home_score?: number | null;
   away_score?: number | null;
+  odds_json?: unknown | null;
+  odds_fetched_at?: string | null;
   has_prediction?: boolean;
 };
 
@@ -2380,6 +2382,171 @@ function renderTeamLogo(name: string, logo: string | null): string {
     : `<div class="match-logo match-logo-fallback" role="img" aria-label="${alt}"></div>`;
 }
 
+function renderMatchOdds(match: Match, homeName: string, awayName: string): string {
+  const probabilities = extractOddsProbabilities(match.odds_json, homeName, awayName);
+  if (!probabilities) {
+    return "";
+  }
+  return `
+    <div class="match-odds">
+      <span class="match-odds-label">Ймовірність (1 X 2)</span>
+      <div class="match-odds-values">
+        <span class="match-odds-value">
+          <span class="match-odds-key">1</span>
+          <span class="match-odds-num">${formatProbability(probabilities.home)}</span>
+        </span>
+        <span class="match-odds-value">
+          <span class="match-odds-key">X</span>
+          <span class="match-odds-num">${formatProbability(probabilities.draw)}</span>
+        </span>
+        <span class="match-odds-value">
+          <span class="match-odds-key">2</span>
+          <span class="match-odds-num">${formatProbability(probabilities.away)}</span>
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+function extractOddsProbabilities(
+  oddsJson: unknown,
+  homeName: string,
+  awayName: string
+): { home: number; draw: number; away: number } | null {
+  if (!Array.isArray(oddsJson) || !oddsJson.length) {
+    return null;
+  }
+  const homeNormalized = normalizeOddsLabel(homeName);
+  const awayNormalized = normalizeOddsLabel(awayName);
+
+  for (const entry of oddsJson) {
+    const bookmakers = (entry as { bookmakers?: unknown }).bookmakers;
+    if (!Array.isArray(bookmakers)) {
+      continue;
+    }
+    for (const bookmaker of bookmakers) {
+      const bets = (bookmaker as { bets?: unknown }).bets;
+      if (!Array.isArray(bets) || !bets.length) {
+        continue;
+      }
+      const preferred = bets.filter((bet) => isMatchWinnerBet(bet as { id?: number; name?: string }));
+      const candidates = preferred.length ? preferred : bets;
+      for (const bet of candidates) {
+        const values = (bet as { values?: unknown }).values;
+        if (!Array.isArray(values)) {
+          continue;
+        }
+        const odds = resolveThreeWayOdds(values, homeNormalized, awayNormalized);
+        if (odds) {
+          const probabilities = toProbability(odds.home, odds.draw, odds.away);
+          if (probabilities) {
+            return probabilities;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveThreeWayOdds(
+  values: Array<{ value?: string; odd?: string | number }>,
+  homeNormalized: string,
+  awayNormalized: string
+): { home: number; draw: number; away: number } | null {
+  let home: number | null = null;
+  let draw: number | null = null;
+  let away: number | null = null;
+
+  for (const entry of values) {
+    const labelRaw = typeof entry.value === "string" ? entry.value.trim() : "";
+    if (!labelRaw) {
+      continue;
+    }
+    const labelLower = labelRaw.toLowerCase();
+    const labelNormalized = normalizeOddsLabel(labelRaw);
+    const oddValue = parseOddNumber(entry.odd);
+    if (!oddValue) {
+      continue;
+    }
+
+    if (labelLower === "home" || labelLower === "1") {
+      home = oddValue;
+      continue;
+    }
+    if (labelLower === "draw" || labelLower === "x") {
+      draw = oddValue;
+      continue;
+    }
+    if (labelLower === "away" || labelLower === "2") {
+      away = oddValue;
+      continue;
+    }
+
+    if (labelNormalized && isOddsLabelMatch(labelNormalized, homeNormalized)) {
+      home = oddValue;
+      continue;
+    }
+    if (labelNormalized && isOddsLabelMatch(labelNormalized, awayNormalized)) {
+      away = oddValue;
+      continue;
+    }
+  }
+
+  if (!home || !draw || !away) {
+    return null;
+  }
+
+  return { home, draw, away };
+}
+
+function isOddsLabelMatch(left: string, right: string): boolean {
+  if (!left || !right) {
+    return false;
+  }
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function isMatchWinnerBet(bet: { id?: number; name?: string }): boolean {
+  if (bet.id === 1) {
+    return true;
+  }
+  const name = bet.name?.toLowerCase() ?? "";
+  return name.includes("match winner") || name.includes("match result") || name.includes("fulltime result");
+}
+
+function normalizeOddsLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function parseOddNumber(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function toProbability(homeOdd: number, drawOdd: number, awayOdd: number): { home: number; draw: number; away: number } | null {
+  const homeInv = 1 / homeOdd;
+  const drawInv = 1 / drawOdd;
+  const awayInv = 1 / awayOdd;
+  const total = homeInv + drawInv + awayInv;
+  if (!Number.isFinite(total) || total <= 0) {
+    return null;
+  }
+  return {
+    home: (homeInv / total) * 100,
+    draw: (drawInv / total) * 100,
+    away: (awayInv / total) * 100
+  };
+}
+
+function formatProbability(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
 function renderMatchesList(matches: Match[]): string {
   if (!matches.length) {
     return `
@@ -2395,6 +2562,7 @@ function renderMatchesList(matches: Match[]): string {
       const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
       const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
       const kickoff = formatKyivDateTime(match.kickoff_at);
+      const oddsMarkup = renderMatchOdds(match, homeName, awayName);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
       const predicted = Boolean(match.has_prediction);
@@ -2447,6 +2615,7 @@ function renderMatchesList(matches: Match[]): string {
             <div class="match-time">${kickoff}</div>
             ${result}
           </div>
+          ${oddsMarkup}
           <div class="match-average" data-match-average data-match-id="${match.id}"></div>
           ${closed ? "" : statusLine}
           ${form}

@@ -1002,6 +1002,50 @@ h1 {
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
+.match-odds {
+  display: grid;
+  gap: 6px;
+  border-radius: 16px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--outline-light);
+}
+
+.match-odds-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.match-odds-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.match-odds-value {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.match-odds-key {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.match-odds-num {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
 .match-average {
   display: none;
   grid-template-columns: 1fr;

@@ -1607,7 +1607,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, odds_json, odds_fetched_at"
       )
       .order("kickoff_at", { ascending: true });
 
