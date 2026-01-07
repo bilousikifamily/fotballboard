@@ -105,6 +105,21 @@ if (!app) {
   throw new Error("Missing #app element");
 }
 
+const INTRO_SEEN_KEY = "intro_seen";
+const INTRO_TIMEOUT_MS = 900;
+const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+const shouldShowIntro = !prefersReducedMotion && !sessionStorage.getItem(INTRO_SEEN_KEY);
+let introFinished = false;
+let introOverlay: HTMLDivElement | null = null;
+let introTimeoutId: number | null = null;
+
+if (shouldShowIntro) {
+  app.classList.add("app-hidden");
+  mountIntro();
+} else {
+  app.classList.add("app-enter");
+}
+
 let apiBase = "";
 const STARTING_POINTS = 100;
 let leaderboardLoaded = false;
@@ -166,6 +181,92 @@ if (!initData) {
   renderMessage("Open in Telegram");
 } else {
   void bootstrap(initData);
+}
+
+function mountIntro(): void {
+  document.body.classList.add("intro-active");
+  introOverlay = document.createElement("div");
+  introOverlay.className = "intro-overlay";
+  introOverlay.innerHTML = `
+    <div class="intro-content">
+      <video autoplay muted playsinline preload="auto" poster="/poster.jpg">
+        <source src="/preloader.webm" type="video/webm" />
+      </video>
+      <button class="intro-skip" type="button" aria-label="Пропустити інтро">Пропустити</button>
+    </div>
+  `;
+  document.body.appendChild(introOverlay);
+
+  const video = introOverlay.querySelector<HTMLVideoElement>("video");
+  const skipButton = introOverlay.querySelector<HTMLButtonElement>(".intro-skip");
+  if (!video) {
+    finishIntro("missing-video");
+    return;
+  }
+
+  let hasStarted = false;
+  video.addEventListener("playing", () => {
+    hasStarted = true;
+  });
+  video.addEventListener("ended", () => finishIntro("ended"));
+  video.addEventListener("error", () => {
+    if (import.meta.env.DEV) {
+      console.warn("intro error");
+    }
+    finishIntro("error");
+  });
+
+  if (skipButton) {
+    skipButton.addEventListener("click", () => finishIntro("skip"));
+  }
+
+  introOverlay.addEventListener("click", () => {
+    finishIntro("skip");
+  });
+
+  introTimeoutId = window.setTimeout(() => {
+    if (!hasStarted) {
+      if (import.meta.env.DEV) {
+        console.warn("intro timeout");
+      }
+      finishIntro("timeout");
+    }
+  }, INTRO_TIMEOUT_MS);
+}
+
+function finishIntro(reason: string): void {
+  if (introFinished) {
+    return;
+  }
+  introFinished = true;
+
+  if (introTimeoutId !== null) {
+    window.clearTimeout(introTimeoutId);
+  }
+  sessionStorage.setItem(INTRO_SEEN_KEY, "1");
+
+  app.classList.add("app-enter");
+  requestAnimationFrame(() => {
+    app.classList.remove("app-hidden");
+  });
+
+  document.body.classList.remove("intro-active");
+
+  if (import.meta.env.DEV) {
+    console.info(`intro ended: ${reason}`);
+  }
+
+  if (!introOverlay) {
+    return;
+  }
+
+  introOverlay.classList.add("is-fading");
+  const removeOverlay = (): void => {
+    introOverlay?.remove();
+    introOverlay = null;
+  };
+  introOverlay.addEventListener("transitionend", removeOverlay, { once: true });
+  window.setTimeout(removeOverlay, 260);
 }
 
 async function bootstrap(data: string): Promise<void> {

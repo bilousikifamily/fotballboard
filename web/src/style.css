@@ -42,6 +42,71 @@ body {
 #app {
   width: min(520px, 92vw, 92vh);
   padding: 24px 0 40px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#app.app-hidden {
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+
+#app.app-enter {
+  transition: opacity 420ms ease, transform 420ms ease;
+}
+
+body.intro-active {
+  overflow: hidden;
+}
+
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: grid;
+  place-items: center;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.intro-overlay.is-fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.intro-content video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.intro-skip {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.intro-skip:active {
+  background: rgba(0, 0, 0, 0.75);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .card {
