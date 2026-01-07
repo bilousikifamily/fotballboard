@@ -10,3 +10,4 @@ WEBAPP_URL = "https://fotballboard.pages.dev"
 API_FOOTBALL_BASE = "https://v3.football.api-sports.io"
 API_FOOTBALL_LEAGUE_MAP = '{"english-premier-league":39,"la-liga":140,"serie-a":135,"bundesliga":78,"ligue-1":61,"uefa-champions-league":2,"uefa-europa-league":3,"uefa-europa-conference-league":848,"fa-cup":45,"copa-del-rey":143,"coppa-italia":137,"dfb-pokal":81,"coupe-de-france":66}'
 API_FOOTBALL_DEBUG = "0"
+API_FOOTBALL_TIMEZONE = "Europe/London"

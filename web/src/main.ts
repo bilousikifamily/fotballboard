@@ -50,23 +50,21 @@ type OddsRefreshDebug = {
   kickoffAt?: string | null;
   season?: number;
   date?: string;
-  normalizedHome?: string;
-  normalizedAway?: string;
-  fixturesCount?: number;
-  fixturesSource?: "date" | "range" | "none";
-  fixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
-  dateStatus?: number;
-  rangeStatus?: number;
-  fixtureId?: number | null;
+  timezone?: string;
   homeTeamId?: number | null;
   awayTeamId?: number | null;
-  homeTeamSource?: "league" | "search" | "none";
-  awayTeamSource?: "league" | "search" | "none";
-  teamFixturesCount?: number;
-  teamFixturesSource?: "date" | "range" | "none";
-  teamFixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
-  teamDateStatus?: number;
-  teamRangeStatus?: number;
+  homeTeamSource?: "search" | "cache" | "none";
+  awayTeamSource?: "search" | "cache" | "none";
+  headtoheadCount?: number;
+  headtoheadStatus?: number;
+  headtoheadSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
+  leagueFixturesCount?: number;
+  leagueFixturesSource?: "date" | "range" | "none" | "headtohead";
+  leagueFixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
+  leagueDateStatus?: number;
+  leagueRangeStatus?: number;
+  fixtureId?: number | null;
+  fallbackReason?: string;
 };
 
 type LeaderboardUser = {
@@ -1795,8 +1793,14 @@ function formatOddsRefreshError(payload: OddsRefreshResponse | null): string {
     case "missing_league_mapping":
       message = "Немає мапінгу ліги для API-Football.";
       break;
+    case "missing_timezone":
+      message = "Не заданий timezone для API-Football.";
+      break;
     case "bad_kickoff_date":
       message = "Некоректна дата матчу.";
+      break;
+    case "team_not_found":
+      message = "Команди не знайдені в API-Football.";
       break;
     case "fixture_not_found":
       message = "Матч не знайдено в API-Football.";
@@ -1843,26 +1847,14 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     return "";
   }
   const parts: string[] = [];
-  if (debug.fixturesCount !== undefined) {
-    parts.push(`fixtures=${debug.fixturesCount}`);
-  }
-  if (debug.fixturesSource) {
-    parts.push(`source=${debug.fixturesSource}`);
-  }
   if (debug.date) {
     parts.push(`date=${debug.date}`);
   }
   if (debug.season) {
     parts.push(`season=${debug.season}`);
   }
-  if (debug.normalizedHome && debug.normalizedAway) {
-    parts.push(`teams=${debug.normalizedHome}/${debug.normalizedAway}`);
-  }
-  if (debug.dateStatus) {
-    parts.push(`date_status=${debug.dateStatus}`);
-  }
-  if (debug.rangeStatus) {
-    parts.push(`range_status=${debug.rangeStatus}`);
+  if (debug.timezone) {
+    parts.push(`tz=${debug.timezone}`);
   }
   if (debug.homeTeamId !== undefined || debug.awayTeamId !== undefined) {
     const homeId = debug.homeTeamId ?? "null";
@@ -1874,34 +1866,43 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     const awaySource = debug.awayTeamSource ?? "none";
     parts.push(`team_src=${homeSource}/${awaySource}`);
   }
-  if (debug.teamFixturesCount !== undefined) {
-    parts.push(`team_fixtures=${debug.teamFixturesCount}`);
+  if (debug.headtoheadCount !== undefined) {
+    parts.push(`h2h=${debug.headtoheadCount}`);
   }
-  if (debug.teamFixturesSource) {
-    parts.push(`team_source=${debug.teamFixturesSource}`);
+  if (debug.headtoheadStatus) {
+    parts.push(`h2h_status=${debug.headtoheadStatus}`);
   }
-  if (debug.teamDateStatus) {
-    parts.push(`team_date_status=${debug.teamDateStatus}`);
+  if (debug.leagueFixturesCount !== undefined) {
+    parts.push(`league_fixtures=${debug.leagueFixturesCount}`);
   }
-  if (debug.teamRangeStatus) {
-    parts.push(`team_range_status=${debug.teamRangeStatus}`);
+  if (debug.leagueFixturesSource) {
+    parts.push(`league_source=${debug.leagueFixturesSource}`);
   }
-  if (debug.fixturesSample?.length) {
-    const sample = debug.fixturesSample
+  if (debug.leagueDateStatus) {
+    parts.push(`league_date_status=${debug.leagueDateStatus}`);
+  }
+  if (debug.leagueRangeStatus) {
+    parts.push(`league_range_status=${debug.leagueRangeStatus}`);
+  }
+  if (debug.fallbackReason) {
+    parts.push(`fallback=${debug.fallbackReason}`);
+  }
+  if (debug.headtoheadSample?.length) {
+    const sample = debug.headtoheadSample
       .map((item) => [item.home, item.away].filter(Boolean).join(" - "))
       .filter(Boolean)
       .join(" | ");
     if (sample) {
-      parts.push(`sample=${sample}`);
+      parts.push(`h2h_sample=${sample}`);
     }
   }
-  if (debug.teamFixturesSample?.length) {
-    const teamSample = debug.teamFixturesSample
+  if (debug.leagueFixturesSample?.length) {
+    const teamSample = debug.leagueFixturesSample
       .map((item) => [item.home, item.away].filter(Boolean).join(" - "))
       .filter(Boolean)
       .join(" | ");
     if (teamSample) {
-      parts.push(`team_sample=${teamSample}`);
+      parts.push(`league_sample=${teamSample}`);
     }
   }
   return parts.length ? ` [${parts.join(" ")}]` : "";
