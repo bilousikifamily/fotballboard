@@ -33,8 +33,12 @@ body {
     var(--bg);
   color: var(--ink);
   min-height: 100vh;
-  display: grid;
-  place-items: center;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
   overflow-x: hidden;
   overscroll-behavior: none;
 }
