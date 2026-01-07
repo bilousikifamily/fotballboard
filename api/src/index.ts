@@ -15,6 +15,7 @@ interface Env {
   API_FOOTBALL_KEY?: string;
   API_FOOTBALL_BASE?: string;
   API_FOOTBALL_LEAGUE_MAP?: string;
+  API_FOOTBALL_DEBUG?: string;
 }
 
 function fetchApiFootball(env: Env, path: string): Promise<Response> {
@@ -412,6 +413,53 @@ export default {
       }
 
       return jsonResponse({ ok: true, match }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/matches/odds") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<{ initData?: string; match_id?: number | string }>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      if (!env.API_FOOTBALL_KEY) {
+        return jsonResponse({ ok: false, error: "missing_api_key" }, 500, corsHeaders());
+      }
+
+      const matchId = parseInteger(body.match_id);
+      if (matchId === null) {
+        return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+      }
+
+      const match = await getMatch(supabase, matchId);
+      if (!match) {
+        return jsonResponse({ ok: false, error: "match_not_found" }, 404, corsHeaders());
+      }
+
+      await fetchAndStoreOdds(env, supabase, match);
+      return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/predictions") {
@@ -1068,15 +1116,29 @@ async function findFixtureId(
   awayTeam: string
 ): Promise<number | null> {
   const fixtures = await fetchFixtures(env, leagueId, season, dateParam);
+  if (env.API_FOOTBALL_DEBUG === "1") {
+    console.info("fixtures count", fixtures.length, { leagueId, season, dateParam });
+  }
   if (!fixtures.length) {
     return null;
   }
 
   const normalizedHome = normalizeTeamName(homeTeam);
   const normalizedAway = normalizeTeamName(awayTeam);
+  if (env.API_FOOTBALL_DEBUG === "1") {
+    console.info("match target", { homeTeam, awayTeam, normalizedHome, normalizedAway });
+  }
   const match = fixtures.find((item) => {
     const homeName = item.teams?.home?.name ?? "";
     const awayName = item.teams?.away?.name ?? "";
+    if (env.API_FOOTBALL_DEBUG === "1") {
+      console.info("match candidate", {
+        homeName,
+        awayName,
+        normalizedHome: normalizeTeamName(homeName),
+        normalizedAway: normalizeTeamName(awayName)
+      });
+    }
     return (
       isTeamMatch(normalizedHome, normalizeTeamName(homeName))
       && isTeamMatch(normalizedAway, normalizeTeamName(awayName))
@@ -1100,6 +1162,9 @@ async function fetchFixtures(
     const payload = (await dateResponse.json()) as {
       response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
     };
+    if (env.API_FOOTBALL_DEBUG === "1") {
+      console.info("fixtures date response", payload.response?.length ?? 0);
+    }
     if (payload.response?.length) {
       return payload.response;
     }
@@ -1119,6 +1184,9 @@ async function fetchFixtures(
   const rangePayload = (await rangeResponse.json()) as {
     response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
   };
+  if (env.API_FOOTBALL_DEBUG === "1") {
+    console.info("fixtures range response", rangePayload.response?.length ?? 0, { from, to });
+  }
   return rangePayload.response ?? [];
 }
 

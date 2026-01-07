@@ -40,6 +40,10 @@ type AnnouncementResponse =
   | { ok: true }
   | { ok: false; error: string };
 
+type OddsRefreshResponse =
+  | { ok: true }
+  | { ok: false; error: string };
+
 type LeaderboardUser = {
   id: number;
   username?: string | null;
@@ -986,6 +990,7 @@ function renderUser(
         <div class="admin-actions">
           <button class="button secondary" type="button" data-admin-toggle-add>Додати матч</button>
           <button class="button secondary" type="button" data-admin-toggle-result>Ввести результат</button>
+          <button class="button secondary" type="button" data-admin-toggle-odds>Коефіцієнти</button>
           <button class="button secondary" type="button" data-admin-announce>Повідомити в боті</button>
         </div>
         <p class="muted small" data-admin-announce-status></p>
@@ -1023,6 +1028,14 @@ function renderUser(
           </div>
           <button class="button" type="submit">Зберегти результат</button>
           <p class="muted small" data-admin-result-status></p>
+        </form>
+        <form class="admin-form" data-admin-odds-form>
+          <label class="field">
+            <span>Матч</span>
+            <select name="match_id" data-admin-odds-match></select>
+          </label>
+          <button class="button" type="submit">Підтягнути коефіцієнти</button>
+          <p class="muted small" data-admin-odds-status></p>
         </form>
       </section>
     `
@@ -1136,9 +1149,11 @@ function renderUser(
   if (admin) {
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
+    const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
     const form = app.querySelector<HTMLFormElement>("[data-admin-form]");
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
+    const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
 
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
@@ -1158,6 +1173,16 @@ function renderUser(
       resultForm.addEventListener("submit", (event) => {
         event.preventDefault();
         void submitResult(resultForm);
+      });
+    }
+
+    if (toggleOdds && oddsForm) {
+      toggleOdds.addEventListener("click", () => {
+        oddsForm.classList.toggle("is-open");
+      });
+      oddsForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        void submitOddsRefresh(oddsForm);
       });
     }
 
@@ -1686,6 +1711,53 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
   }
 }
 
+async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  const matchSelect = form.querySelector<HTMLSelectElement>("[data-admin-odds-match]");
+  const status = form.querySelector<HTMLElement>("[data-admin-odds-status]");
+  const matchIdRaw = matchSelect?.value ?? "";
+  const matchId = Number.parseInt(matchIdRaw, 10);
+  if (!Number.isFinite(matchId)) {
+    if (status) {
+      status.textContent = "Оберіть матч.";
+    }
+    return;
+  }
+
+  if (status) {
+    status.textContent = "Запит...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/matches/odds`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData,
+        match_id: matchId
+      })
+    });
+    const data = (await response.json()) as OddsRefreshResponse;
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося підтягнути коефіцієнти.";
+      }
+      return;
+    }
+
+    if (status) {
+      status.textContent = "Запит надіслано ✅";
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося підтягнути коефіцієнти.";
+    }
+  }
+}
+
 async function publishMatchesAnnouncement(): Promise<void> {
   if (!apiBase) {
     return;
@@ -1858,6 +1930,7 @@ function setupAdminMatchForm(form: HTMLFormElement): void {
 
 function renderAdminMatchOptions(matches: Match[]): void {
   const select = app.querySelector<HTMLSelectElement>("[data-admin-match]");
+  const oddsSelect = app.querySelector<HTMLSelectElement>("[data-admin-odds-match]");
   if (!select) {
     return;
   }
@@ -1865,6 +1938,10 @@ function renderAdminMatchOptions(matches: Match[]): void {
   if (!matches.length) {
     select.innerHTML = `<option value="">Немає матчів</option>`;
     select.disabled = true;
+    if (oddsSelect) {
+      oddsSelect.innerHTML = `<option value="">Немає матчів</option>`;
+      oddsSelect.disabled = true;
+    }
     return;
   }
 
@@ -1877,6 +1954,10 @@ function renderAdminMatchOptions(matches: Match[]): void {
       return `<option value="${match.id}">${escapeHtml(title)} (${kickoff})</option>`;
     })
     .join("");
+  if (oddsSelect) {
+    oddsSelect.disabled = false;
+    oddsSelect.innerHTML = select.innerHTML;
+  }
 }
 
 async function submitPrediction(form: HTMLFormElement): Promise<void> {
