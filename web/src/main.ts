@@ -2030,6 +2030,7 @@ function setupScoreControls(form: HTMLFormElement): void {
       const safeValue = Math.max(0, Math.min(20, nextValue));
       input.value = String(safeValue);
       valueEl.textContent = String(safeValue);
+      updateScoreOddsIndicator(form);
     };
 
     inc.addEventListener("click", () => {
@@ -2042,6 +2043,8 @@ function setupScoreControls(form: HTMLFormElement): void {
       update(current - 1);
     });
   });
+
+  updateScoreOddsIndicator(form);
 }
 
 function setupAdminMatchForm(form: HTMLFormElement): void {
@@ -2388,7 +2391,7 @@ function renderMatchOdds(match: Match, homeName: string, awayName: string): stri
     return "";
   }
   return `
-    <div class="match-odds">
+    <div class="match-odds match-odds-top">
       <span class="match-odds-label">Ймовірність (1 X 2)</span>
       <div class="match-odds-values">
         <span class="match-odds-value">
@@ -2448,6 +2451,82 @@ function extractOddsProbabilities(
   }
 
   return null;
+}
+
+function extractCorrectScoreProbability(
+  oddsJson: unknown,
+  homeScore: number,
+  awayScore: number
+): number | null {
+  const odd = extractCorrectScoreOdd(oddsJson, homeScore, awayScore);
+  if (!odd) {
+    return null;
+  }
+  return (1 / odd) * 100;
+}
+
+function extractCorrectScoreOdd(oddsJson: unknown, homeScore: number, awayScore: number): number | null {
+  if (!Array.isArray(oddsJson) || !oddsJson.length) {
+    return null;
+  }
+
+  for (const entry of oddsJson) {
+    const bookmakers = (entry as { bookmakers?: unknown }).bookmakers;
+    if (!Array.isArray(bookmakers)) {
+      continue;
+    }
+    for (const bookmaker of bookmakers) {
+      const bets = (bookmaker as { bets?: unknown }).bets;
+      if (!Array.isArray(bets) || !bets.length) {
+        continue;
+      }
+      for (const bet of bets) {
+        if (!isCorrectScoreBet(bet as { id?: number; name?: string })) {
+          continue;
+        }
+        const values = (bet as { values?: unknown }).values;
+        if (!Array.isArray(values)) {
+          continue;
+        }
+        for (const value of values) {
+          const labelRaw = typeof value.value === "string" ? value.value.trim() : "";
+          if (!labelRaw) {
+            continue;
+          }
+          const score = parseScoreLabel(labelRaw);
+          if (!score) {
+            continue;
+          }
+          if (score.home === homeScore && score.away === awayScore) {
+            const oddValue = parseOddNumber(value.odd);
+            if (oddValue) {
+              return oddValue;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function isCorrectScoreBet(bet: { id?: number; name?: string }): boolean {
+  const name = bet.name?.toLowerCase() ?? "";
+  return name.includes("correct score") || name.includes("exact score");
+}
+
+function parseScoreLabel(value: string): { home: number; away: number } | null {
+  const match = /(\d+)\s*[:\-]\s*(\d+)/.exec(value);
+  if (!match) {
+    return null;
+  }
+  const home = Number.parseInt(match[1], 10);
+  const away = Number.parseInt(match[2], 10);
+  if (!Number.isFinite(home) || !Number.isFinite(away)) {
+    return null;
+  }
+  return { home, away };
 }
 
 function resolveThreeWayOdds(
@@ -2547,6 +2626,46 @@ function formatProbability(value: number): string {
   return `${Math.round(value)}%`;
 }
 
+function updateScoreOddsIndicator(form: HTMLFormElement): void {
+  const label = form.querySelector<HTMLElement>("[data-match-odds-score]");
+  if (!label) {
+    return;
+  }
+
+  const matchIdRaw = form.dataset.matchId || "";
+  const matchId = Number.parseInt(matchIdRaw, 10);
+  if (!Number.isFinite(matchId)) {
+    label.textContent = "";
+    label.classList.add("is-hidden");
+    return;
+  }
+
+  const match = matchesById.get(matchId);
+  if (!match || !match.odds_json) {
+    label.textContent = "";
+    label.classList.add("is-hidden");
+    return;
+  }
+
+  const homeScore = parseScore(form.querySelector<HTMLInputElement>("input[name=home_pred]")?.value);
+  const awayScore = parseScore(form.querySelector<HTMLInputElement>("input[name=away_pred]")?.value);
+  if (homeScore === null || awayScore === null) {
+    label.textContent = "";
+    label.classList.add("is-hidden");
+    return;
+  }
+
+  const probability = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
+  if (probability === null) {
+    label.textContent = `Ймовірність рахунку ${homeScore}:${awayScore} —`;
+    label.classList.remove("is-hidden");
+    return;
+  }
+
+  label.textContent = `Ймовірність рахунку ${homeScore}:${awayScore} — ${formatProbability(probability)}`;
+  label.classList.remove("is-hidden");
+}
+
 function renderMatchesList(matches: Match[]): string {
   if (!matches.length) {
     return `
@@ -2605,17 +2724,18 @@ function renderMatchesList(matches: Match[]): string {
               ${awayLogoMarkup}
             </div>
             <button class="button small-button" type="submit">Прогноз</button>
+            <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
             <p class="muted small" data-prediction-status></p>
           </form>
         `;
 
       return `
         <article class="match ${predicted ? "has-prediction" : ""}">
+          ${oddsMarkup}
           <div class="match-header">
             <div class="match-time">${kickoff}</div>
             ${result}
           </div>
-          ${oddsMarkup}
           <div class="match-average" data-match-average data-match-id="${match.id}"></div>
           ${closed ? "" : statusLine}
           ${form}

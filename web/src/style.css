@@ -1011,6 +1011,10 @@ h1 {
   border: 1px solid var(--outline-light);
 }
 
+.match-odds-top {
+  margin-bottom: 6px;
+}
+
 .match-odds-label {
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -1044,6 +1048,15 @@ h1 {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+.match-odds-score {
+  text-align: center;
+  padding-top: 2px;
+}
+
+.match-odds-score.is-hidden {
+  display: none;
 }
 
 .match-average {
