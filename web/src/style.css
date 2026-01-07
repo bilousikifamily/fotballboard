@@ -729,15 +729,69 @@ h1 {
   padding: 0 20px;
 }
 
-.date-input {
+.date-switcher {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px auto 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: rgba(20, 20, 24, 0.9);
   border: 1px solid var(--outline-light);
-  border-radius: 12px;
-  padding: 8px 10px;
-  font-family: inherit;
-  font-size: 1.275rem;
-  background: var(--surface);
-  color: var(--ink);
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.date-switcher::before,
+.date-switcher::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.date-switcher::before {
+  transform: translateX(-8px);
+}
+
+.date-switcher::after {
+  transform: translateX(8px);
+}
+
+.date-pill {
+  min-width: 140px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: linear-gradient(130deg, rgba(255, 138, 36, 0.18), rgba(255, 122, 26, 0.5));
+  border: 1px solid rgba(255, 154, 31, 0.5);
+  color: var(--ink);
+  font-size: 1.1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.date-nav {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(18, 18, 22, 0.9);
+  color: var(--ink);
+  font-size: 1.4rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.date-nav:active {
+  transform: scale(0.96);
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(18, 18, 22, 1);
 }
 
 .matches-list {

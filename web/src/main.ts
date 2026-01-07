@@ -962,7 +962,8 @@ function renderUser(
     : renderAvatarContent(user, currentAvatarChoice);
   const logoOrderMenuMarkup =
     logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder, currentNickname ?? displayName) : "";
-  const safeDate = escapeAttribute(date || getKyivDateString());
+  const dateValue = date || getKyivDateString();
+  const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
   const rankText = stats.rank ? `#${stats.rank}` : "—";
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
@@ -1039,7 +1040,15 @@ function renderUser(
 
       <section class="panel matches">
         <div class="section-header">
-          <input class="date-input" type="date" value="${safeDate}" data-date />
+          <div class="date-switcher" data-date-switcher>
+            <button class="date-nav" type="button" data-date-prev aria-label="Попередній день">
+              <span aria-hidden="true">‹</span>
+            </button>
+            <div class="date-pill" data-date-label>${safeDateLabel}</div>
+            <button class="date-nav" type="button" data-date-next aria-label="Наступний день">
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
         </div>
         <div class="matches-list" data-matches></div>
       </section>
@@ -1066,15 +1075,30 @@ function renderUser(
     });
   }
 
-  const dateInput = app.querySelector<HTMLInputElement>("[data-date]");
-  if (dateInput) {
-    dateInput.addEventListener("change", () => {
-      const nextDate = dateInput.value;
-      if (!nextDate) {
-        return;
-      }
-      currentDate = nextDate;
-      void loadMatches(nextDate);
+  const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
+  const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");
+  const nextButton = app.querySelector<HTMLButtonElement>("[data-date-next]");
+
+  const setDate = (nextDate: string): void => {
+    if (!nextDate) {
+      return;
+    }
+    currentDate = nextDate;
+    if (dateLabel) {
+      dateLabel.textContent = formatKyivDateLabel(nextDate);
+    }
+    void loadMatches(nextDate);
+  };
+
+  if (prevButton) {
+    prevButton.addEventListener("click", () => {
+      setDate(addKyivDays(currentDate, -1));
+    });
+  }
+
+  if (nextButton) {
+    nextButton.addEventListener("click", () => {
+      setDate(addKyivDays(currentDate, 1));
     });
   }
 
@@ -2351,6 +2375,35 @@ function getKyivDateString(date = new Date()): string {
     day: "2-digit"
   });
   return formatter.format(date);
+}
+
+function formatKyivDateLabel(dateString: string): string {
+  const [yearRaw, monthRaw, dayRaw] = dateString.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) {
+    return dateString;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone: "Europe/Kyiv",
+    day: "numeric",
+    month: "long"
+  }).format(date);
+}
+
+function addKyivDays(dateString: string, delta: number): string {
+  const [yearRaw, monthRaw, dayRaw] = dateString.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) {
+    return getKyivDateString();
+  }
+  const baseUtc = Date.UTC(year, month - 1, day, 12);
+  const nextDate = new Date(baseUtc + delta * 24 * 60 * 60 * 1000);
+  return getKyivDateString(nextDate);
 }
 
 function formatKyivDateTime(value: string): string {
