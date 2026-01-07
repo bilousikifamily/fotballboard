@@ -1,5 +1,5 @@
 import "./style.css";
-import { ALL_CLUBS, EU_CLUBS, UA_CLUBS, type AllLeagueId, type LeagueId } from "./data/clubs";
+import { ALL_CLUBS, EU_CLUBS, UA_CLUBS, type LeagueId, type MatchLeagueId } from "./data/clubs";
 
 type AuthResponse =
   | {
@@ -152,13 +152,21 @@ const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
 ];
 
-const MATCH_LEAGUES: Array<{ id: AllLeagueId; label: string }> = [
+const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "ukrainian-premier-league", label: "УПЛ" },
+  { id: "uefa-champions-league", label: "ЛЧ" },
+  { id: "uefa-europa-league", label: "ЛЄ" },
+  { id: "uefa-europa-conference-league", label: "ЛК" },
   { id: "english-premier-league", label: "АПЛ" },
   { id: "la-liga", label: "Ла Ліга" },
   { id: "serie-a", label: "Серія A" },
   { id: "bundesliga", label: "Бундесліга" },
-  { id: "ligue-1", label: "Ліга 1" }
+  { id: "ligue-1", label: "Ліга 1" },
+  { id: "fa-cup", label: "Кубок Англії" },
+  { id: "copa-del-rey", label: "Кубок Іспанії" },
+  { id: "coppa-italia", label: "Кубок Італії" },
+  { id: "dfb-pokal", label: "Кубок Німеччини" },
+  { id: "coupe-de-france", label: "Кубок Франції" }
 ];
 
 const NOTICE_RULES = [
@@ -1820,7 +1828,7 @@ function setupAdminMatchForm(form: HTMLFormElement): void {
     return;
   }
 
-  const renderClubOptions = (leagueId: AllLeagueId): string => {
+  const renderClubOptions = (leagueId: MatchLeagueId): string => {
     const clubs = ALL_CLUBS[leagueId] ?? [];
     const options = clubs
       .map((clubId) => `<option value="${clubId}">${escapeHtml(formatClubName(clubId))}</option>`)
@@ -1828,19 +1836,19 @@ function setupAdminMatchForm(form: HTMLFormElement): void {
     return `<option value="">Обери клуб</option>${options}`;
   };
 
-  const setClubOptions = (leagueId: AllLeagueId): void => {
+  const setClubOptions = (leagueId: MatchLeagueId): void => {
     homeSelect.innerHTML = renderClubOptions(leagueId);
     awaySelect.innerHTML = renderClubOptions(leagueId);
   };
 
-  const initialLeague = (leagueSelect.value as AllLeagueId) || MATCH_LEAGUES[0]?.id;
+  const initialLeague = (leagueSelect.value as MatchLeagueId) || MATCH_LEAGUES[0]?.id;
   if (initialLeague) {
     leagueSelect.value = initialLeague;
     setClubOptions(initialLeague);
   }
 
   leagueSelect.addEventListener("change", () => {
-    const leagueId = leagueSelect.value as AllLeagueId;
+    const leagueId = leagueSelect.value as MatchLeagueId;
     if (!leagueId) {
       return;
     }

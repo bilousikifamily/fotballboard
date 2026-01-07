@@ -12,10 +12,22 @@ interface Env {
   WEBAPP_URL: string;
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  API_FOOTBALL_KEY?: string;
+  API_FOOTBALL_BASE?: string;
+  API_FOOTBALL_LEAGUE_MAP?: string;
+}
+
+function fetchApiFootball(env: Env, path: string): Promise<Response> {
+  const base = env.API_FOOTBALL_BASE ?? "https://v3.football.api-sports.io";
+  return fetch(`${base}${path}`, {
+    headers: {
+      "x-apisports-key": env.API_FOOTBALL_KEY ?? ""
+    }
+  });
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === "/healthcheck") {
@@ -393,6 +405,10 @@ export default {
       const match = await createMatch(supabase, auth.user.id, body);
       if (!match) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      if (env.API_FOOTBALL_KEY) {
+        ctx.waitUntil(fetchAndStoreOdds(env, supabase, match));
       }
 
       return jsonResponse({ ok: true, match }, 200, corsHeaders());
@@ -932,6 +948,205 @@ async function createMatch(
   }
 }
 
+async function fetchAndStoreOdds(env: Env, supabase: SupabaseClient, match: DbMatch): Promise<void> {
+  const leagueId = resolveApiLeagueId(env, match.league_id ?? null);
+  if (!leagueId) {
+    console.warn("Odds skipped: missing league mapping", match.league_id);
+    return;
+  }
+
+  const kickoffDate = parseKyivDate(match.kickoff_at);
+  if (!kickoffDate) {
+    console.warn("Odds skipped: bad kickoff date");
+    return;
+  }
+
+  const season = resolveSeasonForDate(kickoffDate);
+  const dateParam = formatKyivDateString(kickoffDate);
+  const fixtureId = await findFixtureId(env, leagueId, season, dateParam, match.home_team, match.away_team);
+  if (!fixtureId) {
+    console.warn("Odds skipped: fixture not found", match.id);
+    return;
+  }
+
+  const odds = await fetchOdds(env, fixtureId);
+  if (!odds) {
+    console.warn("Odds skipped: no odds", match.id);
+    return;
+  }
+
+  await saveMatchOdds(supabase, match.id, leagueId, fixtureId, odds);
+}
+
+function resolveApiLeagueId(env: Env, leagueId: string | null): number | null {
+  if (!leagueId) {
+    return null;
+  }
+
+  const customMap = parseLeagueMap(env.API_FOOTBALL_LEAGUE_MAP);
+  if (customMap && leagueId in customMap) {
+    return customMap[leagueId];
+  }
+
+  const defaults: Record<string, number> = {
+    "english-premier-league": 39,
+    "la-liga": 140,
+    "serie-a": 135,
+    bundesliga: 78,
+    "ligue-1": 61
+  };
+
+  return defaults[leagueId] ?? null;
+}
+
+function parseLeagueMap(value?: string): Record<string, number> | null {
+  if (!value) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    const map: Record<string, number> = {};
+    for (const [key, rawValue] of Object.entries(parsed)) {
+      const numberValue = Number(rawValue);
+      if (Number.isFinite(numberValue)) {
+        map[key] = numberValue;
+      }
+    }
+    return Object.keys(map).length ? map : null;
+  } catch (error) {
+    console.warn("Invalid API_FOOTBALL_LEAGUE_MAP", error);
+    return null;
+  }
+}
+
+function parseKyivDate(value: string): Date | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function resolveSeasonForDate(date: Date): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit"
+  }).formatToParts(date);
+  const values: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      values[part.type] = part.value;
+    }
+  }
+  const year = Number(values.year);
+  const month = Number(values.month);
+  if (!year || !month) {
+    return date.getUTCFullYear();
+  }
+  return month >= 7 ? year : year - 1;
+}
+
+function formatKyivDateString(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+async function findFixtureId(
+  env: Env,
+  leagueId: number,
+  season: number,
+  dateParam: string,
+  homeTeam: string,
+  awayTeam: string
+): Promise<number | null> {
+  const response = await fetchApiFootball(
+    env,
+    `/fixtures?date=${encodeURIComponent(dateParam)}&league=${leagueId}&season=${season}`
+  );
+  if (!response.ok) {
+    console.warn("API-Football fixtures error", response.status);
+    return null;
+  }
+
+  const payload = (await response.json()) as {
+    response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
+  };
+  const fixtures = payload.response ?? [];
+  if (!fixtures.length) {
+    return null;
+  }
+
+  const normalizedHome = normalizeTeamName(homeTeam);
+  const normalizedAway = normalizeTeamName(awayTeam);
+  const match = fixtures.find((item) => {
+    const homeName = item.teams?.home?.name ?? "";
+    const awayName = item.teams?.away?.name ?? "";
+    return (
+      isTeamMatch(normalizedHome, normalizeTeamName(homeName))
+      && isTeamMatch(normalizedAway, normalizeTeamName(awayName))
+    );
+  });
+
+  return match?.fixture?.id ?? null;
+}
+
+async function fetchOdds(env: Env, fixtureId: number): Promise<unknown | null> {
+  const response = await fetchApiFootball(env, `/odds?fixture=${fixtureId}`);
+  if (!response.ok) {
+    console.warn("API-Football odds error", response.status);
+    return null;
+  }
+  const payload = (await response.json()) as { response?: unknown[] };
+  return payload.response ?? null;
+}
+
+async function saveMatchOdds(
+  supabase: SupabaseClient,
+  matchId: number,
+  leagueId: number,
+  fixtureId: number,
+  odds: unknown
+): Promise<void> {
+  const { error } = await supabase
+    .from("matches")
+    .update({
+      api_league_id: leagueId,
+      api_fixture_id: fixtureId,
+      odds_json: odds,
+      odds_fetched_at: new Date().toISOString()
+    })
+    .eq("id", matchId);
+
+  if (error) {
+    console.error("Failed to store odds", error);
+  }
+}
+
+function normalizeTeamName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function isTeamMatch(left: string, right: string): boolean {
+  if (!left || !right) {
+    return false;
+  }
+  if (left === right) {
+    return true;
+  }
+  return left.includes(right) || right.includes(left);
+}
+
 async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbMatch[] | null> {
   try {
     let query = supabase
@@ -1429,11 +1644,19 @@ function normalizeClubId(value: unknown): string | null {
 
 const MATCH_LEAGUES = new Set([
   "ukrainian-premier-league",
+  "uefa-champions-league",
+  "uefa-europa-league",
+  "uefa-europa-conference-league",
   "english-premier-league",
   "la-liga",
   "serie-a",
   "bundesliga",
-  "ligue-1"
+  "ligue-1",
+  "fa-cup",
+  "copa-del-rey",
+  "coppa-italia",
+  "dfb-pokal",
+  "coupe-de-france"
 ]);
 
 const CLUB_NAME_OVERRIDES: Record<string, string> = {
@@ -2019,6 +2242,10 @@ interface DbMatch {
   home_score?: number | null;
   away_score?: number | null;
   reminder_sent_at?: string | null;
+  api_league_id?: number | null;
+  api_fixture_id?: number | null;
+  odds_json?: unknown | null;
+  odds_fetched_at?: string | null;
   has_prediction?: boolean;
 }
 

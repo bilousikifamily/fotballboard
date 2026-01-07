@@ -20,6 +20,10 @@ create table if not exists matches (
   away_score int,
   created_by bigint references users(id),
   reminder_sent_at timestamptz,
+  api_league_id int,
+  api_fixture_id bigint,
+  odds_json jsonb,
+  odds_fetched_at timestamptz,
   created_at timestamptz not null default now()
 );
 

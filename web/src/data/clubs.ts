@@ -6,6 +6,16 @@ export type LeagueId =
   | "ligue-1";
 
 export type AllLeagueId = LeagueId | "ukrainian-premier-league";
+export type MatchLeagueId =
+  | AllLeagueId
+  | "uefa-champions-league"
+  | "uefa-europa-league"
+  | "uefa-europa-conference-league"
+  | "fa-cup"
+  | "copa-del-rey"
+  | "coppa-italia"
+  | "dfb-pokal"
+  | "coupe-de-france";
 
 export const UA_CLUBS: string[] = [
   "dnipro",
@@ -137,7 +147,17 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
   ]
 };
 
-export const ALL_CLUBS: Record<AllLeagueId, string[]> = {
+const EU_ALL_CLUBS = Array.from(new Set(Object.values(EU_CLUBS).flat()));
+
+export const ALL_CLUBS: Record<MatchLeagueId, string[]> = {
   "ukrainian-premier-league": UA_CLUBS,
-  ...EU_CLUBS
+  ...EU_CLUBS,
+  "uefa-champions-league": EU_ALL_CLUBS,
+  "uefa-europa-league": EU_ALL_CLUBS,
+  "uefa-europa-conference-league": EU_ALL_CLUBS,
+  "fa-cup": EU_CLUBS["english-premier-league"],
+  "copa-del-rey": EU_CLUBS["la-liga"],
+  "coppa-italia": EU_CLUBS["serie-a"],
+  "dfb-pokal": EU_CLUBS["bundesliga"],
+  "coupe-de-france": EU_CLUBS["ligue-1"]
 };
