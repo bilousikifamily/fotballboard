@@ -32,6 +32,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "bournemouth",
     "brentford",
     "brighton",
+    "burnley",
     "chelsea",
     "crystal-palace",
     "everton",
@@ -45,6 +46,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "newcastle",
     "nottingham-forest",
     "southampton",
+    "sunderland",
     "tottenham",
     "west-ham",
     "wolves"
