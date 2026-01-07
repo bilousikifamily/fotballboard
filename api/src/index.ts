@@ -458,7 +458,14 @@ export default {
         return jsonResponse({ ok: false, error: "match_not_found" }, 404, corsHeaders());
       }
 
-      await fetchAndStoreOdds(env, supabase, match);
+      const oddsResult = await fetchAndStoreOdds(env, supabase, match);
+      if (!oddsResult.ok) {
+        return jsonResponse(
+          { ok: false, error: oddsResult.reason, detail: oddsResult.detail },
+          200,
+          corsHeaders()
+        );
+      }
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
@@ -996,17 +1003,37 @@ async function createMatch(
   }
 }
 
-async function fetchAndStoreOdds(env: Env, supabase: SupabaseClient, match: DbMatch): Promise<void> {
+type OddsStoreFailure =
+  | "missing_league_mapping"
+  | "bad_kickoff_date"
+  | "fixture_not_found"
+  | "api_error"
+  | "odds_empty"
+  | "db_error";
+
+type OddsStoreResult =
+  | { ok: true }
+  | { ok: false; reason: OddsStoreFailure; detail?: string };
+
+type OddsFetchResult =
+  | { ok: true; odds: unknown }
+  | { ok: false; reason: "api_error" | "odds_empty"; detail?: string };
+
+type OddsSaveResult =
+  | { ok: true }
+  | { ok: false; detail?: string };
+
+async function fetchAndStoreOdds(env: Env, supabase: SupabaseClient, match: DbMatch): Promise<OddsStoreResult> {
   const leagueId = resolveApiLeagueId(env, match.league_id ?? null);
   if (!leagueId) {
     console.warn("Odds skipped: missing league mapping", match.league_id);
-    return;
+    return { ok: false, reason: "missing_league_mapping" };
   }
 
   const kickoffDate = parseKyivDate(match.kickoff_at);
   if (!kickoffDate) {
     console.warn("Odds skipped: bad kickoff date");
-    return;
+    return { ok: false, reason: "bad_kickoff_date" };
   }
 
   const season = resolveSeasonForDate(kickoffDate);
@@ -1014,16 +1041,20 @@ async function fetchAndStoreOdds(env: Env, supabase: SupabaseClient, match: DbMa
   const fixtureId = await findFixtureId(env, leagueId, season, dateParam, match.home_team, match.away_team);
   if (!fixtureId) {
     console.warn("Odds skipped: fixture not found", match.id);
-    return;
+    return { ok: false, reason: "fixture_not_found" };
   }
 
-  const odds = await fetchOdds(env, fixtureId);
-  if (!odds) {
-    console.warn("Odds skipped: no odds", match.id);
-    return;
+  const oddsResult = await fetchOdds(env, fixtureId);
+  if (!oddsResult.ok) {
+    console.warn("Odds skipped:", oddsResult.reason, match.id);
+    return { ok: false, reason: oddsResult.reason, detail: oddsResult.detail };
   }
 
-  await saveMatchOdds(supabase, match.id, leagueId, fixtureId, odds);
+  const saveResult = await saveMatchOdds(supabase, match.id, leagueId, fixtureId, oddsResult.odds);
+  if (!saveResult.ok) {
+    return { ok: false, reason: "db_error", detail: saveResult.detail };
+  }
+  return { ok: true };
 }
 
 function resolveApiLeagueId(env: Env, leagueId: string | null): number | null {
@@ -1203,14 +1234,24 @@ function addDateDays(dateParam: string, delta: number): string {
   return formatKyivDateString(nextDate);
 }
 
-async function fetchOdds(env: Env, fixtureId: number): Promise<unknown | null> {
+async function fetchOdds(env: Env, fixtureId: number): Promise<OddsFetchResult> {
   const response = await fetchApiFootball(env, `/odds?fixture=${fixtureId}`);
   if (!response.ok) {
     console.warn("API-Football odds error", response.status);
-    return null;
+    return { ok: false, reason: "api_error", detail: `status_${response.status}` };
   }
-  const payload = (await response.json()) as { response?: unknown[] };
-  return payload.response ?? null;
+  let payload: { response?: unknown[] } | null = null;
+  try {
+    payload = (await response.json()) as { response?: unknown[] };
+  } catch (error) {
+    console.warn("API-Football odds parse error", error);
+    return { ok: false, reason: "api_error" };
+  }
+  const odds = payload?.response ?? null;
+  if (!odds || (Array.isArray(odds) && !odds.length)) {
+    return { ok: false, reason: "odds_empty" };
+  }
+  return { ok: true, odds };
 }
 
 async function saveMatchOdds(
@@ -1219,7 +1260,7 @@ async function saveMatchOdds(
   leagueId: number,
   fixtureId: number,
   odds: unknown
-): Promise<void> {
+): Promise<OddsSaveResult> {
   const { error } = await supabase
     .from("matches")
     .update({
@@ -1232,7 +1273,9 @@ async function saveMatchOdds(
 
   if (error) {
     console.error("Failed to store odds", error);
+    return { ok: false, detail: error.message ?? "db_error" };
   }
+  return { ok: true };
 }
 
 function normalizeTeamName(value: string): string {

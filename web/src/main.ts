@@ -42,7 +42,7 @@ type AnnouncementResponse =
 
 type OddsRefreshResponse =
   | { ok: true }
-  | { ok: false; error: string };
+  | { ok: false; error: string; detail?: string };
 
 type LeaderboardUser = {
   id: number;
@@ -1740,10 +1740,10 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
         match_id: matchId
       })
     });
-    const data = (await response.json()) as OddsRefreshResponse;
-    if (!response.ok || !data.ok) {
+    const data = (await response.json().catch(() => null)) as OddsRefreshResponse | null;
+    if (!response.ok || !data || !data.ok) {
       if (status) {
-        status.textContent = "Не вдалося підтягнути коефіцієнти.";
+        status.textContent = formatOddsRefreshError(data);
       }
       return;
     }
@@ -1756,6 +1756,59 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
       status.textContent = "Не вдалося підтягнути коефіцієнти.";
     }
   }
+}
+
+function formatOddsRefreshError(payload: OddsRefreshResponse | null): string {
+  if (!payload || payload.ok) {
+    return "Не вдалося підтягнути коефіцієнти.";
+  }
+  const suffix = payload.detail ? ` (${payload.detail})` : "";
+  let message = "Не вдалося підтягнути коефіцієнти.";
+  switch (payload.error) {
+    case "missing_league_mapping":
+      message = "Немає мапінгу ліги для API-Football.";
+      break;
+    case "bad_kickoff_date":
+      message = "Некоректна дата матчу.";
+      break;
+    case "fixture_not_found":
+      message = "Матч не знайдено в API-Football.";
+      break;
+    case "api_error":
+      message = "Помилка API-Football.";
+      break;
+    case "odds_empty":
+      message = "Коефіцієнти ще недоступні.";
+      break;
+    case "db_error":
+      message = "Помилка збереження в базі.";
+      break;
+    case "missing_api_key":
+      message = "Не заданий API ключ.";
+      break;
+    case "match_not_found":
+      message = "Матч не знайдено.";
+      break;
+    case "bad_match_id":
+      message = "Некоректний матч.";
+      break;
+    case "bad_initData":
+      message = "Некоректні дані входу.";
+      break;
+    case "forbidden":
+      message = "Недостатньо прав.";
+      break;
+    case "missing_supabase":
+      message = "Не налаштовано Supabase.";
+      break;
+    case "bad_json":
+      message = "Некоректні дані запиту.";
+      break;
+    default:
+      message = "Не вдалося підтягнути коефіцієнти.";
+      break;
+  }
+  return `${message}${suffix}`;
 }
 
 async function publishMatchesAnnouncement(): Promise<void> {
