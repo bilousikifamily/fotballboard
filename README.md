@@ -1,6 +1,7 @@
-# fotballboard
+# fotballboarding
 
 ## Structure
+
 ```
 tg-webapp-starter/
   api/    # Cloudflare Worker
@@ -8,10 +9,12 @@ tg-webapp-starter/
 ```
 
 ## Requirements
+
 - Node.js 18+
 - Cloudflare account + Wrangler
 
 ## Env / secrets
+
 - `BOT_TOKEN` (Worker secret)
 - `SUPABASE_URL` (Worker secret)
 - `SUPABASE_SERVICE_ROLE_KEY` (Worker secret)
@@ -19,6 +22,7 @@ tg-webapp-starter/
 - `VITE_API_BASE` (Web env: Worker URL)
 
 ## Secrets setup (Cloudflare Workers)
+
 ```
 cd api
 npx wrangler login
@@ -29,7 +33,9 @@ npx wrangler deploy
 ```
 
 ## Supabase schema
+
 Run this SQL in Supabase (SQL editor):
+
 ```sql
 create table if not exists users (
   id bigint primary key,
@@ -87,6 +93,7 @@ create table if not exists missed_predictions (
 ```
 
 If you already have a `users` table, run:
+
 ```sql
 alter table users add column if not exists admin boolean default false;
 alter table users add column if not exists points_total int default 100;
@@ -111,16 +118,19 @@ create table if not exists missed_predictions (
 ```
 
 For incremental updates, you can also run:
+
 ```
 api/supabase/migrations
 ```
 
 ## 1) Create a bot (BotFather)
+
 1. Open BotFather in Telegram.
 2. Run `/newbot` and follow steps.
 3. Copy the bot token.
 
 ## 2) Deploy the Worker (api)
+
 ```
 cd api
 npm install
@@ -131,6 +141,7 @@ npx wrangler deploy --var WEBAPP_URL=https://your-pages-domain.pages.dev
 ```
 
 ## 3) Deploy the WebApp (web)
+
 ```
 cd web
 npm install
@@ -141,6 +152,7 @@ npm run build
 
 Deploy `web/dist` to Cloudflare Pages.
 You can use the Pages dashboard or CLI:
+
 ```
 # optional
 npx wrangler pages deploy dist --project-name tg-webapp-web
@@ -149,11 +161,13 @@ npx wrangler pages deploy dist --project-name tg-webapp-web
 Set `VITE_API_BASE` to your Worker URL in the Pages environment variables.
 
 ## 4) Set Telegram webhook
+
 ```
 https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_WORKER_URL>/tg/webhook
 ```
 
 ## 5) Local development (optional)
+
 ```
 # terminal 1
 cd api
@@ -167,6 +181,7 @@ VITE_API_BASE=http://localhost:8787 npm run dev
 For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ngrok) for both the Worker and WebApp.
 
 ## Endpoints
+
 - `GET /healthcheck` -> `{ ok: true }`
 - `POST /api/auth` -> validates Telegram `initData`
 - `GET /api/leaderboard` -> list users by points (requires `X-Telegram-InitData`)
@@ -179,5 +194,6 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 - `POST /tg/webhook` -> Telegram updates
 
 ## Notes
+
 - The WebApp never sees the bot token.
 - `/api/auth` validates `initData` using Telegram HMAC algorithm.
