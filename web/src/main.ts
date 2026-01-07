@@ -2143,7 +2143,11 @@ function renderTeamLogo(name: string, logo: string | null): string {
 
 function renderMatchesList(matches: Match[]): string {
   if (!matches.length) {
-    return `<p class="muted">Немає матчів на цю дату.</p>`;
+    return `
+      <article class="match match-empty">
+        <p class="muted">Немає матчів на цю дату.</p>
+      </article>
+    `;
   }
 
   return matches

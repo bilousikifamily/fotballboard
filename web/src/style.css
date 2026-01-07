@@ -813,6 +813,13 @@ h1 {
   scroll-snap-stop: always;
 }
 
+.match-empty {
+  min-height: 160px;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(18, 18, 22, 0.5);
+}
+
 .match.has-prediction .match-time {
   display: none;
 }
