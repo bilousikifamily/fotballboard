@@ -1067,19 +1067,7 @@ async function findFixtureId(
   homeTeam: string,
   awayTeam: string
 ): Promise<number | null> {
-  const response = await fetchApiFootball(
-    env,
-    `/fixtures?date=${encodeURIComponent(dateParam)}&league=${leagueId}&season=${season}`
-  );
-  if (!response.ok) {
-    console.warn("API-Football fixtures error", response.status);
-    return null;
-  }
-
-  const payload = (await response.json()) as {
-    response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
-  };
-  const fixtures = payload.response ?? [];
+  const fixtures = await fetchFixtures(env, leagueId, season, dateParam);
   if (!fixtures.length) {
     return null;
   }
@@ -1096,6 +1084,55 @@ async function findFixtureId(
   });
 
   return match?.fixture?.id ?? null;
+}
+
+async function fetchFixtures(
+  env: Env,
+  leagueId: number,
+  season: number,
+  dateParam: string
+): Promise<Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>> {
+  const dateResponse = await fetchApiFootball(
+    env,
+    `/fixtures?date=${encodeURIComponent(dateParam)}&league=${leagueId}&season=${season}`
+  );
+  if (dateResponse.ok) {
+    const payload = (await dateResponse.json()) as {
+      response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
+    };
+    if (payload.response?.length) {
+      return payload.response;
+    }
+  }
+
+  const from = addDateDays(dateParam, -1);
+  const to = addDateDays(dateParam, 1);
+  const rangeResponse = await fetchApiFootball(
+    env,
+    `/fixtures?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&league=${leagueId}&season=${season}`
+  );
+  if (!rangeResponse.ok) {
+    console.warn("API-Football fixtures error", rangeResponse.status);
+    return [];
+  }
+
+  const rangePayload = (await rangeResponse.json()) as {
+    response?: Array<{ fixture?: { id?: number }; teams?: { home?: { name?: string }; away?: { name?: string } } }>;
+  };
+  return rangePayload.response ?? [];
+}
+
+function addDateDays(dateParam: string, delta: number): string {
+  const [yearRaw, monthRaw, dayRaw] = dateParam.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) {
+    return dateParam;
+  }
+  const baseUtc = Date.UTC(year, month - 1, day, 12);
+  const nextDate = new Date(baseUtc + delta * 24 * 60 * 60 * 1000);
+  return formatKyivDateString(nextDate);
 }
 
 async function fetchOdds(env: Env, fixtureId: number): Promise<unknown | null> {
