@@ -994,16 +994,22 @@ async function getUserStats(supabase: SupabaseClient, userId: number): Promise<U
     }
 
     const points = typeof userData.points_total === "number" ? userData.points_total : STARTING_POINTS;
-    const { count, error: countError } = await supabase
+    const { data: higherPoints, error: countError } = await supabase
       .from("users")
-      .select("id", { count: "exact", head: true })
+      .select("points_total")
       .gt("points_total", points);
 
     if (countError) {
       return { points_total: points, rank: null };
     }
 
-    return { points_total: points, rank: (count ?? 0) + 1 };
+    const distinctHigher = new Set(
+      (higherPoints as Array<{ points_total?: number | null }> | null)?.map((row) => row.points_total).filter(
+        (value): value is number => typeof value === "number"
+      ) ?? []
+    );
+
+    return { points_total: points, rank: distinctHigher.size + 1 };
   } catch {
     return null;
   }
