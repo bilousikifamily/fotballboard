@@ -2849,22 +2849,19 @@ function renderMatchOdds(match: Match, homeName: string, awayName: string): stri
     return "";
   }
   return `
-    <div class="match-odds match-odds-top">
-      <span class="match-odds-label">Ймовірність (1 X 2)</span>
-      <div class="match-odds-values">
-        <span class="match-odds-value">
-          <span class="match-odds-key">1</span>
-          <span class="match-odds-num">${formatProbability(probabilities.home)}</span>
-        </span>
-        <span class="match-odds-value">
-          <span class="match-odds-key">X</span>
-          <span class="match-odds-num">${formatProbability(probabilities.draw)}</span>
-        </span>
-        <span class="match-odds-value">
-          <span class="match-odds-key">2</span>
-          <span class="match-odds-num">${formatProbability(probabilities.away)}</span>
-        </span>
-      </div>
+    <div class="match-odds-values">
+      <span class="match-odds-value">
+        <span class="match-odds-key">1</span>
+        <span class="match-odds-num">${formatProbability(probabilities.home)}</span>
+      </span>
+      <span class="match-odds-value">
+        <span class="match-odds-key">X</span>
+        <span class="match-odds-num">${formatProbability(probabilities.draw)}</span>
+      </span>
+      <span class="match-odds-value">
+        <span class="match-odds-key">2</span>
+        <span class="match-odds-num">${formatProbability(probabilities.away)}</span>
+      </span>
     </div>
   `;
 }
@@ -3201,8 +3198,8 @@ function renderMatchesList(matches: Match[]): string {
               </div>
               ${awayLogoMarkup}
             </div>
-            <button class="button small-button" type="submit">Прогноз</button>
             <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
+            <button class="button small-button prediction-submit" type="submit">Прогноз</button>
             <p class="muted small" data-prediction-status></p>
           </form>
         `;

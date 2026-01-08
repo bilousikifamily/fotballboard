@@ -971,6 +971,7 @@ h1 {
   display: grid;
   gap: 8px;
   justify-items: center;
+  width: 100%;
 }
 
 .prediction-form.is-hidden {
@@ -1086,6 +1087,11 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.prediction-submit {
+  width: 100%;
+  border-radius: 0 0 18px 18px;
 }
 
 .match-odds-value {
