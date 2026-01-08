@@ -1742,10 +1742,16 @@ async function fetchRainProbability(
   if (!targetTime) {
     return { ok: false };
   }
+  const kickoffDate = new Date(kickoffAt);
+  if (Number.isNaN(kickoffDate.getTime())) {
+    return { ok: false };
+  }
+  const dateString = formatDateString(kickoffDate, "Europe/Kyiv");
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(String(lat))}` +
     `&longitude=${encodeURIComponent(String(lon))}` +
-    "&hourly=precipitation_probability&timezone=Europe%2FKyiv&forecast_days=7";
+    `&hourly=precipitation_probability&timezone=Europe%2FKyiv&start_date=${encodeURIComponent(dateString)}` +
+    `&end_date=${encodeURIComponent(dateString)}`;
   const response = await fetch(url);
   if (!response.ok) {
     console.warn("Open-Meteo forecast error", response.status);
