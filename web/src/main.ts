@@ -29,7 +29,7 @@ type PredictionsResponse =
   | { ok: false; error: string };
 
 type MatchWeatherResponse =
-  | { ok: true; rain_probability: number | null }
+  | { ok: true; rain_probability: number | null; weather_condition?: string | null }
   | { ok: false; error: string };
 
 type MatchWeatherDebugInfo = {
@@ -131,6 +131,7 @@ type Match = {
   venue_lon?: number | null;
   rain_probability?: number | null;
   weather_fetched_at?: string | null;
+  weather_condition?: string | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   has_prediction?: boolean;
@@ -206,6 +207,7 @@ let noticeRuleIndex = 0;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
+const matchWeatherConditionCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
@@ -1725,12 +1727,18 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
   const tasks = matches.map(async (match) => {
     if (isWeatherFresh(match)) {
       const cachedValue = match.rain_probability ?? null;
+      const cachedCondition = match.weather_condition ?? null;
       matchWeatherCache.set(match.id, cachedValue);
-      updateMatchWeather(match.id, cachedValue);
+      matchWeatherConditionCache.set(match.id, cachedCondition);
+      updateMatchWeather(match.id, cachedValue, cachedCondition);
       return;
     }
     if (matchWeatherCache.has(match.id)) {
-      updateMatchWeather(match.id, matchWeatherCache.get(match.id) ?? null);
+      updateMatchWeather(
+        match.id,
+        matchWeatherCache.get(match.id) ?? null,
+        matchWeatherConditionCache.get(match.id) ?? null
+      );
       return;
     }
     try {
@@ -1743,13 +1751,14 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
       });
       const data = (await response.json()) as MatchWeatherResponse;
       if (!response.ok || !data.ok) {
-        updateMatchWeather(match.id, null);
+        updateMatchWeather(match.id, null, null);
         return;
       }
       matchWeatherCache.set(match.id, data.rain_probability ?? null);
-      updateMatchWeather(match.id, data.rain_probability ?? null);
+      matchWeatherConditionCache.set(match.id, data.weather_condition ?? null);
+      updateMatchWeather(match.id, data.rain_probability ?? null, data.weather_condition ?? null);
     } catch {
-      updateMatchWeather(match.id, null);
+      updateMatchWeather(match.id, null, null);
     }
   });
   await Promise.all(tasks);
@@ -1767,14 +1776,14 @@ function isWeatherFresh(match: Match): boolean {
   return ageMinutes < WEATHER_CLIENT_CACHE_MIN;
 }
 
-function updateMatchWeather(matchId: number, rainProbability: number | null): void {
+function updateMatchWeather(matchId: number, rainProbability: number | null, condition: string | null): void {
   const el = app.querySelector<HTMLElement>(`[data-match-rain][data-match-id="${matchId}"]`);
   if (!el) {
     return;
   }
   const percent = normalizeRainProbability(rainProbability);
   const value = formatRainProbability(percent);
-  const icon = getWeatherIcon(percent);
+  const icon = getWeatherIcon(condition, percent);
   const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
   const iconEl = el.querySelector<HTMLElement>("[data-match-rain-icon]");
   const fillEl = el.querySelector<HTMLElement>("[data-match-rain-fill]");
@@ -1804,7 +1813,25 @@ function formatRainProbability(value: number | null): string {
   return `${value}%`;
 }
 
-function getWeatherIcon(value: number | null): string {
+function getWeatherIcon(condition: string | null, value: number | null): string {
+  switch (condition) {
+    case "thunderstorm":
+      return "⛈️";
+    case "rain":
+      return "🌧️";
+    case "snow":
+      return "🌨️";
+    case "fog":
+      return "🌫️";
+    case "cloudy":
+      return "☁️";
+    case "partly_cloudy":
+      return "⛅";
+    case "clear":
+      return "☀️";
+    default:
+      break;
+  }
   if (value === null) {
     return "☁️";
   }
@@ -3066,7 +3093,7 @@ function renderMatchesList(matches: Match[]): string {
         : "";
       const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
       const rainValue = formatRainProbability(rainPercent);
-      const rainIcon = getWeatherIcon(rainPercent);
+      const rainIcon = getWeatherIcon(match.weather_condition ?? null, rainPercent);
       const rainBarWidth = rainPercent ?? 0;
       const rainMarkup = `
         <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">

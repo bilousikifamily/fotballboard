@@ -16,6 +16,7 @@ const WEATHER_LANG = "uk";
 
 type WeatherCacheEntry = {
   value: number | null;
+  condition: string | null;
   fetchedAt: number;
   expiresAt: number;
   staleUntil: number;
@@ -600,8 +601,13 @@ export default {
 
       return jsonResponse(
         debug
-          ? { ok: true, rain_probability: weather.rainProbability, debug: weather.debug }
-          : { ok: true, rain_probability: weather.rainProbability },
+          ? {
+              ok: true,
+              rain_probability: weather.rainProbability,
+              weather_condition: weather.condition ?? null,
+              debug: weather.debug
+            }
+          : { ok: true, rain_probability: weather.rainProbability, weather_condition: weather.condition ?? null },
         200,
         corsHeaders()
       );
@@ -1125,7 +1131,7 @@ async function createMatch(
         created_by: userId
       })
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition"
       )
       .single();
 
@@ -1194,7 +1200,7 @@ type VenueUpdate = {
 };
 
 type WeatherResult =
-  | { ok: true; rainProbability: number | null }
+  | { ok: true; rainProbability: number | null; condition: string | null }
   | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error" | "rate_limited" };
 
 type WeatherDebugInfo = {
@@ -1753,12 +1759,14 @@ async function saveMatchCoordinates(
 async function saveMatchWeatherCache(
   supabase: SupabaseClient,
   matchId: number,
-  rainProbability: number | null
+  rainProbability: number | null,
+  condition: string | null
 ): Promise<void> {
   const { error } = await supabase
     .from("matches")
     .update({
       rain_probability: rainProbability,
+      weather_condition: condition,
       weather_fetched_at: new Date().toISOString()
     })
     .eq("id", matchId);
@@ -1770,6 +1778,7 @@ async function saveMatchWeatherCache(
 type WeatherForecastResult = {
   ok: boolean;
   value: number | null;
+  condition: string | null;
   cacheState: "fresh" | "stale" | "miss";
   isStale: boolean;
   rateLimitedLocally: boolean;
@@ -1793,6 +1802,7 @@ async function fetchWeatherForecast(
     return {
       ok: false,
       value: null,
+      condition: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: false,
@@ -1848,6 +1858,7 @@ async function fetchWeatherForecastWithProvider(
       return {
         ok: false,
         value: null,
+        condition: null,
         cacheState: "fresh",
         isStale: false,
         rateLimitedLocally: true,
@@ -1871,6 +1882,7 @@ async function fetchWeatherForecastWithProvider(
     return {
       ok: true,
       value: cacheEntry.value,
+      condition: cacheEntry.condition,
       cacheState: "fresh",
       isStale: false,
       rateLimitedLocally: false,
@@ -1900,6 +1912,7 @@ async function fetchWeatherForecastWithProvider(
       return {
         ok: true,
         value: staleEntry.value,
+        condition: staleEntry.condition,
         cacheState: "stale",
         isStale: true,
         rateLimitedLocally: true,
@@ -1923,6 +1936,7 @@ async function fetchWeatherForecastWithProvider(
     return {
       ok: false,
       value: null,
+      condition: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: true,
@@ -1952,6 +1966,7 @@ async function fetchWeatherForecastWithProvider(
       return {
         ok: true,
         value: shared.value,
+        condition: shared.condition ?? null,
         cacheState: "miss",
         isStale: false,
         rateLimitedLocally: false,
@@ -1978,6 +1993,7 @@ async function fetchWeatherForecastWithProvider(
       return {
         ok: true,
         value: staleEntry.value,
+        condition: staleEntry.condition,
         cacheState: "stale",
         isStale: true,
         rateLimitedLocally: false,
@@ -1992,6 +2008,7 @@ async function fetchWeatherForecastWithProvider(
     return {
       ok: false,
       value: null,
+      condition: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: false,
@@ -2020,6 +2037,7 @@ async function fetchWeatherForecastWithProvider(
       return {
         ok: true,
         value: staleEntry.value,
+        condition: staleEntry.condition,
         cacheState: "stale",
         isStale: true,
         rateLimitedLocally: true,
@@ -2042,6 +2060,7 @@ async function fetchWeatherForecastWithProvider(
     return {
       ok: false,
       value: null,
+      condition: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: true,
@@ -2068,6 +2087,7 @@ async function fetchWeatherForecastWithProvider(
     const staleHours = getWeatherStaleTtlHours(env);
     const entry: WeatherCacheEntry = {
       value: result.value,
+      condition: result.condition ?? null,
       fetchedAt: Date.now(),
       expiresAt: Date.now() + ttlMin * 60 * 1000,
       staleUntil: Date.now() + staleHours * 60 * 60 * 1000
@@ -2087,6 +2107,7 @@ async function fetchWeatherForecastWithProvider(
     return {
       ok: true,
       value: result.value,
+      condition: result.condition ?? null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: false,
@@ -2121,6 +2142,7 @@ async function fetchWeatherForecastWithProvider(
     return {
       ok: true,
       value: staleEntry.value,
+      condition: staleEntry.condition,
       cacheState: "stale",
       isStale: true,
       rateLimitedLocally: false,
@@ -2140,6 +2162,7 @@ async function fetchWeatherForecastWithProvider(
   const staleHours = getWeatherStaleTtlHours(env);
   weatherCache.set(key, {
     value: null,
+    condition: null,
     fetchedAt: Date.now(),
     expiresAt: Date.now() + ttlMin * 60 * 1000,
     staleUntil: Date.now() + staleHours * 60 * 60 * 1000,
@@ -2160,6 +2183,7 @@ async function fetchWeatherForecastWithProvider(
   return {
     ok: false,
     value: null,
+    condition: null,
     cacheState: "miss",
     isStale: false,
     rateLimitedLocally: false,
@@ -2295,11 +2319,11 @@ async function fetchMatchWeather(
   if (!detailed.ok) {
     return { ok: false, reason: detailed.reason };
   }
-  return { ok: true, rainProbability: detailed.rainProbability };
+  return { ok: true, rainProbability: detailed.rainProbability, condition: detailed.condition };
 }
 
 type WeatherDetailedResult =
-  | { ok: true; rainProbability: number | null; debug: WeatherDebugInfo }
+  | { ok: true; rainProbability: number | null; condition: string | null; debug: WeatherDebugInfo }
   | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error" | "rate_limited"; debug: WeatherDebugInfo };
 
 
@@ -2362,9 +2386,9 @@ async function fetchMatchWeatherDetailed(
   }
 
   if (!forecast.isStale) {
-    await saveMatchWeatherCache(supabase, match.id, forecast.value ?? null);
+    await saveMatchWeatherCache(supabase, match.id, forecast.value ?? null, forecast.condition ?? null);
   }
-  return { ok: true, rainProbability: forecast.value, debug };
+  return { ok: true, rainProbability: forecast.value, condition: forecast.condition ?? null, debug };
 }
 
 type GeocodeResult = { ok: true; lat: number; lon: number; status: number } | { ok: false; status: number };
@@ -2404,8 +2428,23 @@ type WeatherFetchDebug = {
 };
 
 type WeatherFetchResult =
-  | { ok: true; value: number | null; debug: WeatherFetchDebug; attempts: number; retryAfterSec?: number | null; status?: number | null }
-  | { ok: false; debug: WeatherFetchDebug; attempts: number; retryAfterSec?: number | null; status?: number | null };
+  | {
+      ok: true;
+      value: number | null;
+      condition: string | null;
+      debug: WeatherFetchDebug;
+      attempts: number;
+      retryAfterSec?: number | null;
+      status?: number | null;
+    }
+  | {
+      ok: false;
+      condition: string | null;
+      debug: WeatherFetchDebug;
+      attempts: number;
+      retryAfterSec?: number | null;
+      status?: number | null;
+    };
 
 async function fetchOpenMeteoProbability(
   env: Env,
@@ -2423,7 +2462,7 @@ async function fetchOpenMeteoProbability(
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(String(lat))}` +
     `&longitude=${encodeURIComponent(String(lon))}` +
-    "&hourly=precipitation_probability&timezone=UTC" +
+    "&hourly=precipitation_probability,weathercode&timezone=UTC" +
     `&start_date=${encodeURIComponent(bucket.dateString)}` +
     `&end_date=${encodeURIComponent(bucket.dateString)}`;
 
@@ -2446,16 +2485,22 @@ async function fetchOpenMeteoProbability(
     if (response.ok) {
       try {
         const payload = (await response.json()) as {
-          hourly?: { time?: string[]; precipitation_probability?: Array<number | null> };
+          hourly?: {
+            time?: string[];
+            precipitation_probability?: Array<number | null>;
+            weathercode?: Array<number | null>;
+          };
         };
         const times = payload.hourly?.time ?? [];
         const probabilities = payload.hourly?.precipitation_probability ?? [];
+        const weatherCodes = payload.hourly?.weathercode ?? [];
         const index = findClosestTimeIndex(times, bucket.apiTime);
         debug.time_index = index;
         if (index < 0 || index >= probabilities.length) {
           return {
             ok: true,
             value: null,
+            condition: null,
             debug,
             attempts: attempt,
             retryAfterSec: lastRetryAfter,
@@ -2463,9 +2508,11 @@ async function fetchOpenMeteoProbability(
           };
         }
         const value = probabilities[index];
+        const condition = normalizeOpenMeteoCondition(weatherCodes[index] ?? null);
         return {
           ok: true,
           value: typeof value === "number" ? value : null,
+          condition,
           debug,
           attempts: attempt,
           retryAfterSec: lastRetryAfter,
@@ -2473,20 +2520,20 @@ async function fetchOpenMeteoProbability(
         };
       } catch (error) {
         console.warn("Open-Meteo forecast parse error", error);
-        return { ok: false, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+        return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
       }
     }
 
     if (!shouldRetryWeather(response.status) || attempt >= maxAttempts) {
       console.warn("Open-Meteo forecast error", response.status);
-      return { ok: false, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+      return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
     }
 
     const waitMs = computeRetryDelayMs(baseDelayMs, attempt, lastRetryAfter, delayCapMs);
     await sleep(waitMs - (Date.now() - started));
   }
 
-  return { ok: false, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+  return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
 }
 
 function shouldRetryWeather(status: number): boolean {
@@ -2581,6 +2628,98 @@ function findClosestHourEntry<T extends { time_epoch?: number }>(
   return { entry: best, index: bestIndex };
 }
 
+function normalizeOpenMeteoCondition(code: number | null): string | null {
+  if (code === null || Number.isNaN(code)) {
+    return null;
+  }
+  if (code === 0) {
+    return "clear";
+  }
+  if (code === 1 || code === 2) {
+    return "partly_cloudy";
+  }
+  if (code === 3) {
+    return "cloudy";
+  }
+  if (code === 45 || code === 48) {
+    return "fog";
+  }
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 86)) {
+    return "rain";
+  }
+  if (code >= 71 && code <= 77) {
+    return "snow";
+  }
+  if (code >= 95 && code <= 99) {
+    return "thunderstorm";
+  }
+  return null;
+}
+
+function normalizeWeatherApiCondition(code: number | undefined, text: string | undefined): string | null {
+  if (typeof code === "number") {
+    if ([1087, 1273, 1276, 1279, 1282].includes(code)) {
+      return "thunderstorm";
+    }
+    if (
+      code === 1066 ||
+      code === 1069 ||
+      code === 1072 ||
+      code === 1114 ||
+      code === 1117 ||
+      (code >= 1210 && code <= 1225) ||
+      (code >= 1255 && code <= 1264)
+    ) {
+      return "snow";
+    }
+    if (
+      code === 1063 ||
+      code === 1150 ||
+      code === 1153 ||
+      (code >= 1180 && code <= 1201) ||
+      (code >= 1240 && code <= 1246)
+    ) {
+      return "rain";
+    }
+    if (code === 1030 || code === 1135 || code === 1147) {
+      return "fog";
+    }
+    if (code === 1009 || code === 1006) {
+      return "cloudy";
+    }
+    if (code === 1003) {
+      return "partly_cloudy";
+    }
+    if (code === 1000) {
+      return "clear";
+    }
+  }
+
+  const textValue = text?.toLowerCase() ?? "";
+  if (!textValue) {
+    return null;
+  }
+  if (textValue.includes("thunder")) {
+    return "thunderstorm";
+  }
+  if (textValue.includes("snow") || textValue.includes("sleet")) {
+    return "snow";
+  }
+  if (textValue.includes("rain") || textValue.includes("shower") || textValue.includes("drizzle")) {
+    return "rain";
+  }
+  if (textValue.includes("fog") || textValue.includes("mist")) {
+    return "fog";
+  }
+  if (textValue.includes("cloud")) {
+    return textValue.includes("partly") ? "partly_cloudy" : "cloudy";
+  }
+  if (textValue.includes("clear") || textValue.includes("sunny")) {
+    return "clear";
+  }
+  return null;
+}
+
 async function fetchWeatherApiProbability(
   env: Env,
   lat: number,
@@ -2595,7 +2734,7 @@ async function fetchWeatherApiProbability(
   };
   const key = env.WEATHERAPI_KEY?.trim();
   if (!key) {
-    return { ok: false, debug, attempts: 0 };
+    return { ok: false, condition: null, debug, attempts: 0 };
   }
 
   const base = env.WEATHERAPI_BASE?.trim() || "https://api.weatherapi.com";
@@ -2604,7 +2743,7 @@ async function fetchWeatherApiProbability(
   const delayCapMs = getWeatherRetryDelayCapMs(env);
   const daysAhead = getDaysAheadUtc(bucket.dateString);
   if (daysAhead === null || daysAhead > 10) {
-    return { ok: true, value: null, debug, attempts: 0, status: 0 };
+    return { ok: true, value: null, condition: null, debug, attempts: 0, status: 0 };
   }
   const daysParam = Math.max(1, daysAhead + 1);
   const url =
@@ -2631,7 +2770,12 @@ async function fetchWeatherApiProbability(
           forecast?: {
             forecastday?: Array<{
               date?: string;
-              hour?: Array<{ time?: string; time_epoch?: number; chance_of_rain?: number | null }>;
+              hour?: Array<{
+                time?: string;
+                time_epoch?: number;
+                chance_of_rain?: number | null;
+                condition?: { code?: number; text?: string };
+              }>;
             }>;
           };
         };
@@ -2641,10 +2785,12 @@ async function fetchWeatherApiProbability(
         const targetEpoch = Date.parse(`${bucket.keyTime}`);
         const closest = findClosestHourEntry(hours, targetEpoch);
         const value = closest.entry?.chance_of_rain;
+        const condition = normalizeWeatherApiCondition(closest.entry?.condition?.code, closest.entry?.condition?.text);
         debug.time_index = closest.index;
         return {
           ok: true,
           value: typeof value === "number" ? value : null,
+          condition,
           debug,
           attempts: attempt,
           retryAfterSec: lastRetryAfter,
@@ -2652,20 +2798,20 @@ async function fetchWeatherApiProbability(
         };
       } catch (error) {
         console.warn("WeatherAPI parse error", error);
-        return { ok: false, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+        return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
       }
     }
 
     if (!shouldRetryWeather(response.status) || attempt >= maxAttempts) {
       console.warn("WeatherAPI error", response.status);
-      return { ok: false, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+      return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
     }
 
     const waitMs = computeRetryDelayMs(baseDelayMs, attempt, lastRetryAfter, delayCapMs);
     await sleep(waitMs);
   }
 
-  return { ok: false, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+  return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
 }
 
 function getDaysAheadUtc(targetDate: string): number | null {
@@ -3796,6 +3942,7 @@ interface DbMatch {
   venue_lon?: number | null;
   rain_probability?: number | null;
   weather_fetched_at?: string | null;
+  weather_condition?: string | null;
   reminder_sent_at?: string | null;
   api_league_id?: number | null;
   api_fixture_id?: number | null;
