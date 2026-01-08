@@ -1742,11 +1742,10 @@ async function fetchRainProbability(
   if (!targetTime) {
     return { ok: false };
   }
-  const kickoffDate = new Date(kickoffAt);
-  if (Number.isNaN(kickoffDate.getTime())) {
+  const dateString = targetTime.split("T")[0] ?? "";
+  if (!dateString) {
     return { ok: false };
   }
-  const dateString = formatDateString(kickoffDate, "Europe/Kyiv");
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(String(lat))}` +
     `&longitude=${encodeURIComponent(String(lon))}` +
