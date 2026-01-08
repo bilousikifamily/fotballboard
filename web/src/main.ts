@@ -2849,16 +2849,16 @@ function renderMatchOdds(match: Match, homeName: string, awayName: string): stri
     return "";
   }
   return `
-    <div class="match-odds-values">
-      <span class="match-odds-value">
+    <div class="match-odds-values" data-match-odds data-match-id="${match.id}">
+      <span class="match-odds-value" data-odds-choice="home">
         <span class="match-odds-key">1</span>
         <span class="match-odds-num">${formatProbability(probabilities.home)}</span>
       </span>
-      <span class="match-odds-value">
+      <span class="match-odds-value" data-odds-choice="draw">
         <span class="match-odds-key">X</span>
         <span class="match-odds-num">${formatProbability(probabilities.draw)}</span>
       </span>
-      <span class="match-odds-value">
+      <span class="match-odds-value" data-odds-choice="away">
         <span class="match-odds-key">2</span>
         <span class="match-odds-num">${formatProbability(probabilities.away)}</span>
       </span>
@@ -3110,6 +3110,8 @@ function updateScoreOddsIndicator(form: HTMLFormElement): void {
     return;
   }
 
+  updateOddsHighlight(matchId, homeScore, awayScore);
+
   const probability = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
   if (probability === null) {
     label.textContent = `Ймовірність рахунку ${homeScore}:${awayScore} —`;
@@ -3119,6 +3121,17 @@ function updateScoreOddsIndicator(form: HTMLFormElement): void {
 
   label.textContent = `Ймовірність рахунку ${homeScore}:${awayScore} — ${formatProbability(probability)}`;
   label.classList.remove("is-hidden");
+}
+
+function updateOddsHighlight(matchId: number, homeScore: number, awayScore: number): void {
+  const odds = app.querySelector<HTMLElement>(`[data-match-odds][data-match-id="${matchId}"]`);
+  if (!odds) {
+    return;
+  }
+  const choice = homeScore === awayScore ? "draw" : homeScore > awayScore ? "home" : "away";
+  odds.querySelectorAll<HTMLElement>("[data-odds-choice]").forEach((el) => {
+    el.classList.toggle("is-highlighted", el.dataset.oddsChoice === choice);
+  });
 }
 
 function renderMatchesList(matches: Match[]): string {
