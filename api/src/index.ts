@@ -17,6 +17,8 @@ const WEATHER_LANG = "uk";
 type WeatherCacheEntry = {
   value: number | null;
   condition: string | null;
+  tempC: number | null;
+  timezone: string | null;
   fetchedAt: number;
   expiresAt: number;
   staleUntil: number;
@@ -605,9 +607,17 @@ export default {
               ok: true,
               rain_probability: weather.rainProbability,
               weather_condition: weather.condition ?? null,
+              weather_temp_c: weather.tempC ?? null,
+              weather_timezone: weather.timezone ?? null,
               debug: weather.debug
             }
-          : { ok: true, rain_probability: weather.rainProbability, weather_condition: weather.condition ?? null },
+          : {
+              ok: true,
+              rain_probability: weather.rainProbability,
+              weather_condition: weather.condition ?? null,
+              weather_temp_c: weather.tempC ?? null,
+              weather_timezone: weather.timezone ?? null
+            },
         200,
         corsHeaders()
       );
@@ -1131,7 +1141,7 @@ async function createMatch(
         created_by: userId
       })
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone"
       )
       .single();
 
@@ -1200,7 +1210,7 @@ type VenueUpdate = {
 };
 
 type WeatherResult =
-  | { ok: true; rainProbability: number | null; condition: string | null }
+  | { ok: true; rainProbability: number | null; condition: string | null; tempC: number | null; timezone: string | null }
   | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error" | "rate_limited" };
 
 type WeatherDebugInfo = {
@@ -1760,13 +1770,17 @@ async function saveMatchWeatherCache(
   supabase: SupabaseClient,
   matchId: number,
   rainProbability: number | null,
-  condition: string | null
+  condition: string | null,
+  tempC: number | null,
+  timezone: string | null
 ): Promise<void> {
   const { error } = await supabase
     .from("matches")
     .update({
       rain_probability: rainProbability,
       weather_condition: condition,
+      weather_temp_c: tempC,
+      weather_timezone: timezone,
       weather_fetched_at: new Date().toISOString()
     })
     .eq("id", matchId);
@@ -1779,6 +1793,8 @@ type WeatherForecastResult = {
   ok: boolean;
   value: number | null;
   condition: string | null;
+  tempC: number | null;
+  timezone: string | null;
   cacheState: "fresh" | "stale" | "miss";
   isStale: boolean;
   rateLimitedLocally: boolean;
@@ -1803,6 +1819,8 @@ async function fetchWeatherForecast(
       ok: false,
       value: null,
       condition: null,
+      tempC: null,
+      timezone: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: false,
@@ -1859,6 +1877,8 @@ async function fetchWeatherForecastWithProvider(
         ok: false,
         value: null,
         condition: null,
+        tempC: null,
+        timezone: null,
         cacheState: "fresh",
         isStale: false,
         rateLimitedLocally: true,
@@ -1883,6 +1903,8 @@ async function fetchWeatherForecastWithProvider(
       ok: true,
       value: cacheEntry.value,
       condition: cacheEntry.condition,
+      tempC: cacheEntry.tempC,
+      timezone: cacheEntry.timezone,
       cacheState: "fresh",
       isStale: false,
       rateLimitedLocally: false,
@@ -1913,6 +1935,8 @@ async function fetchWeatherForecastWithProvider(
         ok: true,
         value: staleEntry.value,
         condition: staleEntry.condition,
+        tempC: staleEntry.tempC,
+        timezone: staleEntry.timezone,
         cacheState: "stale",
         isStale: true,
         rateLimitedLocally: true,
@@ -1937,6 +1961,8 @@ async function fetchWeatherForecastWithProvider(
       ok: false,
       value: null,
       condition: null,
+      tempC: null,
+      timezone: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: true,
@@ -1967,6 +1993,8 @@ async function fetchWeatherForecastWithProvider(
         ok: true,
         value: shared.value,
         condition: shared.condition ?? null,
+        tempC: shared.tempC ?? null,
+        timezone: shared.timezone ?? null,
         cacheState: "miss",
         isStale: false,
         rateLimitedLocally: false,
@@ -1994,6 +2022,8 @@ async function fetchWeatherForecastWithProvider(
         ok: true,
         value: staleEntry.value,
         condition: staleEntry.condition,
+        tempC: staleEntry.tempC,
+        timezone: staleEntry.timezone,
         cacheState: "stale",
         isStale: true,
         rateLimitedLocally: false,
@@ -2009,6 +2039,8 @@ async function fetchWeatherForecastWithProvider(
       ok: false,
       value: null,
       condition: null,
+      tempC: null,
+      timezone: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: false,
@@ -2038,6 +2070,8 @@ async function fetchWeatherForecastWithProvider(
         ok: true,
         value: staleEntry.value,
         condition: staleEntry.condition,
+        tempC: staleEntry.tempC,
+        timezone: staleEntry.timezone,
         cacheState: "stale",
         isStale: true,
         rateLimitedLocally: true,
@@ -2061,6 +2095,8 @@ async function fetchWeatherForecastWithProvider(
       ok: false,
       value: null,
       condition: null,
+      tempC: null,
+      timezone: null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: true,
@@ -2088,6 +2124,8 @@ async function fetchWeatherForecastWithProvider(
     const entry: WeatherCacheEntry = {
       value: result.value,
       condition: result.condition ?? null,
+      tempC: result.tempC ?? null,
+      timezone: result.timezone ?? null,
       fetchedAt: Date.now(),
       expiresAt: Date.now() + ttlMin * 60 * 1000,
       staleUntil: Date.now() + staleHours * 60 * 60 * 1000
@@ -2108,6 +2146,8 @@ async function fetchWeatherForecastWithProvider(
       ok: true,
       value: result.value,
       condition: result.condition ?? null,
+      tempC: result.tempC ?? null,
+      timezone: result.timezone ?? null,
       cacheState: "miss",
       isStale: false,
       rateLimitedLocally: false,
@@ -2143,6 +2183,8 @@ async function fetchWeatherForecastWithProvider(
       ok: true,
       value: staleEntry.value,
       condition: staleEntry.condition,
+      tempC: staleEntry.tempC,
+      timezone: staleEntry.timezone,
       cacheState: "stale",
       isStale: true,
       rateLimitedLocally: false,
@@ -2163,6 +2205,8 @@ async function fetchWeatherForecastWithProvider(
   weatherCache.set(key, {
     value: null,
     condition: null,
+    tempC: null,
+    timezone: null,
     fetchedAt: Date.now(),
     expiresAt: Date.now() + ttlMin * 60 * 1000,
     staleUntil: Date.now() + staleHours * 60 * 60 * 1000,
@@ -2184,6 +2228,8 @@ async function fetchWeatherForecastWithProvider(
     ok: false,
     value: null,
     condition: null,
+    tempC: null,
+    timezone: null,
     cacheState: "miss",
     isStale: false,
     rateLimitedLocally: false,
@@ -2319,11 +2365,17 @@ async function fetchMatchWeather(
   if (!detailed.ok) {
     return { ok: false, reason: detailed.reason };
   }
-  return { ok: true, rainProbability: detailed.rainProbability, condition: detailed.condition };
+  return {
+    ok: true,
+    rainProbability: detailed.rainProbability,
+    condition: detailed.condition,
+    tempC: detailed.tempC,
+    timezone: detailed.timezone
+  };
 }
 
 type WeatherDetailedResult =
-  | { ok: true; rainProbability: number | null; condition: string | null; debug: WeatherDebugInfo }
+  | { ok: true; rainProbability: number | null; condition: string | null; tempC: number | null; timezone: string | null; debug: WeatherDebugInfo }
   | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error" | "rate_limited"; debug: WeatherDebugInfo };
 
 
@@ -2386,9 +2438,23 @@ async function fetchMatchWeatherDetailed(
   }
 
   if (!forecast.isStale) {
-    await saveMatchWeatherCache(supabase, match.id, forecast.value ?? null, forecast.condition ?? null);
+    await saveMatchWeatherCache(
+      supabase,
+      match.id,
+      forecast.value ?? null,
+      forecast.condition ?? null,
+      forecast.tempC ?? null,
+      forecast.timezone ?? null
+    );
   }
-  return { ok: true, rainProbability: forecast.value, condition: forecast.condition ?? null, debug };
+  return {
+    ok: true,
+    rainProbability: forecast.value,
+    condition: forecast.condition ?? null,
+    tempC: forecast.tempC ?? null,
+    timezone: forecast.timezone ?? null,
+    debug
+  };
 }
 
 type GeocodeResult = { ok: true; lat: number; lon: number; status: number } | { ok: false; status: number };
@@ -2432,6 +2498,8 @@ type WeatherFetchResult =
       ok: true;
       value: number | null;
       condition: string | null;
+      tempC: number | null;
+      timezone: string | null;
       debug: WeatherFetchDebug;
       attempts: number;
       retryAfterSec?: number | null;
@@ -2440,6 +2508,8 @@ type WeatherFetchResult =
   | {
       ok: false;
       condition: string | null;
+      tempC: number | null;
+      timezone: string | null;
       debug: WeatherFetchDebug;
       attempts: number;
       retryAfterSec?: number | null;
@@ -2489,11 +2559,13 @@ async function fetchOpenMeteoProbability(
             time?: string[];
             precipitation_probability?: Array<number | null>;
             weathercode?: Array<number | null>;
+            temperature_2m?: Array<number | null>;
           };
         };
         const times = payload.hourly?.time ?? [];
         const probabilities = payload.hourly?.precipitation_probability ?? [];
         const weatherCodes = payload.hourly?.weathercode ?? [];
+        const temperatures = payload.hourly?.temperature_2m ?? [];
         const index = findClosestTimeIndex(times, bucket.apiTime);
         debug.time_index = index;
         if (index < 0 || index >= probabilities.length) {
@@ -2501,6 +2573,8 @@ async function fetchOpenMeteoProbability(
             ok: true,
             value: null,
             condition: null,
+            tempC: null,
+            timezone: null,
             debug,
             attempts: attempt,
             retryAfterSec: lastRetryAfter,
@@ -2509,10 +2583,13 @@ async function fetchOpenMeteoProbability(
         }
         const value = probabilities[index];
         const condition = normalizeOpenMeteoCondition(weatherCodes[index] ?? null);
+        const tempC = temperatures[index] ?? null;
         return {
           ok: true,
           value: typeof value === "number" ? value : null,
           condition,
+          tempC: typeof tempC === "number" ? tempC : null,
+          timezone: null,
           debug,
           attempts: attempt,
           retryAfterSec: lastRetryAfter,
@@ -2520,20 +2597,20 @@ async function fetchOpenMeteoProbability(
         };
       } catch (error) {
         console.warn("Open-Meteo forecast parse error", error);
-        return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+        return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
       }
     }
 
     if (!shouldRetryWeather(response.status) || attempt >= maxAttempts) {
       console.warn("Open-Meteo forecast error", response.status);
-      return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+      return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
     }
 
     const waitMs = computeRetryDelayMs(baseDelayMs, attempt, lastRetryAfter, delayCapMs);
     await sleep(waitMs - (Date.now() - started));
   }
 
-  return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+  return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
 }
 
 function shouldRetryWeather(status: number): boolean {
@@ -2734,7 +2811,7 @@ async function fetchWeatherApiProbability(
   };
   const key = env.WEATHERAPI_KEY?.trim();
   if (!key) {
-    return { ok: false, condition: null, debug, attempts: 0 };
+    return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: 0 };
   }
 
   const base = env.WEATHERAPI_BASE?.trim() || "https://api.weatherapi.com";
@@ -2743,7 +2820,7 @@ async function fetchWeatherApiProbability(
   const delayCapMs = getWeatherRetryDelayCapMs(env);
   const daysAhead = getDaysAheadUtc(bucket.dateString);
   if (daysAhead === null || daysAhead > 10) {
-    return { ok: true, value: null, condition: null, debug, attempts: 0, status: 0 };
+    return { ok: true, value: null, condition: null, tempC: null, timezone: null, debug, attempts: 0, status: 0 };
   }
   const daysParam = Math.max(1, daysAhead + 1);
   const url =
@@ -2767,6 +2844,7 @@ async function fetchWeatherApiProbability(
     if (response.ok) {
       try {
         const payload = (await response.json()) as {
+          location?: { tz_id?: string };
           forecast?: {
             forecastday?: Array<{
               date?: string;
@@ -2774,23 +2852,28 @@ async function fetchWeatherApiProbability(
                 time?: string;
                 time_epoch?: number;
                 chance_of_rain?: number | null;
+                temp_c?: number | null;
                 condition?: { code?: number; text?: string };
               }>;
             }>;
           };
         };
+        const timezone = payload.location?.tz_id ?? null;
         const forecastDays = payload.forecast?.forecastday ?? [];
         const day = forecastDays.find((entry) => entry.date === bucket.dateString);
         const hours = day?.hour ?? [];
         const targetEpoch = Date.parse(`${bucket.keyTime}`);
         const closest = findClosestHourEntry(hours, targetEpoch);
         const value = closest.entry?.chance_of_rain;
+        const tempC = closest.entry?.temp_c;
         const condition = normalizeWeatherApiCondition(closest.entry?.condition?.code, closest.entry?.condition?.text);
         debug.time_index = closest.index;
         return {
           ok: true,
           value: typeof value === "number" ? value : null,
           condition,
+          tempC: typeof tempC === "number" ? tempC : null,
+          timezone,
           debug,
           attempts: attempt,
           retryAfterSec: lastRetryAfter,
@@ -2798,20 +2881,20 @@ async function fetchWeatherApiProbability(
         };
       } catch (error) {
         console.warn("WeatherAPI parse error", error);
-        return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+        return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
       }
     }
 
     if (!shouldRetryWeather(response.status) || attempt >= maxAttempts) {
       console.warn("WeatherAPI error", response.status);
-      return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+      return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
     }
 
     const waitMs = computeRetryDelayMs(baseDelayMs, attempt, lastRetryAfter, delayCapMs);
     await sleep(waitMs);
   }
 
-  return { ok: false, condition: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+  return { ok: false, condition: null, tempC: null, timezone: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
 }
 
 function getDaysAheadUtc(targetDate: string): number | null {
@@ -2847,7 +2930,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
       )
       .order("kickoff_at", { ascending: true });
 
@@ -3943,6 +4026,8 @@ interface DbMatch {
   rain_probability?: number | null;
   weather_fetched_at?: string | null;
   weather_condition?: string | null;
+  weather_temp_c?: number | null;
+  weather_timezone?: string | null;
   reminder_sent_at?: string | null;
   api_league_id?: number | null;
   api_fixture_id?: number | null;

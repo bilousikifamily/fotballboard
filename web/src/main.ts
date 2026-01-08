@@ -29,7 +29,13 @@ type PredictionsResponse =
   | { ok: false; error: string };
 
 type MatchWeatherResponse =
-  | { ok: true; rain_probability: number | null; weather_condition?: string | null }
+  | {
+      ok: true;
+      rain_probability: number | null;
+      weather_condition?: string | null;
+      weather_temp_c?: number | null;
+      weather_timezone?: string | null;
+    }
   | { ok: false; error: string };
 
 type MatchWeatherDebugInfo = {
@@ -132,6 +138,8 @@ type Match = {
   rain_probability?: number | null;
   weather_fetched_at?: string | null;
   weather_condition?: string | null;
+  weather_temp_c?: number | null;
+  weather_timezone?: string | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   has_prediction?: boolean;
@@ -208,6 +216,8 @@ const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
 const matchWeatherConditionCache = new Map<number, string | null>();
+const matchWeatherTempCache = new Map<number, number | null>();
+const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
@@ -1728,16 +1738,22 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
     if (isWeatherFresh(match)) {
       const cachedValue = match.rain_probability ?? null;
       const cachedCondition = match.weather_condition ?? null;
+      const cachedTemp = match.weather_temp_c ?? null;
+      const cachedTimezone = match.weather_timezone ?? null;
       matchWeatherCache.set(match.id, cachedValue);
       matchWeatherConditionCache.set(match.id, cachedCondition);
-      updateMatchWeather(match.id, cachedValue, cachedCondition);
+      matchWeatherTempCache.set(match.id, cachedTemp);
+      matchWeatherTimezoneCache.set(match.id, cachedTimezone);
+      updateMatchWeather(match.id, cachedValue, cachedCondition, cachedTemp, cachedTimezone);
       return;
     }
     if (matchWeatherCache.has(match.id)) {
       updateMatchWeather(
         match.id,
         matchWeatherCache.get(match.id) ?? null,
-        matchWeatherConditionCache.get(match.id) ?? null
+        matchWeatherConditionCache.get(match.id) ?? null,
+        matchWeatherTempCache.get(match.id) ?? null,
+        matchWeatherTimezoneCache.get(match.id) ?? null
       );
       return;
     }
@@ -1751,14 +1767,29 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
       });
       const data = (await response.json()) as MatchWeatherResponse;
       if (!response.ok || !data.ok) {
-        updateMatchWeather(match.id, null, null);
+        updateMatchWeather(match.id, null, null, null, null);
         return;
       }
       matchWeatherCache.set(match.id, data.rain_probability ?? null);
       matchWeatherConditionCache.set(match.id, data.weather_condition ?? null);
-      updateMatchWeather(match.id, data.rain_probability ?? null, data.weather_condition ?? null);
+      matchWeatherTempCache.set(match.id, data.weather_temp_c ?? null);
+      matchWeatherTimezoneCache.set(match.id, data.weather_timezone ?? null);
+      const stored = matchesById.get(match.id);
+      if (stored) {
+        stored.rain_probability = data.rain_probability ?? null;
+        stored.weather_condition = data.weather_condition ?? null;
+        stored.weather_temp_c = data.weather_temp_c ?? null;
+        stored.weather_timezone = data.weather_timezone ?? null;
+      }
+      updateMatchWeather(
+        match.id,
+        data.rain_probability ?? null,
+        data.weather_condition ?? null,
+        data.weather_temp_c ?? null,
+        data.weather_timezone ?? null
+      );
     } catch {
-      updateMatchWeather(match.id, null, null);
+      updateMatchWeather(match.id, null, null, null, null);
     }
   });
   await Promise.all(tasks);
@@ -1776,7 +1807,13 @@ function isWeatherFresh(match: Match): boolean {
   return ageMinutes < WEATHER_CLIENT_CACHE_MIN;
 }
 
-function updateMatchWeather(matchId: number, rainProbability: number | null, condition: string | null): void {
+function updateMatchWeather(
+  matchId: number,
+  rainProbability: number | null,
+  condition: string | null,
+  tempC: number | null,
+  timezone: string | null
+): void {
   const el = app.querySelector<HTMLElement>(`[data-match-rain][data-match-id="${matchId}"]`);
   if (!el) {
     return;
@@ -1797,6 +1834,20 @@ function updateMatchWeather(matchId: number, rainProbability: number | null, con
     fillEl.style.width = `${percent ?? 0}%`;
   }
   el.setAttribute("aria-label", `Дощ: ${value}`);
+
+  const match = matchesById.get(matchId);
+  if (!match) {
+    return;
+  }
+  const tempEl = app.querySelector<HTMLElement>(`[data-match-temp][data-match-id="${matchId}"]`);
+  if (tempEl) {
+    tempEl.textContent = formatTemperature(tempC);
+  }
+  const tz = timezone ?? "Europe/Kyiv";
+  const localTimeEl = app.querySelector<HTMLElement>(`[data-match-local-time][data-match-id="${matchId}"]`);
+  if (localTimeEl) {
+    localTimeEl.textContent = formatTimeInZone(match.kickoff_at, tz);
+  }
 }
 
 function normalizeRainProbability(value: number | null): number | null {
@@ -1811,6 +1862,25 @@ function formatRainProbability(value: number | null): string {
     return "—";
   }
   return `${value}%`;
+}
+
+function formatTemperature(value: number | null): string {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "—°C";
+  }
+  return `${Math.round(value)}°C`;
+}
+
+function formatTimeInZone(value: string, timeZone: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 function getWeatherIcon(condition: string | null): string {
@@ -3062,10 +3132,13 @@ function renderMatchesList(matches: Match[]): string {
       const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
       const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
       const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
-      const kickoff = formatKyivTime(match.kickoff_at);
       const city = match.venue_city ?? match.venue_name ?? "";
+      const cityLabel = city ? city.toUpperCase() : "";
+      const kyivTime = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
+      const localTime = formatTimeInZone(match.kickoff_at, match.weather_timezone ?? "Europe/Kyiv");
+      const tempValue = formatTemperature(match.weather_temp_c ?? null);
       const cityMarkup = city
-        ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(city)}</span>`
+        ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(cityLabel)}</span>`
         : "";
       const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
       const rainValue = formatRainProbability(rainPercent);
@@ -3132,8 +3205,16 @@ function renderMatchesList(matches: Match[]): string {
         <div class="match-item ${predicted ? "has-prediction" : ""}">
           <div class="match-time">
             <div class="match-time-row">
-              <span class="match-time-value">${kickoff}</span>
+              <span class="match-time-value" data-match-kyiv-time data-match-id="${match.id}">${escapeHtml(
+                kyivTime
+              )}</span>
               ${cityMarkup}
+              <span class="match-meta-sep">·</span>
+              <span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(
+                localTime
+              )})</span>
+              <span class="match-meta-sep">·</span>
+              <span class="match-temp" data-match-temp data-match-id="${match.id}">${escapeHtml(tempValue)}</span>
             </div>
             ${rainMarkup}
           </div>
