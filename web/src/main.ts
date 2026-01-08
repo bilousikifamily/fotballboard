@@ -1799,6 +1799,12 @@ function isWeatherFresh(match: Match): boolean {
   if (!match.weather_fetched_at) {
     return false;
   }
+  if (match.weather_temp_c === null || match.weather_temp_c === undefined) {
+    return false;
+  }
+  if (!match.weather_timezone) {
+    return false;
+  }
   const fetchedAt = new Date(match.weather_fetched_at);
   if (Number.isNaN(fetchedAt.getTime())) {
     return false;
