@@ -46,6 +46,10 @@ type MatchWeatherDebugInfo = {
   weather_key?: string | null;
   is_stale?: boolean;
   rate_limited_locally?: boolean;
+  retry_after_sec?: number | null;
+  attempts?: number | null;
+  status_code?: number | null;
+  cooldown_until?: string | null;
   target_time?: string | null;
   date_string?: string | null;
   geocode_city?: string | null;
@@ -2175,6 +2179,18 @@ function formatWeatherDebug(debug?: MatchWeatherDebugInfo): string {
   }
   if (debug.rate_limited_locally !== undefined) {
     parts.push(`rl_local=${debug.rate_limited_locally ? "yes" : "no"}`);
+  }
+  if (debug.status_code !== undefined && debug.status_code !== null) {
+    parts.push(`status=${debug.status_code}`);
+  }
+  if (debug.attempts !== undefined && debug.attempts !== null) {
+    parts.push(`attempts=${debug.attempts}`);
+  }
+  if (debug.retry_after_sec !== undefined && debug.retry_after_sec !== null) {
+    parts.push(`retry_after=${debug.retry_after_sec}`);
+  }
+  if (debug.cooldown_until) {
+    parts.push(`cooldown=${debug.cooldown_until}`);
   }
   if (debug.cache_age_min !== undefined && debug.cache_age_min !== null) {
     parts.push(`cache_age_min=${debug.cache_age_min}`);

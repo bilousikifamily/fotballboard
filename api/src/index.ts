@@ -23,6 +23,7 @@ type WeatherCacheEntry = {
 const weatherCache = new Map<string, WeatherCacheEntry>();
 const weatherInFlight = new Map<string, Promise<WeatherFetchResult>>();
 const weatherRateLimiter = createRateLimiter();
+let weatherCooldownUntilMs = 0;
 
 interface Env {
   BOT_TOKEN: string;
@@ -1205,6 +1206,10 @@ type WeatherDebugInfo = {
   weather_key?: string | null;
   is_stale?: boolean;
   rate_limited_locally?: boolean;
+  retry_after_sec?: number | null;
+  attempts?: number | null;
+  status_code?: number | null;
+  cooldown_until?: string | null;
   target_time?: string | null;
   date_string?: string | null;
   geocode_city?: string | null;
@@ -1765,6 +1770,10 @@ type WeatherForecastResult = {
   rateLimitedLocally: boolean;
   key: string;
   debug: WeatherFetchDebug;
+  attempts?: number;
+  retryAfterSec?: number | null;
+  statusCode?: number | null;
+  cooldownUntil?: string | null;
 };
 
 async function fetchWeatherForecast(
@@ -1819,6 +1828,55 @@ async function fetchWeatherForecast(
   }
 
   const staleEntry = cacheEntry && now <= cacheEntry.staleUntil ? cacheEntry : null;
+
+  if (now < weatherCooldownUntilMs) {
+    const cooldownUntil = new Date(weatherCooldownUntilMs).toISOString();
+    if (staleEntry) {
+      logWeatherFetch({
+        key,
+        cacheHit: true,
+        cacheState: "stale",
+        outboundRequest: false,
+        statusCode: null,
+        latencyMs: 0,
+        attempts: 0,
+        retryAfterSec: null,
+        isStale: true
+      });
+      return {
+        ok: true,
+        value: staleEntry.value,
+        cacheState: "stale",
+        isStale: true,
+        rateLimitedLocally: true,
+        key,
+        debug,
+        cooldownUntil
+      };
+    }
+    logWeatherFetch({
+      key,
+      cacheHit: false,
+      cacheState: "miss",
+      outboundRequest: false,
+      statusCode: 429,
+      latencyMs: 0,
+      attempts: 0,
+      retryAfterSec: null,
+      isStale: false
+    });
+    return {
+      ok: false,
+      value: null,
+      cacheState: "miss",
+      isStale: false,
+      rateLimitedLocally: true,
+      key,
+      debug,
+      statusCode: 429,
+      cooldownUntil
+    };
+  }
 
   const inFlight = weatherInFlight.get(key);
   if (inFlight) {
@@ -1960,8 +2018,17 @@ async function fetchWeatherForecast(
       isStale: false,
       rateLimitedLocally: false,
       key,
-      debug: result.debug
+      debug: result.debug,
+      attempts: result.attempts,
+      retryAfterSec: result.retryAfterSec ?? null,
+      statusCode: result.status ?? null
     };
+  }
+
+  if (result.status === 429) {
+    const retryAfterMs = (result.retryAfterSec ?? 30) * 1000;
+    const nextAllowed = Date.now() + Math.min(retryAfterMs, getWeatherRetryDelayCapMs(env));
+    weatherCooldownUntilMs = Math.max(weatherCooldownUntilMs, nextAllowed);
   }
 
   if (staleEntry) {
@@ -1983,7 +2050,11 @@ async function fetchWeatherForecast(
       isStale: true,
       rateLimitedLocally: false,
       key,
-      debug: result.debug
+      debug: result.debug,
+      attempts: result.attempts,
+      retryAfterSec: result.retryAfterSec ?? null,
+      statusCode: result.status ?? null,
+      cooldownUntil: weatherCooldownUntilMs ? new Date(weatherCooldownUntilMs).toISOString() : null
     };
   }
 
@@ -2005,7 +2076,11 @@ async function fetchWeatherForecast(
     isStale: false,
     rateLimitedLocally: false,
     key,
-    debug: result.debug
+    debug: result.debug,
+    attempts: result.attempts,
+    retryAfterSec: result.retryAfterSec ?? null,
+    statusCode: result.status ?? null,
+    cooldownUntil: weatherCooldownUntilMs ? new Date(weatherCooldownUntilMs).toISOString() : null
   };
 }
 
@@ -2183,6 +2258,10 @@ async function fetchMatchWeatherDetailed(
   debug.is_stale = forecast.isStale;
   debug.rate_limited_locally = forecast.rateLimitedLocally;
   debug.cache_used = forecast.cacheState !== "miss";
+  debug.retry_after_sec = forecast.retryAfterSec ?? null;
+  debug.attempts = forecast.attempts ?? null;
+  debug.status_code = forecast.statusCode ?? null;
+  debug.cooldown_until = forecast.cooldownUntil ?? null;
   debug.target_time = forecast.debug.target_time;
   debug.date_string = forecast.debug.date_string;
   debug.forecast_status = forecast.debug.forecast_status;
