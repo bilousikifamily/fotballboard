@@ -18,6 +18,8 @@ type WeatherCacheEntry = {
   fetchedAt: number;
   expiresAt: number;
   staleUntil: number;
+  isError?: boolean;
+  statusCode?: number | null;
 };
 
 const weatherCache = new Map<string, WeatherCacheEntry>();
@@ -1805,6 +1807,29 @@ async function fetchWeatherForecast(
   const cacheEntry = weatherCache.get(key) ?? null;
   const now = Date.now();
   if (cacheEntry && now <= cacheEntry.expiresAt) {
+    if (cacheEntry.isError) {
+      logWeatherFetch({
+        key,
+        cacheHit: true,
+        cacheState: "fresh",
+        outboundRequest: false,
+        statusCode: cacheEntry.statusCode ?? null,
+        latencyMs: 0,
+        attempts: 0,
+        retryAfterSec: null,
+        isStale: false
+      });
+      return {
+        ok: false,
+        value: null,
+        cacheState: "fresh",
+        isStale: false,
+        rateLimitedLocally: true,
+        key,
+        debug,
+        statusCode: cacheEntry.statusCode ?? null
+      };
+    }
     logWeatherFetch({
       key,
       cacheHit: true,
@@ -2058,6 +2083,16 @@ async function fetchWeatherForecast(
     };
   }
 
+  const ttlMin = getWeatherCacheTtlMin(env);
+  const staleHours = getWeatherStaleTtlHours(env);
+  weatherCache.set(key, {
+    value: null,
+    fetchedAt: Date.now(),
+    expiresAt: Date.now() + ttlMin * 60 * 1000,
+    staleUntil: Date.now() + staleHours * 60 * 60 * 1000,
+    isError: true,
+    statusCode: result.status ?? null
+  });
   logWeatherFetch({
     key,
     cacheHit: false,
