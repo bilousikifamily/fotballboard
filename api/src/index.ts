@@ -1090,7 +1090,7 @@ async function createMatch(
         created_by: userId
       })
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at"
       )
       .single();
 
@@ -1168,6 +1168,10 @@ type WeatherDebugInfo = {
   venue_lat?: number | null;
   venue_lon?: number | null;
   kickoff_at?: string | null;
+  rain_probability?: number | null;
+  weather_fetched_at?: string | null;
+  cache_used?: boolean;
+  cache_age_min?: number | null;
   target_time?: string | null;
   date_string?: string | null;
   geocode_city?: string | null;
@@ -1703,6 +1707,23 @@ async function saveMatchCoordinates(
   }
 }
 
+async function saveMatchWeatherCache(
+  supabase: SupabaseClient,
+  matchId: number,
+  rainProbability: number | null
+): Promise<void> {
+  const { error } = await supabase
+    .from("matches")
+    .update({
+      rain_probability: rainProbability,
+      weather_fetched_at: new Date().toISOString()
+    })
+    .eq("id", matchId);
+  if (error) {
+    console.error("Failed to store match weather", error);
+  }
+}
+
 async function fetchMatchWeather(
   supabase: SupabaseClient,
   match: DbMatch
@@ -1718,6 +1739,8 @@ type WeatherDetailedResult =
   | { ok: true; rainProbability: number | null; debug: WeatherDebugInfo }
   | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error"; debug: WeatherDebugInfo };
 
+const WEATHER_CACHE_HOURS = 3;
+
 async function fetchMatchWeatherDetailed(
   supabase: SupabaseClient,
   match: DbMatch
@@ -1727,10 +1750,19 @@ async function fetchMatchWeatherDetailed(
     venue_name: match.venue_name ?? null,
     venue_lat: match.venue_lat ?? null,
     venue_lon: match.venue_lon ?? null,
-    kickoff_at: match.kickoff_at ?? null
+    kickoff_at: match.kickoff_at ?? null,
+    rain_probability: match.rain_probability ?? null,
+    weather_fetched_at: match.weather_fetched_at ?? null
   };
   if (!match.kickoff_at) {
     return { ok: false, reason: "bad_kickoff", debug };
+  }
+
+  const cacheInfo = getWeatherCacheInfo(match);
+  if (cacheInfo.fresh) {
+    debug.cache_used = true;
+    debug.cache_age_min = cacheInfo.ageMinutes;
+    return { ok: true, rainProbability: match.rain_probability ?? null, debug };
   }
 
   let lat = match.venue_lat ?? null;
@@ -1761,9 +1793,23 @@ async function fetchMatchWeatherDetailed(
   debug.forecast_status = weather.debug.forecast_status;
   debug.time_index = weather.debug.time_index;
   if (!weather.ok) {
+    await saveMatchWeatherCache(supabase, match.id, match.rain_probability ?? null);
     return { ok: false, reason: "api_error", debug };
   }
+  await saveMatchWeatherCache(supabase, match.id, weather.value ?? null);
   return { ok: true, rainProbability: weather.value, debug };
+}
+
+function getWeatherCacheInfo(match: DbMatch): { fresh: boolean; ageMinutes: number | null } {
+  if (!match.weather_fetched_at) {
+    return { fresh: false, ageMinutes: null };
+  }
+  const fetchedAt = new Date(match.weather_fetched_at);
+  if (Number.isNaN(fetchedAt.getTime())) {
+    return { fresh: false, ageMinutes: null };
+  }
+  const ageMinutes = Math.floor((Date.now() - fetchedAt.getTime()) / (60 * 1000));
+  return { fresh: ageMinutes < WEATHER_CACHE_HOURS * 60, ageMinutes };
 }
 
 type GeocodeResult = { ok: true; lat: number; lon: number; status: number } | { ok: false; status: number };
@@ -3006,6 +3052,8 @@ interface DbMatch {
   venue_city?: string | null;
   venue_lat?: number | null;
   venue_lon?: number | null;
+  rain_probability?: number | null;
+  weather_fetched_at?: string | null;
   reminder_sent_at?: string | null;
   api_league_id?: number | null;
   api_fixture_id?: number | null;

@@ -38,6 +38,10 @@ type MatchWeatherDebugInfo = {
   venue_lat?: number | null;
   venue_lon?: number | null;
   kickoff_at?: string | null;
+  rain_probability?: number | null;
+  weather_fetched_at?: string | null;
+  cache_used?: boolean;
+  cache_age_min?: number | null;
   target_time?: string | null;
   date_string?: string | null;
   geocode_city?: string | null;
@@ -2149,6 +2153,15 @@ function formatWeatherDebug(debug?: MatchWeatherDebugInfo): string {
   }
   if (debug.kickoff_at) {
     parts.push(`kickoff=${debug.kickoff_at}`);
+  }
+  if (debug.weather_fetched_at) {
+    parts.push(`fetched=${debug.weather_fetched_at}`);
+  }
+  if (debug.cache_used !== undefined) {
+    parts.push(`cache=${debug.cache_used ? "yes" : "no"}`);
+  }
+  if (debug.cache_age_min !== undefined && debug.cache_age_min !== null) {
+    parts.push(`cache_age_min=${debug.cache_age_min}`);
   }
   if (debug.target_time) {
     parts.push(`target=${debug.target_time}`);
