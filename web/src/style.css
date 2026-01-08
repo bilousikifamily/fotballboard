@@ -776,7 +776,7 @@ h1 {
   display: flex;
   gap: 14px;
   overflow-x: auto;
-  padding: 18px 0 0;
+  padding: 18px 0 18px;
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
@@ -1103,6 +1103,7 @@ h1 {
   width: calc(100% + 36px);
   margin: 0 -18px -16px;
   border-radius: 0 0 18px 18px;
+  padding: 12px 24px;
 }
 
 .match-odds-value {
