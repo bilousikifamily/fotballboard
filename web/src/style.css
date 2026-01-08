@@ -894,6 +894,15 @@ h1 {
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  align-items: baseline;
+}
+
+.match-meta-sep {
+  opacity: 0.6;
 }
 
 .match-result {

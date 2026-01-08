@@ -521,6 +521,44 @@ export default {
       return jsonResponse({ ok: true, debug: oddsResult.debug }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/matches/weather") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const initDataHeader = getInitDataFromHeaders(request);
+      const auth = await authenticateInitData(initDataHeader, env.BOT_TOKEN);
+      if (!auth.ok) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      const matchIdParam = url.searchParams.get("match_id");
+      const matchId = parseInteger(matchIdParam);
+      if (matchId === null) {
+        return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+      }
+
+      const match = await getMatch(supabase, matchId);
+      if (!match) {
+        return jsonResponse({ ok: false, error: "match_not_found" }, 404, corsHeaders());
+      }
+
+      const weather = await fetchMatchWeather(supabase, match);
+      if (!weather.ok) {
+        return jsonResponse({ ok: false, error: weather.reason }, 200, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, rain_probability: weather.rainProbability }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/predictions") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -1039,7 +1077,7 @@ async function createMatch(
         created_by: userId
       })
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon"
       )
       .single();
 
@@ -1101,6 +1139,15 @@ type OddsFetchResult =
 type OddsSaveResult =
   | { ok: true }
   | { ok: false; detail?: string };
+
+type VenueUpdate = {
+  venue_name?: string | null;
+  venue_city?: string | null;
+};
+
+type WeatherResult =
+  | { ok: true; rainProbability: number | null }
+  | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error" };
 
 async function fetchAndStoreOdds(
   env: Env,
@@ -1176,7 +1223,7 @@ async function fetchAndStoreOdds(
     }));
   }
 
-  let fixtureId = selectFixtureId(
+  let selectedFixture = selectFixture(
     headToHeadResult.fixtures,
     homeTeamResult.id,
     awayTeamResult.id,
@@ -1184,7 +1231,7 @@ async function fetchAndStoreOdds(
     dateParam,
     timezone
   );
-  if (!fixtureId) {
+  if (!selectedFixture) {
     const fallbackReason = headToHeadResult.fixtures.length ? "headtohead_no_match" : "headtohead_empty";
     if (debug) {
       debug.fallbackReason = fallbackReason;
@@ -1213,7 +1260,7 @@ async function fetchAndStoreOdds(
         awayId: item.teams?.away?.id
       }));
     }
-    fixtureId = selectFixtureId(
+    selectedFixture = selectFixture(
       leagueResult.fixtures,
       homeTeamResult.id,
       awayTeamResult.id,
@@ -1223,6 +1270,7 @@ async function fetchAndStoreOdds(
     );
   }
 
+  const fixtureId = selectedFixture?.fixture?.id ?? null;
   if (debug) {
     debug.fixtureId = fixtureId ?? null;
   }
@@ -1230,6 +1278,8 @@ async function fetchAndStoreOdds(
     console.warn("Odds skipped: fixture not found", match.id);
     return { ok: false, reason: "fixture_not_found", debug };
   }
+
+  await saveMatchVenue(supabase, match, selectedFixture);
 
   const oddsResult = await fetchOdds(env, fixtureId);
   if (!oddsResult.ok) {
@@ -1326,7 +1376,7 @@ function formatDateString(date: Date, timeZone: string): string {
 }
 
 type FixturePayload = {
-  fixture?: { id?: number; date?: string };
+  fixture?: { id?: number; date?: string; venue?: { name?: string; city?: string } };
   league?: { id?: number; name?: string };
   teams?: { home?: { id?: number; name?: string }; away?: { id?: number; name?: string } };
 };
@@ -1481,14 +1531,14 @@ async function fetchFixturesByLeague(
   return { fixtures, source: "range", dateStatus, rangeStatus };
 }
 
-function selectFixtureId(
+function selectFixture(
   fixtures: FixturePayload[],
   homeTeamId: number,
   awayTeamId: number,
   leagueId: number,
   dateParam: string,
   timezone: string
-): number | null {
+): FixturePayload | null {
   const filtered = fixtures.filter((item) => {
     const fixtureHomeId = item.teams?.home?.id ?? null;
     const fixtureAwayId = item.teams?.away?.id ?? null;
@@ -1511,8 +1561,7 @@ function selectFixtureId(
     return matchDate === dateParam;
   });
 
-  const pick = dateFiltered[0] ?? leagueFiltered[0] ?? filtered[0];
-  return pick?.fixture?.id ?? null;
+  return dateFiltered[0] ?? leagueFiltered[0] ?? filtered[0] ?? null;
 }
 
 function getDateStringInZone(value: string, timeZone: string): string | null {
@@ -1585,6 +1634,179 @@ async function saveMatchOdds(
   return { ok: true };
 }
 
+async function saveMatchVenue(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  fixture: FixturePayload | null
+): Promise<void> {
+  if (!fixture) {
+    return;
+  }
+  const venueName = fixture.fixture?.venue?.name?.trim() ?? "";
+  const venueCity = fixture.fixture?.venue?.city?.trim() ?? "";
+  const update: VenueUpdate = {};
+  if (venueName && venueName !== (match.venue_name ?? "")) {
+    update.venue_name = venueName;
+  }
+  if (venueCity && venueCity !== (match.venue_city ?? "")) {
+    update.venue_city = venueCity;
+  }
+  if (!Object.keys(update).length) {
+    return;
+  }
+  const { error } = await supabase.from("matches").update(update).eq("id", match.id);
+  if (error) {
+    console.error("Failed to store match venue", error);
+  }
+}
+
+async function saveMatchCoordinates(
+  supabase: SupabaseClient,
+  matchId: number,
+  lat: number,
+  lon: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("matches")
+    .update({ venue_lat: lat, venue_lon: lon })
+    .eq("id", matchId);
+  if (error) {
+    console.error("Failed to store match coordinates", error);
+  }
+}
+
+async function fetchMatchWeather(
+  supabase: SupabaseClient,
+  match: DbMatch
+): Promise<WeatherResult> {
+  if (!match.kickoff_at) {
+    return { ok: false, reason: "bad_kickoff" };
+  }
+
+  let lat = match.venue_lat ?? null;
+  let lon = match.venue_lon ?? null;
+  const city = match.venue_city ?? match.venue_name ?? null;
+
+  if ((!lat || !lon) && city) {
+    const geo = await geocodeCity(city);
+    if (geo) {
+      lat = geo.lat;
+      lon = geo.lon;
+      await saveMatchCoordinates(supabase, match.id, geo.lat, geo.lon);
+    }
+  }
+
+  if (!lat || !lon) {
+    return { ok: false, reason: "missing_location" };
+  }
+
+  const weather = await fetchRainProbability(lat, lon, match.kickoff_at);
+  if (!weather.ok) {
+    return { ok: false, reason: "api_error" };
+  }
+  return { ok: true, rainProbability: weather.value };
+}
+
+async function geocodeCity(city: string): Promise<{ lat: number; lon: number } | null> {
+  const trimmed = city.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=1&language=uk&format=json`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.warn("Open-Meteo geocoding error", response.status);
+    return null;
+  }
+  try {
+    const payload = (await response.json()) as { results?: Array<{ latitude?: number; longitude?: number }> };
+    const first = payload.results?.[0];
+    const lat = first?.latitude;
+    const lon = first?.longitude;
+    if (typeof lat !== "number" || typeof lon !== "number") {
+      return null;
+    }
+    return { lat, lon };
+  } catch (error) {
+    console.warn("Open-Meteo geocoding parse error", error);
+    return null;
+  }
+}
+
+async function fetchRainProbability(
+  lat: number,
+  lon: number,
+  kickoffAt: string
+): Promise<{ ok: true; value: number | null } | { ok: false }> {
+  const targetTime = formatRoundedHourInZone(kickoffAt, "Europe/Kyiv");
+  if (!targetTime) {
+    return { ok: false };
+  }
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(String(lat))}` +
+    `&longitude=${encodeURIComponent(String(lon))}` +
+    "&hourly=precipitation_probability&timezone=Europe%2FKyiv&forecast_days=7";
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.warn("Open-Meteo forecast error", response.status);
+    return { ok: false };
+  }
+  try {
+    const payload = (await response.json()) as {
+      hourly?: { time?: string[]; precipitation_probability?: Array<number | null> };
+    };
+    const times = payload.hourly?.time ?? [];
+    const probabilities = payload.hourly?.precipitation_probability ?? [];
+    const index = times.indexOf(targetTime);
+    if (index < 0) {
+      return { ok: true, value: null };
+    }
+    const value = probabilities[index];
+    return { ok: true, value: typeof value === "number" ? value : null };
+  } catch (error) {
+    console.warn("Open-Meteo forecast parse error", error);
+    return { ok: false };
+  }
+}
+
+function formatRoundedHourInZone(value: string, timeZone: string): string | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+  const lookup = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  let year = Number(lookup("year"));
+  let month = Number(lookup("month"));
+  let day = Number(lookup("day"));
+  let hour = Number(lookup("hour"));
+  const minute = Number(lookup("minute"));
+  if (!year || !month || !day || Number.isNaN(hour) || Number.isNaN(minute)) {
+    return null;
+  }
+  if (minute >= 30) {
+    hour += 1;
+  }
+  if (hour >= 24) {
+    hour = 0;
+    const base = new Date(Date.UTC(year, month - 1, day));
+    base.setUTCDate(base.getUTCDate() + 1);
+    year = base.getUTCFullYear();
+    month = base.getUTCMonth() + 1;
+    day = base.getUTCDate();
+  }
+  const pad = (valueNum: number) => String(valueNum).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:00`;
+}
+
 function normalizeTeamName(value: string): string {
   return value
     .toLowerCase()
@@ -1607,7 +1829,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, odds_json, odds_fetched_at"
       )
       .order("kickoff_at", { ascending: true });
 
@@ -1664,7 +1886,7 @@ async function getMatch(supabase: SupabaseClient, matchId: number): Promise<DbMa
     const { data, error } = await supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon"
       )
       .eq("id", matchId)
       .single();
@@ -2696,6 +2918,10 @@ interface DbMatch {
   status: string;
   home_score?: number | null;
   away_score?: number | null;
+  venue_name?: string | null;
+  venue_city?: string | null;
+  venue_lat?: number | null;
+  venue_lon?: number | null;
   reminder_sent_at?: string | null;
   api_league_id?: number | null;
   api_fixture_id?: number | null;

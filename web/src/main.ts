@@ -28,6 +28,10 @@ type PredictionsResponse =
   | { ok: true; predictions: PredictionView[] }
   | { ok: false; error: string };
 
+type MatchWeatherResponse =
+  | { ok: true; rain_probability: number | null }
+  | { ok: false; error: string };
+
 type CreateMatchResponse =
   | { ok: true; match: Match }
   | { ok: false; error: string };
@@ -90,6 +94,10 @@ type Match = {
   status: string;
   home_score?: number | null;
   away_score?: number | null;
+  venue_name?: string | null;
+  venue_city?: string | null;
+  venue_lat?: number | null;
+  venue_lon?: number | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   has_prediction?: boolean;
@@ -164,6 +172,7 @@ let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
+const matchWeatherCache = new Map<number, number | null>();
 const TOP_PREDICTIONS_LIMIT = 4;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
 type LogoPosition = typeof LOGO_POSITIONS[number];
@@ -1645,9 +1654,57 @@ async function loadMatches(date: string): Promise<void> {
     container.innerHTML = renderMatchesList(data.matches);
     bindMatchActions();
     renderAdminMatchOptions(data.matches);
+    void loadMatchWeather(data.matches);
   } catch {
     container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
   }
+}
+
+async function loadMatchWeather(matches: Match[]): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+  const tasks = matches.map(async (match) => {
+    if (matchWeatherCache.has(match.id)) {
+      updateMatchWeather(match.id, matchWeatherCache.get(match.id) ?? null);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBase}/api/matches/weather?match_id=${match.id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Telegram-InitData": initData
+        }
+      });
+      const data = (await response.json()) as MatchWeatherResponse;
+      if (!response.ok || !data.ok) {
+        updateMatchWeather(match.id, null);
+        return;
+      }
+      matchWeatherCache.set(match.id, data.rain_probability ?? null);
+      updateMatchWeather(match.id, data.rain_probability ?? null);
+    } catch {
+      updateMatchWeather(match.id, null);
+    }
+  });
+  await Promise.all(tasks);
+}
+
+function updateMatchWeather(matchId: number, rainProbability: number | null): void {
+  const el = app.querySelector<HTMLElement>(`[data-match-rain][data-match-id="${matchId}"]`);
+  if (!el) {
+    return;
+  }
+  el.textContent = `Дощ: ${formatRainProbability(rainProbability)}`;
+}
+
+function formatRainProbability(value: number | null): string {
+  if (typeof value !== "number") {
+    return "—";
+  }
+  const clamped = Math.min(100, Math.max(0, Math.round(value)));
+  return `${clamped}%`;
 }
 
 async function submitMatch(form: HTMLFormElement): Promise<void> {
@@ -2719,6 +2776,11 @@ function renderMatchesList(matches: Match[]): string {
       const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
       const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
       const kickoff = formatKyivTime(match.kickoff_at);
+      const city = match.venue_city ?? match.venue_name ?? "";
+      const cityMarkup = city
+        ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(city)}</span>`
+        : "";
+      const rainMarkup = `<span class="match-meta-sep">·</span><span class="match-rain" data-match-rain data-match-id="${match.id}">Дощ: …</span>`;
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
@@ -2769,7 +2831,11 @@ function renderMatchesList(matches: Match[]): string {
 
       return `
         <div class="match-item ${predicted ? "has-prediction" : ""}">
-          <div class="match-time">${kickoff}</div>
+          <div class="match-time">
+            <span class="match-time-value">${kickoff}</span>
+            ${cityMarkup}
+            ${rainMarkup}
+          </div>
           <article class="match">
             ${oddsMarkup}
             <div class="match-header">
