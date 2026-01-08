@@ -1852,7 +1852,7 @@ function updateMatchWeather(
   const tz = timezone ?? "Europe/Kyiv";
   const localTimeEl = app.querySelector<HTMLElement>(`[data-match-local-time][data-match-id="${matchId}"]`);
   if (localTimeEl) {
-    localTimeEl.textContent = formatTimeInZone(match.kickoff_at, tz);
+    localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, tz)})`;
   }
 }
 
