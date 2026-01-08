@@ -3291,7 +3291,7 @@ function renderMatchesList(matches: Match[]): string {
             </div>
             <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
             <p class="muted small" data-prediction-status></p>
-            <button class="button small-button prediction-submit" type="submit">ПРОГНОЗ</button>
+            <button class="button small-button prediction-submit" type="submit">ПРОГОЛОСУВАТИ</button>
           </form>
         `;
 
