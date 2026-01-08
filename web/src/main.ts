@@ -2683,7 +2683,7 @@ async function togglePredictions(
     }
 
     updateMatchAverage(matchId, data.predictions);
-    container.innerHTML = renderPredictionsPanel(data.predictions);
+    container.innerHTML = renderPredictionsPanel(matchId, data.predictions);
     if (form && data.predictions.some((item) => item.user_id === currentUserId)) {
       form.classList.add("is-hidden");
     }
@@ -2693,7 +2693,7 @@ async function togglePredictions(
   }
 }
 
-function renderPredictionsPanel(predictions: PredictionView[]): string {
+function renderPredictionsPanel(matchId: number, predictions: PredictionView[]): string {
   if (!predictions.length) {
     return `<p class="muted small">Поки що немає прогнозів.</p>`;
   }
@@ -3215,8 +3215,8 @@ function renderMatchesList(matches: Match[]): string {
               ${awayLogoMarkup}
             </div>
             <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
-            <button class="button small-button prediction-submit" type="submit">ПРОГНОЗ</button>
             <p class="muted small" data-prediction-status></p>
+            <button class="button small-button prediction-submit" type="submit">ПРОГНОЗ</button>
           </form>
         `;
 

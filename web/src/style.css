@@ -817,6 +817,7 @@ h1 {
   gap: 10px;
   text-align: center;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  overflow: visible;
 }
 
 .match-empty {
@@ -973,6 +974,10 @@ h1 {
   gap: 8px;
   justify-items: stretch;
   width: 100%;
+}
+
+.prediction-form p {
+  margin: 0;
 }
 
 .prediction-form.is-hidden {
