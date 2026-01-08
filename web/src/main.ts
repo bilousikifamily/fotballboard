@@ -2718,7 +2718,7 @@ function renderMatchesList(matches: Match[]): string {
       const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
       const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
       const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
-      const kickoff = formatKyivDateTime(match.kickoff_at);
+      const kickoff = formatKyivTime(match.kickoff_at);
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
@@ -2987,6 +2987,18 @@ function formatKyivDateTime(value: string): string {
     timeZone: "Europe/Kyiv",
     day: "2-digit",
     month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function formatKyivTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone: "Europe/Kyiv",
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
