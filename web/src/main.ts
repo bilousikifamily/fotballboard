@@ -3088,6 +3088,56 @@ function formatProbability(value: number): string {
   return `${Math.round(value)}%`;
 }
 
+function formatTournamentStage(stage: string): string {
+  const trimmed = stage.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("quarter-final")) {
+    return "ЧВЕРТЬФІНАЛ";
+  }
+  if (lower.includes("semi-final")) {
+    return "ПІВФІНАЛ";
+  }
+  if (lower.includes("final")) {
+    return "ФІНАЛ";
+  }
+  if (lower.includes("1/8")) {
+    return "1/8 ФІНАЛУ";
+  }
+  if (lower.includes("1/4")) {
+    return "1/4 ФІНАЛУ";
+  }
+  if (lower.includes("1/2")) {
+    return "1/2 ФІНАЛУ";
+  }
+  const roundOfMatch = lower.match(/round\s+of\s+(\d+)/);
+  if (roundOfMatch) {
+    const roundNumber = Number.parseInt(roundOfMatch[1], 10);
+    if (roundNumber === 16) {
+      return "1/8 ФІНАЛУ";
+    }
+    if (roundNumber === 8) {
+      return "1/4 ФІНАЛУ";
+    }
+    if (roundNumber === 4) {
+      return "ПІВФІНАЛ";
+    }
+    if (roundNumber === 2) {
+      return "ФІНАЛ";
+    }
+    if (roundNumber === 32) {
+      return "1/16 ФІНАЛУ";
+    }
+  }
+  const regularMatch = lower.match(/regular\s+season\s*-\s*(\d+)/);
+  if (regularMatch) {
+    return `${regularMatch[1]} РАУНД`;
+  }
+  return trimmed;
+}
+
 function updateScoreOddsIndicator(form: HTMLFormElement): void {
   const label = form.querySelector<HTMLElement>("[data-match-odds-score]");
   if (!label) {
@@ -3177,7 +3227,7 @@ function renderMatchesList(matches: Match[]): string {
         </div>
       `;
       const tournamentName = match.tournament_name?.trim() ?? "";
-      const tournamentStage = match.tournament_stage?.trim() ?? "";
+      const tournamentStage = match.tournament_stage ? formatTournamentStage(match.tournament_stage) : "";
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
       const hasCompetition = Boolean(tournamentName || tournamentStage);
       const hasOdds = Boolean(oddsMarkup.trim());

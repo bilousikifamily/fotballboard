@@ -1112,10 +1112,11 @@ h1 {
   display: grid;
   gap: 2px;
   margin: -16px -18px 0;
-  padding: 10px 12px 8px;
+  padding: 10px 12px 4px;
   background: var(--surface-strong);
   border-radius: 18px 18px 0 0;
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  border: 1px solid var(--outline-dark);
+  border-bottom: 0;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
