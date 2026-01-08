@@ -198,6 +198,43 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
 
+function isAllLeagueId(value: MatchLeagueId): value is AllLeagueId {
+  return (
+    value === "ukrainian-premier-league" ||
+    value === "english-premier-league" ||
+    value === "la-liga" ||
+    value === "serie-a" ||
+    value === "bundesliga" ||
+    value === "ligue-1"
+  );
+}
+
+function resolveLogoLeagueId(leagueId: MatchLeagueId | null): AllLeagueId | null {
+  if (!leagueId) {
+    return null;
+  }
+  if (isAllLeagueId(leagueId)) {
+    return leagueId;
+  }
+  switch (leagueId) {
+    case "fa-cup":
+      return "english-premier-league";
+    case "copa-del-rey":
+      return "la-liga";
+    case "coppa-italia":
+      return "serie-a";
+    case "dfb-pokal":
+      return "bundesliga";
+    case "coupe-de-france":
+      return "ligue-1";
+    case "uefa-champions-league":
+    case "uefa-europa-league":
+    case "uefa-europa-conference-league":
+      return null;
+  }
+  return null;
+}
+
 const NOTICE_RULES = [
   "Прогнози приймаються\nза 60 хв до старту матча",
   "Вгаданий результат +1 бал",
@@ -850,8 +887,9 @@ function getMatchTeamInfo(match: Match): {
 } {
   const homeClubId = match.home_club_id ?? null;
   const awayClubId = match.away_club_id ?? null;
+  const matchLeagueId = (match.league_id as MatchLeagueId | null) ?? null;
   const resolvedLeague =
-    (match.league_id as AllLeagueId | null) ||
+    resolveLogoLeagueId(matchLeagueId) ||
     (homeClubId ? findClubLeague(homeClubId) : null) ||
     (awayClubId ? findClubLeague(awayClubId) : null);
 
