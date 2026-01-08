@@ -1141,7 +1141,7 @@ async function createMatch(
         created_by: userId
       })
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone"
       )
       .single();
 
@@ -1207,6 +1207,8 @@ type OddsSaveResult =
 type VenueUpdate = {
   venue_name?: string | null;
   venue_city?: string | null;
+  tournament_name?: string | null;
+  tournament_stage?: string | null;
 };
 
 type WeatherResult =
@@ -1468,7 +1470,7 @@ function formatDateString(date: Date, timeZone: string): string {
 
 type FixturePayload = {
   fixture?: { id?: number; date?: string; venue?: { name?: string; city?: string } };
-  league?: { id?: number; name?: string };
+  league?: { id?: number; name?: string; round?: string };
   teams?: { home?: { id?: number; name?: string }; away?: { id?: number; name?: string } };
 };
 
@@ -1735,12 +1737,20 @@ async function saveMatchVenue(
   }
   const venueName = fixture.fixture?.venue?.name?.trim() ?? "";
   const venueCity = fixture.fixture?.venue?.city?.trim() ?? "";
+  const tournamentName = fixture.league?.name?.trim() ?? "";
+  const tournamentStage = fixture.league?.round?.trim() ?? "";
   const update: VenueUpdate = {};
   if (venueName && venueName !== (match.venue_name ?? "")) {
     update.venue_name = venueName;
   }
   if (venueCity && venueCity !== (match.venue_city ?? "")) {
     update.venue_city = venueCity;
+  }
+  if (tournamentName && tournamentName !== (match.tournament_name ?? "")) {
+    update.tournament_name = tournamentName;
+  }
+  if (tournamentStage && tournamentStage !== (match.tournament_stage ?? "")) {
+    update.tournament_stage = tournamentStage;
   }
   if (!Object.keys(update).length) {
     return;
@@ -2945,7 +2955,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
       )
       .order("kickoff_at", { ascending: true });
 
@@ -3002,7 +3012,7 @@ async function getMatch(supabase: SupabaseClient, matchId: number): Promise<DbMa
     const { data, error } = await supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage"
       )
       .eq("id", matchId)
       .single();
@@ -4038,6 +4048,8 @@ interface DbMatch {
   venue_city?: string | null;
   venue_lat?: number | null;
   venue_lon?: number | null;
+  tournament_name?: string | null;
+  tournament_stage?: string | null;
   rain_probability?: number | null;
   weather_fetched_at?: string | null;
   weather_condition?: string | null;

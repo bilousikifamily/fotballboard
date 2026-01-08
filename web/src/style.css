@@ -1108,6 +1108,38 @@ h1 {
   overflow: hidden;
 }
 
+.match-competition {
+  display: grid;
+  gap: 2px;
+  margin: -16px -18px 0;
+  padding: 10px 12px 8px;
+  background: var(--surface-strong);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.match-competition.is-solo {
+  border-radius: 18px 18px 12px 12px;
+}
+
+.match-competition-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.match-competition-stage {
+  font-size: 0.64rem;
+  color: var(--muted);
+}
+
+.match-odds-values.has-competition {
+  margin: 0 -18px 0;
+  border-radius: 0 0 12px 12px;
+}
+
 .prediction-submit {
   width: calc(100% + 36px);
   margin: 0 -18px -16px;

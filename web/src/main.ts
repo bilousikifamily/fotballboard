@@ -135,6 +135,8 @@ type Match = {
   venue_city?: string | null;
   venue_lat?: number | null;
   venue_lon?: number | null;
+  tournament_name?: string | null;
+  tournament_stage?: string | null;
   rain_probability?: number | null;
   weather_fetched_at?: string | null;
   weather_condition?: string | null;
@@ -2851,8 +2853,10 @@ function renderMatchOdds(match: Match, homeName: string, awayName: string): stri
   if (!probabilities) {
     return "";
   }
+  const hasCompetition = Boolean(match.tournament_name || match.tournament_stage);
+  const competitionClass = hasCompetition ? " has-competition" : "";
   return `
-    <div class="match-odds-values" data-match-odds data-match-id="${match.id}">
+    <div class="match-odds-values${competitionClass}" data-match-odds data-match-id="${match.id}">
       <span class="match-odds-value" data-odds-choice="home">
         <span class="match-odds-key">1</span>
         <span class="match-odds-num">${formatProbability(probabilities.home)}</span>
@@ -3172,7 +3176,20 @@ function renderMatchesList(matches: Match[]): string {
           <span class="match-weather-value" data-match-rain-value>${rainValue}</span>
         </div>
       `;
+      const tournamentName = match.tournament_name?.trim() ?? "";
+      const tournamentStage = match.tournament_stage?.trim() ?? "";
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
+      const hasCompetition = Boolean(tournamentName || tournamentStage);
+      const hasOdds = Boolean(oddsMarkup.trim());
+      const competitionClass = hasOdds ? "" : " is-solo";
+      const competitionMarkup = hasCompetition
+        ? `
+          <div class="match-competition${competitionClass}">
+            ${tournamentName ? `<span class="match-competition-name">${escapeHtml(tournamentName)}</span>` : ""}
+            ${tournamentStage ? `<span class="match-competition-stage">${escapeHtml(tournamentStage)}</span>` : ""}
+          </div>
+        `
+        : "";
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
       const predicted = Boolean(match.has_prediction);
@@ -3237,6 +3254,7 @@ function renderMatchesList(matches: Match[]): string {
             ${rainMarkup}
           </div>
           <article class="match">
+            ${competitionMarkup}
             ${oddsMarkup}
             <div class="match-header">
               ${result}
