@@ -981,8 +981,8 @@ h1 {
 
 .prediction-form {
   display: grid;
-  margin-top: 24px;
-  margin-bottom: 24px;
+  margin-top: 12px;
+  margin-bottom: 36px;
   gap: 8px;
   justify-items: stretch;
   width: 100%;
