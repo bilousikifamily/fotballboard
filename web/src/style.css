@@ -894,34 +894,52 @@ h1 {
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 6px;
-  justify-content: center;
-  align-items: baseline;
+  justify-items: center;
 }
 
 .match-meta-sep {
   opacity: 0.6;
 }
 
-.match-rain {
+.match-time-row {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(76, 160, 255, 0.18);
+  gap: 6px;
+}
+
+.match-weather-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: #dbe9ff;
   font-weight: 600;
 }
 
-.match-rain-icon {
-  font-size: 0.9em;
+.match-weather-icon {
+  font-size: 1.05em;
   line-height: 1;
 }
 
-.match-rain-value {
+.match-weather-bar {
+  position: relative;
+  width: 84px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.match-weather-bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #7cc8ff 0%, #4a9dff 100%);
+}
+
+.match-weather-value {
+  min-width: 36px;
+  text-align: left;
   letter-spacing: 0.02em;
 }
 

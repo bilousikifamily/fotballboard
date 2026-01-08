@@ -1772,22 +1772,52 @@ function updateMatchWeather(matchId: number, rainProbability: number | null): vo
   if (!el) {
     return;
   }
-  const value = formatRainProbability(rainProbability);
+  const percent = normalizeRainProbability(rainProbability);
+  const value = formatRainProbability(percent);
+  const icon = getWeatherIcon(percent);
   const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
+  const iconEl = el.querySelector<HTMLElement>("[data-match-rain-icon]");
+  const fillEl = el.querySelector<HTMLElement>("[data-match-rain-fill]");
   if (valueEl) {
     valueEl.textContent = value;
-  } else {
-    el.textContent = value;
+  }
+  if (iconEl) {
+    iconEl.textContent = icon;
+  }
+  if (fillEl) {
+    fillEl.style.width = `${percent ?? 0}%`;
   }
   el.setAttribute("aria-label", `Дощ: ${value}`);
 }
 
+function normalizeRainProbability(value: number | null): number | null {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return null;
+  }
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
 function formatRainProbability(value: number | null): string {
-  if (typeof value !== "number") {
+  if (value === null) {
     return "—";
   }
-  const clamped = Math.min(100, Math.max(0, Math.round(value)));
-  return `${clamped}%`;
+  return `${value}%`;
+}
+
+function getWeatherIcon(value: number | null): string {
+  if (value === null) {
+    return "☁️";
+  }
+  if (value >= 70) {
+    return "🌧️";
+  }
+  if (value >= 40) {
+    return "⛅";
+  }
+  if (value >= 20) {
+    return "☁️";
+  }
+  return "☀️";
 }
 
 async function submitMatch(form: HTMLFormElement): Promise<void> {
@@ -3034,13 +3064,18 @@ function renderMatchesList(matches: Match[]): string {
       const cityMarkup = city
         ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(city)}</span>`
         : "";
-      const rainValue = formatRainProbability(match.rain_probability ?? null);
+      const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
+      const rainValue = formatRainProbability(rainPercent);
+      const rainIcon = getWeatherIcon(rainPercent);
+      const rainBarWidth = rainPercent ?? 0;
       const rainMarkup = `
-        <span class="match-meta-sep">·</span>
-        <span class="match-rain" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
-          <span class="match-rain-icon" aria-hidden="true">💧</span>
-          <span class="match-rain-value" data-match-rain-value>${rainValue}</span>
-        </span>
+        <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
+          <span class="match-weather-icon" data-match-rain-icon aria-hidden="true">${rainIcon}</span>
+          <span class="match-weather-bar" aria-hidden="true">
+            <span class="match-weather-bar-fill" data-match-rain-fill style="width: ${rainBarWidth}%"></span>
+          </span>
+          <span class="match-weather-value" data-match-rain-value>${rainValue}</span>
+        </div>
       `;
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
       const finished = match.status === "finished";
@@ -3093,8 +3128,10 @@ function renderMatchesList(matches: Match[]): string {
       return `
         <div class="match-item ${predicted ? "has-prediction" : ""}">
           <div class="match-time">
-            <span class="match-time-value">${kickoff}</span>
-            ${cityMarkup}
+            <div class="match-time-row">
+              <span class="match-time-value">${kickoff}</span>
+              ${cityMarkup}
+            </div>
             ${rainMarkup}
           </div>
           <article class="match">
