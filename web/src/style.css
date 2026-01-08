@@ -1125,7 +1125,7 @@ h1 {
   display: grid;
   gap: 1px;
   margin: -16px -18px 0;
-  padding: 8px 12px 4px;
+  padding: 10px 12px 8px;
   background: rgba(255, 122, 26, 0.18);
   border-radius: 18px 18px 0 0;
   border: 1px solid rgba(255, 154, 31, 0.35);
