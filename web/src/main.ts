@@ -2768,20 +2768,22 @@ function renderMatchesList(matches: Match[]): string {
         `;
 
       return `
-        <article class="match ${predicted ? "has-prediction" : ""}">
-          ${oddsMarkup}
-          <div class="match-header">
-            <div class="match-time">${kickoff}</div>
-            ${result}
-          </div>
-          <div class="match-average" data-match-average data-match-id="${match.id}"></div>
-          ${closed ? "" : statusLine}
-          ${form}
-          <div class="predictions" data-predictions data-match-id="${match.id}" ${
-            predicted ? "data-auto-open='true'" : ""
-          }></div>
-          ${closed ? statusLine : ""}
-        </article>
+        <div class="match-item ${predicted ? "has-prediction" : ""}">
+          <div class="match-time">${kickoff}</div>
+          <article class="match">
+            ${oddsMarkup}
+            <div class="match-header">
+              ${result}
+            </div>
+            <div class="match-average" data-match-average data-match-id="${match.id}"></div>
+            ${closed ? "" : statusLine}
+            ${form}
+            <div class="predictions" data-predictions data-match-id="${match.id}" ${
+              predicted ? "data-auto-open='true'" : ""
+            }></div>
+            ${closed ? statusLine : ""}
+          </article>
+        </div>
       `;
     })
     .join("");
