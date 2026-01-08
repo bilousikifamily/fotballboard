@@ -2450,10 +2450,17 @@ async function fetchOpenMeteoProbability(
         };
         const times = payload.hourly?.time ?? [];
         const probabilities = payload.hourly?.precipitation_probability ?? [];
-        const index = times.indexOf(bucket.apiTime);
+        const index = findClosestTimeIndex(times, bucket.apiTime);
         debug.time_index = index;
-        if (index < 0) {
-          return { ok: true, value: null, debug, attempts: attempt, retryAfterSec: lastRetryAfter, status: lastStatus };
+        if (index < 0 || index >= probabilities.length) {
+          return {
+            ok: true,
+            value: null,
+            debug,
+            attempts: attempt,
+            retryAfterSec: lastRetryAfter,
+            status: lastStatus
+          };
         }
         const value = probabilities[index];
         return {
@@ -2523,6 +2530,57 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function findClosestTimeIndex(times: string[], target: string): number {
+  if (!times.length) {
+    return -1;
+  }
+  const targetMs = Date.parse(`${target}Z`);
+  if (Number.isNaN(targetMs)) {
+    return -1;
+  }
+  let bestIndex = -1;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < times.length; i += 1) {
+    const value = Date.parse(`${times[i]}Z`);
+    if (Number.isNaN(value)) {
+      continue;
+    }
+    const diff = Math.abs(value - targetMs);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+function findClosestHourEntry<T extends { time_epoch?: number }>(
+  hours: T[],
+  targetEpochMs: number
+): { entry: T | null; index: number } {
+  if (!hours.length || Number.isNaN(targetEpochMs)) {
+    return { entry: null, index: -1 };
+  }
+  const targetEpoch = Math.floor(targetEpochMs / 1000);
+  let best: T | null = null;
+  let bestIndex = -1;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < hours.length; i += 1) {
+    const entry = hours[i];
+    const epoch = entry.time_epoch;
+    if (typeof epoch !== "number") {
+      continue;
+    }
+    const diff = Math.abs(epoch - targetEpoch);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = entry;
+      bestIndex = i;
+    }
+  }
+  return { entry: best, index: bestIndex };
+}
+
 async function fetchWeatherApiProbability(
   env: Env,
   lat: number,
@@ -2544,7 +2602,6 @@ async function fetchWeatherApiProbability(
   const maxAttempts = getWeatherRetryMaxAttempts(env);
   const baseDelayMs = getWeatherRetryBaseDelayMs(env);
   const delayCapMs = getWeatherRetryDelayCapMs(env);
-  const targetHour = Number(bucket.apiTime.slice(11, 13));
   const daysAhead = getDaysAheadUtc(bucket.dateString);
   if (daysAhead === null || daysAhead > 10) {
     return { ok: true, value: null, debug, attempts: 0, status: 0 };
@@ -2572,18 +2629,19 @@ async function fetchWeatherApiProbability(
       try {
         const payload = (await response.json()) as {
           forecast?: {
-            forecastday?: Array<{ date?: string; hour?: Array<{ time?: string; chance_of_rain?: number | null }> }>;
+            forecastday?: Array<{
+              date?: string;
+              hour?: Array<{ time?: string; time_epoch?: number; chance_of_rain?: number | null }>;
+            }>;
           };
         };
         const forecastDays = payload.forecast?.forecastday ?? [];
         const day = forecastDays.find((entry) => entry.date === bucket.dateString);
         const hours = day?.hour ?? [];
-        const hourEntry = hours.find((entry) => {
-          const time = entry.time ?? "";
-          return time.endsWith(`${bucket.dateString} ${String(targetHour).padStart(2, "0")}:00`);
-        });
-        const value = hourEntry?.chance_of_rain;
-        debug.time_index = hourEntry ? targetHour : -1;
+        const targetEpoch = Date.parse(`${bucket.keyTime}`);
+        const closest = findClosestHourEntry(hours, targetEpoch);
+        const value = closest.entry?.chance_of_rain;
+        debug.time_index = closest.index;
         return {
           ok: true,
           value: typeof value === "number" ? value : null,
@@ -2643,7 +2701,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, odds_json, odds_fetched_at"
       )
       .order("kickoff_at", { ascending: true });
 

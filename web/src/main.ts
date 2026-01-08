@@ -129,6 +129,8 @@ type Match = {
   venue_city?: string | null;
   venue_lat?: number | null;
   venue_lon?: number | null;
+  rain_probability?: number | null;
+  weather_fetched_at?: string | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   has_prediction?: boolean;
@@ -204,6 +206,7 @@ let noticeRuleIndex = 0;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
+const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
 type LogoPosition = typeof LOGO_POSITIONS[number];
@@ -1720,6 +1723,12 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
     return;
   }
   const tasks = matches.map(async (match) => {
+    if (isWeatherFresh(match)) {
+      const cachedValue = match.rain_probability ?? null;
+      matchWeatherCache.set(match.id, cachedValue);
+      updateMatchWeather(match.id, cachedValue);
+      return;
+    }
     if (matchWeatherCache.has(match.id)) {
       updateMatchWeather(match.id, matchWeatherCache.get(match.id) ?? null);
       return;
@@ -1744,6 +1753,18 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
     }
   });
   await Promise.all(tasks);
+}
+
+function isWeatherFresh(match: Match): boolean {
+  if (!match.weather_fetched_at) {
+    return false;
+  }
+  const fetchedAt = new Date(match.weather_fetched_at);
+  if (Number.isNaN(fetchedAt.getTime())) {
+    return false;
+  }
+  const ageMinutes = (Date.now() - fetchedAt.getTime()) / (60 * 1000);
+  return ageMinutes < WEATHER_CLIENT_CACHE_MIN;
 }
 
 function updateMatchWeather(matchId: number, rainProbability: number | null): void {
@@ -3013,11 +3034,12 @@ function renderMatchesList(matches: Match[]): string {
       const cityMarkup = city
         ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(city)}</span>`
         : "";
+      const rainValue = formatRainProbability(match.rain_probability ?? null);
       const rainMarkup = `
         <span class="match-meta-sep">·</span>
-        <span class="match-rain" data-match-rain data-match-id="${match.id}" aria-label="Дощ: …">
+        <span class="match-rain" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
           <span class="match-rain-icon" aria-hidden="true">💧</span>
-          <span class="match-rain-value" data-match-rain-value>…</span>
+          <span class="match-rain-value" data-match-rain-value>${rainValue}</span>
         </span>
       `;
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
