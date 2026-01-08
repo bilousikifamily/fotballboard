@@ -905,6 +905,26 @@ h1 {
   opacity: 0.6;
 }
 
+.match-rain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(76, 160, 255, 0.18);
+  color: #dbe9ff;
+  font-weight: 600;
+}
+
+.match-rain-icon {
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+.match-rain-value {
+  letter-spacing: 0.02em;
+}
+
 .match-result {
   background: var(--accent-soft);
   color: var(--accent);

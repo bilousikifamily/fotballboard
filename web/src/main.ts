@@ -1751,7 +1751,14 @@ function updateMatchWeather(matchId: number, rainProbability: number | null): vo
   if (!el) {
     return;
   }
-  el.textContent = `Дощ: ${formatRainProbability(rainProbability)}`;
+  const value = formatRainProbability(rainProbability);
+  const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
+  if (valueEl) {
+    valueEl.textContent = value;
+  } else {
+    el.textContent = value;
+  }
+  el.setAttribute("aria-label", `Дощ: ${value}`);
 }
 
 function formatRainProbability(value: number | null): string {
@@ -3006,7 +3013,13 @@ function renderMatchesList(matches: Match[]): string {
       const cityMarkup = city
         ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(city)}</span>`
         : "";
-      const rainMarkup = `<span class="match-meta-sep">·</span><span class="match-rain" data-match-rain data-match-id="${match.id}">Дощ: …</span>`;
+      const rainMarkup = `
+        <span class="match-meta-sep">·</span>
+        <span class="match-rain" data-match-rain data-match-id="${match.id}" aria-label="Дощ: …">
+          <span class="match-rain-icon" aria-hidden="true">💧</span>
+          <span class="match-rain-value" data-match-rain-value>…</span>
+        </span>
+      `;
       const oddsMarkup = renderMatchOdds(match, homeName, awayName);
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
