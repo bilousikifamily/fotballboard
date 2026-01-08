@@ -1208,6 +1208,7 @@ h1 {
   text-align: center;
   padding-top: 2px;
   justify-self: center;
+  margin-bottom: 12px;
 }
 
 .match-odds-score.is-hidden {
