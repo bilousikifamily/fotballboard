@@ -1112,10 +1112,10 @@ h1 {
   display: grid;
   gap: 2px;
   margin: -16px -18px 0;
-  padding: 10px 12px 4px;
-  background: var(--surface-strong);
+  padding: 10px 12px 0;
+  background: rgba(255, 122, 26, 0.18);
   border-radius: 18px 18px 0 0;
-  border: 1px solid var(--outline-dark);
+  border: 1px solid rgba(255, 154, 31, 0.35);
   border-bottom: 0;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1137,7 +1137,7 @@ h1 {
 }
 
 .match-odds-values.has-competition {
-  margin: 0 -18px 0;
+  margin: 0 -18px -1px;
   border-radius: 0 0 12px 12px;
 }
 
