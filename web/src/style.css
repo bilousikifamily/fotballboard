@@ -1095,7 +1095,7 @@ h1 {
 
 .prediction-submit {
   width: calc(100% + 36px);
-  margin: 0 -18px;
+  margin: 0 -18px -16px;
   border-radius: 0 0 18px 18px;
 }
 

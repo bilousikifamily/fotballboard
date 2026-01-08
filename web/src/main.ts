@@ -2633,6 +2633,8 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
       status.textContent = "Збережено ✅";
     }
 
+    updateOddsHighlight(matchId, home, away);
+
     const container = app.querySelector<HTMLElement>(
       `[data-predictions][data-match-id="${matchId}"]`
     );
@@ -2702,6 +2704,7 @@ function renderPredictionsPanel(predictions: PredictionView[]): string {
   if (!self) {
     return `<p class="muted small">Поки що немає прогнозів.</p>`;
   }
+  updateOddsHighlight(matchId, self.home_pred, self.away_pred);
   const others = currentUserId
     ? predictions.filter((item) => item.user_id !== currentUserId)
     : predictions;
