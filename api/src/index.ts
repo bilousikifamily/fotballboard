@@ -1831,11 +1831,26 @@ async function fetchWeatherForecast(
   }
 
   const primary = await fetchWeatherForecastWithProvider(env, WEATHER_PROVIDER_PRIMARY, lat, lon, bucket);
-  if (primary.ok || primary.isStale) {
+  const canFallback = Boolean(env.WEATHERAPI_KEY);
+  const needsTimezone = primary.ok && !primary.isStale && !primary.timezone;
+  const needsTemp = primary.ok && !primary.isStale && primary.tempC === null;
+
+  if (!canFallback && (primary.ok || primary.isStale)) {
     return primary;
   }
 
-  if (!env.WEATHERAPI_KEY) {
+  if (canFallback && (needsTimezone || needsTemp)) {
+    const fallback = await fetchWeatherForecastWithProvider(env, WEATHER_PROVIDER_FALLBACK, lat, lon, bucket);
+    if (fallback.ok || fallback.isStale) {
+      return fallback;
+    }
+  }
+
+  if (!canFallback) {
+    return primary;
+  }
+
+  if (primary.ok || primary.isStale) {
     return primary;
   }
 
