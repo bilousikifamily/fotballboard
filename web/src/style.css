@@ -922,6 +922,10 @@ h1 {
   line-height: 1;
 }
 
+.match-weather-icon.is-hidden {
+  display: none;
+}
+
 .match-weather-bar {
   position: relative;
   width: 84px;

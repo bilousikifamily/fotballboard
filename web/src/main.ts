@@ -1783,7 +1783,7 @@ function updateMatchWeather(matchId: number, rainProbability: number | null, con
   }
   const percent = normalizeRainProbability(rainProbability);
   const value = formatRainProbability(percent);
-  const icon = getWeatherIcon(condition, percent);
+  const icon = getWeatherIcon(condition);
   const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
   const iconEl = el.querySelector<HTMLElement>("[data-match-rain-icon]");
   const fillEl = el.querySelector<HTMLElement>("[data-match-rain-fill]");
@@ -1813,38 +1813,14 @@ function formatRainProbability(value: number | null): string {
   return `${value}%`;
 }
 
-function getWeatherIcon(condition: string | null, value: number | null): string {
-  switch (condition) {
-    case "thunderstorm":
-      return "⛈️";
-    case "rain":
-      return "🌧️";
-    case "snow":
-      return "🌨️";
-    case "fog":
-      return "🌫️";
-    case "cloudy":
-      return "☁️";
-    case "partly_cloudy":
-      return "⛅";
-    case "clear":
-      return "☀️";
-    default:
-      break;
+function getWeatherIcon(condition: string | null): string {
+  if (condition === "thunderstorm") {
+    return "⛈️";
   }
-  if (value === null) {
-    return "☁️";
+  if (condition === "snow") {
+    return "🌨️";
   }
-  if (value >= 70) {
-    return "🌧️";
-  }
-  if (value >= 40) {
-    return "⛅";
-  }
-  if (value >= 20) {
-    return "☁️";
-  }
-  return "☀️";
+  return "🌧️";
 }
 
 async function submitMatch(form: HTMLFormElement): Promise<void> {
@@ -3093,7 +3069,7 @@ function renderMatchesList(matches: Match[]): string {
         : "";
       const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
       const rainValue = formatRainProbability(rainPercent);
-      const rainIcon = getWeatherIcon(match.weather_condition ?? null, rainPercent);
+      const rainIcon = getWeatherIcon(match.weather_condition ?? null);
       const rainBarWidth = rainPercent ?? 0;
       const rainMarkup = `
         <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
