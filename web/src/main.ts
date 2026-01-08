@@ -3199,7 +3199,7 @@ function renderMatchesList(matches: Match[]): string {
               ${awayLogoMarkup}
             </div>
             <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
-            <button class="button small-button prediction-submit" type="submit">Прогноз</button>
+            <button class="button small-button prediction-submit" type="submit">ПРОГНОЗ</button>
             <p class="muted small" data-prediction-status></p>
           </form>
         `;
