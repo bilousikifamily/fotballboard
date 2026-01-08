@@ -42,6 +42,10 @@ type MatchWeatherDebugInfo = {
   weather_fetched_at?: string | null;
   cache_used?: boolean;
   cache_age_min?: number | null;
+  cache_state?: "fresh" | "stale" | "miss";
+  weather_key?: string | null;
+  is_stale?: boolean;
+  rate_limited_locally?: boolean;
   target_time?: string | null;
   date_string?: string | null;
   geocode_city?: string | null;
@@ -2119,6 +2123,9 @@ function formatWeatherError(payload: MatchWeatherDebugResponse): string {
     case "api_error":
       message = "Помилка погодного API.";
       break;
+    case "rate_limited":
+      message = "Ліміт запитів до погоди.";
+      break;
     case "bad_match_id":
       message = "Некоректний матч.";
       break;
@@ -2160,11 +2167,23 @@ function formatWeatherDebug(debug?: MatchWeatherDebugInfo): string {
   if (debug.cache_used !== undefined) {
     parts.push(`cache=${debug.cache_used ? "yes" : "no"}`);
   }
+  if (debug.cache_state) {
+    parts.push(`cache_state=${debug.cache_state}`);
+  }
+  if (debug.is_stale !== undefined) {
+    parts.push(`is_stale=${debug.is_stale ? "yes" : "no"}`);
+  }
+  if (debug.rate_limited_locally !== undefined) {
+    parts.push(`rl_local=${debug.rate_limited_locally ? "yes" : "no"}`);
+  }
   if (debug.cache_age_min !== undefined && debug.cache_age_min !== null) {
     parts.push(`cache_age_min=${debug.cache_age_min}`);
   }
   if (debug.target_time) {
     parts.push(`target=${debug.target_time}`);
+  }
+  if (debug.weather_key) {
+    parts.push(`key=${debug.weather_key}`);
   }
   if (debug.date_string) {
     parts.push(`date=${debug.date_string}`);
