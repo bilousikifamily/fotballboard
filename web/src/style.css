@@ -804,6 +804,8 @@ h1 {
   max-width: var(--match-card-width);
   display: grid;
   gap: 10px;
+  justify-items: center;
+  align-content: start;
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
@@ -818,6 +820,7 @@ h1 {
   text-align: center;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
   overflow: visible;
+  align-self: start;
 }
 
 .match-empty {
