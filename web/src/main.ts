@@ -3240,6 +3240,14 @@ function renderMatchesList(matches: Match[]): string {
           </div>
         `
         : "";
+      const oddsBlock = hasCompetition || hasOdds
+        ? `
+          <div class="match-odds${hasCompetition ? " has-competition" : ""}">
+            ${competitionMarkup}
+            ${oddsMarkup}
+          </div>
+        `
+        : "";
       const finished = match.status === "finished";
       const closed = finished || isPredictionClosed(match.kickoff_at);
       const predicted = Boolean(match.has_prediction);
@@ -3304,8 +3312,7 @@ function renderMatchesList(matches: Match[]): string {
             ${rainMarkup}
           </div>
           <article class="match">
-            ${competitionMarkup}
-            ${oddsMarkup}
+            ${oddsBlock}
             <div class="match-header">
               ${result}
             </div>
