@@ -3171,12 +3171,12 @@ function updateScoreOddsIndicator(form: HTMLFormElement): void {
 
   const probability = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
   if (probability === null) {
-    label.textContent = `Ймовірність рахунку ${homeScore}:${awayScore} —`;
+    label.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
     label.classList.remove("is-hidden");
     return;
   }
 
-  label.textContent = `Ймовірність рахунку ${homeScore}:${awayScore} — ${formatProbability(probability)}`;
+  label.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — ${formatProbability(probability)}`;
   label.classList.remove("is-hidden");
 }
 
