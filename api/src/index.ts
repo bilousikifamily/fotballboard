@@ -551,12 +551,25 @@ export default {
         return jsonResponse({ ok: false, error: "match_not_found" }, 404, corsHeaders());
       }
 
-      const weather = await fetchMatchWeather(supabase, match);
+      const debug = url.searchParams.get("debug") === "1";
+      const weather = await fetchMatchWeatherDetailed(supabase, match);
       if (!weather.ok) {
-        return jsonResponse({ ok: false, error: weather.reason }, 200, corsHeaders());
+        return jsonResponse(
+          debug
+            ? { ok: false, error: weather.reason, debug: weather.debug }
+            : { ok: false, error: weather.reason },
+          200,
+          corsHeaders()
+        );
       }
 
-      return jsonResponse({ ok: true, rain_probability: weather.rainProbability }, 200, corsHeaders());
+      return jsonResponse(
+        debug
+          ? { ok: true, rain_probability: weather.rainProbability, debug: weather.debug }
+          : { ok: true, rain_probability: weather.rainProbability },
+        200,
+        corsHeaders()
+      );
     }
 
     if (url.pathname === "/api/predictions") {
@@ -1149,6 +1162,21 @@ type WeatherResult =
   | { ok: true; rainProbability: number | null }
   | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error" };
 
+type WeatherDebugInfo = {
+  venue_city?: string | null;
+  venue_name?: string | null;
+  venue_lat?: number | null;
+  venue_lon?: number | null;
+  kickoff_at?: string | null;
+  target_time?: string | null;
+  date_string?: string | null;
+  geocode_city?: string | null;
+  geocode_ok?: boolean;
+  geocode_status?: number | null;
+  forecast_status?: number | null;
+  time_index?: number | null;
+};
+
 async function fetchAndStoreOdds(
   env: Env,
   supabase: SupabaseClient,
@@ -1679,8 +1707,30 @@ async function fetchMatchWeather(
   supabase: SupabaseClient,
   match: DbMatch
 ): Promise<WeatherResult> {
+  const detailed = await fetchMatchWeatherDetailed(supabase, match);
+  if (!detailed.ok) {
+    return { ok: false, reason: detailed.reason };
+  }
+  return { ok: true, rainProbability: detailed.rainProbability };
+}
+
+type WeatherDetailedResult =
+  | { ok: true; rainProbability: number | null; debug: WeatherDebugInfo }
+  | { ok: false; reason: "missing_location" | "bad_kickoff" | "api_error"; debug: WeatherDebugInfo };
+
+async function fetchMatchWeatherDetailed(
+  supabase: SupabaseClient,
+  match: DbMatch
+): Promise<WeatherDetailedResult> {
+  const debug: WeatherDebugInfo = {
+    venue_city: match.venue_city ?? null,
+    venue_name: match.venue_name ?? null,
+    venue_lat: match.venue_lat ?? null,
+    venue_lon: match.venue_lon ?? null,
+    kickoff_at: match.kickoff_at ?? null
+  };
   if (!match.kickoff_at) {
-    return { ok: false, reason: "bad_kickoff" };
+    return { ok: false, reason: "bad_kickoff", debug };
   }
 
   let lat = match.venue_lat ?? null;
@@ -1688,35 +1738,47 @@ async function fetchMatchWeather(
   const city = match.venue_city ?? match.venue_name ?? null;
 
   if ((!lat || !lon) && city) {
+    debug.geocode_city = city;
     const geo = await geocodeCity(city);
-    if (geo) {
+    debug.geocode_status = geo.status;
+    debug.geocode_ok = geo.ok;
+    if (geo.ok) {
       lat = geo.lat;
       lon = geo.lon;
+      debug.venue_lat = lat;
+      debug.venue_lon = lon;
       await saveMatchCoordinates(supabase, match.id, geo.lat, geo.lon);
     }
   }
 
   if (!lat || !lon) {
-    return { ok: false, reason: "missing_location" };
+    return { ok: false, reason: "missing_location", debug };
   }
 
   const weather = await fetchRainProbability(lat, lon, match.kickoff_at);
+  debug.target_time = weather.debug.target_time;
+  debug.date_string = weather.debug.date_string;
+  debug.forecast_status = weather.debug.forecast_status;
+  debug.time_index = weather.debug.time_index;
   if (!weather.ok) {
-    return { ok: false, reason: "api_error" };
+    return { ok: false, reason: "api_error", debug };
   }
-  return { ok: true, rainProbability: weather.value };
+  return { ok: true, rainProbability: weather.value, debug };
 }
 
-async function geocodeCity(city: string): Promise<{ lat: number; lon: number } | null> {
+type GeocodeResult = { ok: true; lat: number; lon: number; status: number } | { ok: false; status: number };
+
+async function geocodeCity(city: string): Promise<GeocodeResult> {
   const trimmed = city.trim();
   if (!trimmed) {
-    return null;
+    return { ok: false, status: 0 };
   }
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=1&language=uk&format=json`;
   const response = await fetch(url);
+  const status = response.status;
   if (!response.ok) {
     console.warn("Open-Meteo geocoding error", response.status);
-    return null;
+    return { ok: false, status };
   }
   try {
     const payload = (await response.json()) as { results?: Array<{ latitude?: number; longitude?: number }> };
@@ -1724,37 +1786,53 @@ async function geocodeCity(city: string): Promise<{ lat: number; lon: number } |
     const lat = first?.latitude;
     const lon = first?.longitude;
     if (typeof lat !== "number" || typeof lon !== "number") {
-      return null;
+      return { ok: false, status };
     }
-    return { lat, lon };
+    return { ok: true, lat, lon, status };
   } catch (error) {
     console.warn("Open-Meteo geocoding parse error", error);
-    return null;
+    return { ok: false, status };
   }
 }
+
+type WeatherFetchDebug = {
+  target_time: string | null;
+  date_string: string | null;
+  forecast_status: number | null;
+  time_index: number | null;
+};
 
 async function fetchRainProbability(
   lat: number,
   lon: number,
   kickoffAt: string
-): Promise<{ ok: true; value: number | null } | { ok: false }> {
+): Promise<{ ok: true; value: number | null; debug: WeatherFetchDebug } | { ok: false; debug: WeatherFetchDebug }> {
+  const debug: WeatherFetchDebug = {
+    target_time: null,
+    date_string: null,
+    forecast_status: null,
+    time_index: null
+  };
   const targetTime = formatRoundedHourInZone(kickoffAt, "Europe/Kyiv");
   if (!targetTime) {
-    return { ok: false };
+    return { ok: false, debug };
   }
+  debug.target_time = targetTime;
   const dateString = targetTime.split("T")[0] ?? "";
   if (!dateString) {
-    return { ok: false };
+    return { ok: false, debug };
   }
+  debug.date_string = dateString;
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(String(lat))}` +
     `&longitude=${encodeURIComponent(String(lon))}` +
     `&hourly=precipitation_probability&timezone=Europe%2FKyiv&start_date=${encodeURIComponent(dateString)}` +
     `&end_date=${encodeURIComponent(dateString)}`;
   const response = await fetch(url);
+  debug.forecast_status = response.status;
   if (!response.ok) {
     console.warn("Open-Meteo forecast error", response.status);
-    return { ok: false };
+    return { ok: false, debug };
   }
   try {
     const payload = (await response.json()) as {
@@ -1763,14 +1841,15 @@ async function fetchRainProbability(
     const times = payload.hourly?.time ?? [];
     const probabilities = payload.hourly?.precipitation_probability ?? [];
     const index = times.indexOf(targetTime);
+    debug.time_index = index;
     if (index < 0) {
-      return { ok: true, value: null };
+      return { ok: true, value: null, debug };
     }
     const value = probabilities[index];
-    return { ok: true, value: typeof value === "number" ? value : null };
+    return { ok: true, value: typeof value === "number" ? value : null, debug };
   } catch (error) {
     console.warn("Open-Meteo forecast parse error", error);
-    return { ok: false };
+    return { ok: false, debug };
   }
 }
 

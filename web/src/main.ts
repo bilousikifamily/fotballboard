@@ -32,6 +32,25 @@ type MatchWeatherResponse =
   | { ok: true; rain_probability: number | null }
   | { ok: false; error: string };
 
+type MatchWeatherDebugInfo = {
+  venue_city?: string | null;
+  venue_name?: string | null;
+  venue_lat?: number | null;
+  venue_lon?: number | null;
+  kickoff_at?: string | null;
+  target_time?: string | null;
+  date_string?: string | null;
+  geocode_city?: string | null;
+  geocode_ok?: boolean;
+  geocode_status?: number | null;
+  forecast_status?: number | null;
+  time_index?: number | null;
+};
+
+type MatchWeatherDebugResponse =
+  | { ok: true; rain_probability: number | null; debug?: MatchWeatherDebugInfo }
+  | { ok: false; error: string; debug?: MatchWeatherDebugInfo };
+
 type CreateMatchResponse =
   | { ok: true; match: Match }
   | { ok: false; error: string };
@@ -1063,6 +1082,7 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-add>Додати матч</button>
           <button class="button secondary" type="button" data-admin-toggle-result>Ввести результат</button>
           <button class="button secondary" type="button" data-admin-toggle-odds>Коефіцієнти</button>
+          <button class="button secondary" type="button" data-admin-toggle-weather>Погода (debug)</button>
           <button class="button secondary" type="button" data-admin-announce>Повідомити в боті</button>
         </div>
         <p class="muted small" data-admin-announce-status></p>
@@ -1108,6 +1128,14 @@ function renderUser(
           </label>
           <button class="button" type="submit">Підтягнути коефіцієнти</button>
           <p class="muted small" data-admin-odds-status></p>
+        </form>
+        <form class="admin-form" data-admin-weather-form>
+          <label class="field">
+            <span>Матч</span>
+            <select name="match_id" data-admin-weather-match></select>
+          </label>
+          <button class="button" type="submit">Погода (debug)</button>
+          <p class="muted small" data-admin-weather-status></p>
         </form>
       </section>
     `
@@ -1222,10 +1250,12 @@ function renderUser(
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
+    const toggleWeather = app.querySelector<HTMLButtonElement>("[data-admin-toggle-weather]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
     const form = app.querySelector<HTMLFormElement>("[data-admin-form]");
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
+    const weatherForm = app.querySelector<HTMLFormElement>("[data-admin-weather-form]");
 
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
@@ -1255,6 +1285,19 @@ function renderUser(
       oddsForm.addEventListener("submit", (event) => {
         event.preventDefault();
         void submitOddsRefresh(oddsForm);
+      });
+    }
+
+    if (toggleWeather && weatherForm) {
+      toggleWeather.addEventListener("click", () => {
+        weatherForm.classList.toggle("is-open");
+      });
+    }
+
+    if (weatherForm) {
+      weatherForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        void submitWeatherDebug(weatherForm);
       });
     }
 
@@ -1879,6 +1922,61 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
   }
 }
 
+async function submitWeatherDebug(form: HTMLFormElement): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  const matchSelect = form.querySelector<HTMLSelectElement>("[data-admin-weather-match]");
+  const status = form.querySelector<HTMLElement>("[data-admin-weather-status]");
+  const matchIdRaw = matchSelect?.value ?? "";
+  const matchId = Number.parseInt(matchIdRaw, 10);
+  if (!Number.isFinite(matchId)) {
+    if (status) {
+      status.textContent = "Оберіть матч.";
+    }
+    return;
+  }
+
+  if (status) {
+    status.textContent = "Запит...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/matches/weather?match_id=${matchId}&debug=1`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-InitData": initData
+      }
+    });
+    const data = (await response.json().catch(() => null)) as MatchWeatherDebugResponse | null;
+    if (!response.ok || !data) {
+      if (status) {
+        status.textContent = "Не вдалося отримати погоду.";
+      }
+      return;
+    }
+
+    if (data.ok) {
+      const rain = formatRainProbability(data.rain_probability ?? null);
+      const debug = formatWeatherDebug(data.debug);
+      if (status) {
+        status.textContent = `Дощ: ${rain}${debug}`;
+      }
+      return;
+    }
+
+    if (status) {
+      status.textContent = formatWeatherError(data);
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося отримати погоду.";
+    }
+  }
+}
+
 function formatOddsRefreshError(payload: OddsRefreshResponse | null): string {
   if (!payload || payload.ok) {
     return "Не вдалося підтягнути коефіцієнти.";
@@ -2001,6 +2099,77 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     if (teamSample) {
       parts.push(`league_sample=${teamSample}`);
     }
+  }
+  return parts.length ? ` [${parts.join(" ")}]` : "";
+}
+
+function formatWeatherError(payload: MatchWeatherDebugResponse): string {
+  let message = "Не вдалося отримати погоду.";
+  switch (payload.error) {
+    case "missing_location":
+      message = "Немає локації для матчу.";
+      break;
+    case "bad_kickoff":
+      message = "Некоректна дата матчу.";
+      break;
+    case "api_error":
+      message = "Помилка погодного API.";
+      break;
+    case "bad_match_id":
+      message = "Некоректний матч.";
+      break;
+    case "match_not_found":
+      message = "Матч не знайдено.";
+      break;
+    case "bad_initData":
+      message = "Некоректні дані входу.";
+      break;
+    case "missing_supabase":
+      message = "Не налаштовано Supabase.";
+      break;
+    default:
+      break;
+  }
+  const debug = formatWeatherDebug(payload.debug);
+  return `${message}${debug}`;
+}
+
+function formatWeatherDebug(debug?: MatchWeatherDebugInfo): string {
+  if (!debug) {
+    return "";
+  }
+  const parts: string[] = [];
+  if (debug.venue_city || debug.venue_name) {
+    parts.push(`city=${debug.venue_city ?? debug.venue_name}`);
+  }
+  if (debug.venue_lat !== undefined || debug.venue_lon !== undefined) {
+    const lat = debug.venue_lat ?? "null";
+    const lon = debug.venue_lon ?? "null";
+    parts.push(`latlon=${lat}/${lon}`);
+  }
+  if (debug.kickoff_at) {
+    parts.push(`kickoff=${debug.kickoff_at}`);
+  }
+  if (debug.target_time) {
+    parts.push(`target=${debug.target_time}`);
+  }
+  if (debug.date_string) {
+    parts.push(`date=${debug.date_string}`);
+  }
+  if (debug.geocode_city) {
+    parts.push(`geo_city=${debug.geocode_city}`);
+  }
+  if (debug.geocode_ok !== undefined) {
+    parts.push(`geo_ok=${debug.geocode_ok ? "yes" : "no"}`);
+  }
+  if (debug.geocode_status !== undefined && debug.geocode_status !== null) {
+    parts.push(`geo_status=${debug.geocode_status}`);
+  }
+  if (debug.forecast_status !== undefined && debug.forecast_status !== null) {
+    parts.push(`forecast_status=${debug.forecast_status}`);
+  }
+  if (debug.time_index !== undefined && debug.time_index !== null) {
+    parts.push(`time_idx=${debug.time_index}`);
   }
   return parts.length ? ` [${parts.join(" ")}]` : "";
 }
@@ -2181,6 +2350,7 @@ function setupAdminMatchForm(form: HTMLFormElement): void {
 function renderAdminMatchOptions(matches: Match[]): void {
   const select = app.querySelector<HTMLSelectElement>("[data-admin-match]");
   const oddsSelect = app.querySelector<HTMLSelectElement>("[data-admin-odds-match]");
+  const weatherSelect = app.querySelector<HTMLSelectElement>("[data-admin-weather-match]");
   if (!select) {
     return;
   }
@@ -2191,6 +2361,10 @@ function renderAdminMatchOptions(matches: Match[]): void {
     if (oddsSelect) {
       oddsSelect.innerHTML = `<option value="">Немає матчів</option>`;
       oddsSelect.disabled = true;
+    }
+    if (weatherSelect) {
+      weatherSelect.innerHTML = `<option value="">Немає матчів</option>`;
+      weatherSelect.disabled = true;
     }
     return;
   }
@@ -2207,6 +2381,10 @@ function renderAdminMatchOptions(matches: Match[]): void {
   if (oddsSelect) {
     oddsSelect.disabled = false;
     oddsSelect.innerHTML = select.innerHTML;
+  }
+  if (weatherSelect) {
+    weatherSelect.disabled = false;
+    weatherSelect.innerHTML = select.innerHTML;
   }
 }
 
