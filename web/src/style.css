@@ -981,6 +981,8 @@ h1 {
 
 .prediction-form {
   display: grid;
+  margin-top: 12px;
+  margin-bottom: 12px;
   gap: 8px;
   justify-items: stretch;
   width: 100%;
@@ -1159,8 +1161,8 @@ h1 {
   margin: 0 -18px -16px;
   border-radius: 0 0 18px 18px;
   padding: 12px 24px;
-  min-height: 72px;
-  height: 72px;
+  min-height: 56px;
+  height: 56px;
 }
 
 .match-odds-value {
