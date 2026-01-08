@@ -3215,7 +3215,6 @@ function renderMatchesList(matches: Match[]): string {
                 kyivTime
               )}</span>
               ${cityMarkup}
-              <span class="match-meta-sep">·</span>
               <span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(
                 localTime
               )})</span>
