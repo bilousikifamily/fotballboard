@@ -899,6 +899,7 @@ h1 {
   display: grid;
   gap: 6px;
   justify-items: center;
+  min-height: 56px;
 }
 
 .match-meta-sep {
