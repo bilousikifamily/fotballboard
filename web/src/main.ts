@@ -1093,22 +1093,6 @@ function formatClubName(slug: string): string {
     .join(" ");
 }
 
-function formatUkrainianCount(value: number, one: string, few: string, many: string): string {
-  const absValue = Math.abs(value);
-  const lastTwo = absValue % 100;
-  const last = absValue % 10;
-  if (lastTwo > 10 && lastTwo < 20) {
-    return many;
-  }
-  if (last === 1) {
-    return one;
-  }
-  if (last >= 2 && last <= 4) {
-    return few;
-  }
-  return many;
-}
-
 function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   const stats = profile?.prediction;
   const total = stats?.total ?? 0;
@@ -1131,15 +1115,11 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   return `
     <section class="panel profile-metrics">
       <div class="section-header">
-        <h2>Якість прогнозів</h2>
+        <h2>ЗРОБЛЕНО ${total} ПРОГНОЗІВ</h2>
       </div>
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
         <span class="accuracy-bar-text">${accuracy}%</span>
-      </div>
-      <div class="accuracy-meta">
-        <span class="accuracy-count">${hits}/${total} влучних</span>
-        <span class="accuracy-percent">${accuracy}%</span>
       </div>
       <div class="recent-results">
         <span class="muted small">Останні 5</span>
@@ -1181,16 +1161,13 @@ function renderFactions(profile: ProfileStatsPayload | null): string {
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
         : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
-      const memberCount = typeof entry.members === "number" ? entry.members : 0;
-      const membersLabel = formatUkrainianCount(memberCount, "депутат", "депутати", "депутатів");
-      const members = `${memberCount} ${membersLabel}`;
-      const rank = entry.rank ? `#${entry.rank}` : "—";
+      const rank = entry.rank ? `№${entry.rank} У СПИСКУ` : "№— У СПИСКУ";
       return `
         <div class="faction-card">
           <div class="faction-logo-wrap">${logo}</div>
           <div class="faction-info">
             <div class="faction-name">${name}</div>
-            <div class="faction-meta">${members} | ${rank}</div>
+            <div class="faction-meta">${rank}</div>
           </div>
         </div>
       `;
@@ -1200,7 +1177,7 @@ function renderFactions(profile: ProfileStatsPayload | null): string {
   return `
     <section class="panel profile-factions">
       <div class="section-header">
-        <h2>Фракції</h2>
+        <h2>ФРАКЦІЇ</h2>
       </div>
       <div class="faction-list">
         ${content}
