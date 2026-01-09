@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const STARTING_POINTS = 100;
-const PREDICTION_CUTOFF_MS = 60 * 60 * 1000;
+const PREDICTION_CUTOFF_MS = 0;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;

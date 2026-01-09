@@ -3343,7 +3343,7 @@ function getPredictionCloseAtMs(kickoffAt: string): number | null {
   if (Number.isNaN(kickoff.getTime())) {
     return null;
   }
-  return kickoff.getTime() - 60 * 60 * 1000;
+  return kickoff.getTime();
 }
 
 function getMatchPredictionCloseAtMs(match: Match): number | null {
