@@ -1402,10 +1402,15 @@ h1 {
   z-index: 1;
 }
 
-.leaderboard-stage {
+.leaderboard-shell {
   position: relative;
   width: 100%;
   z-index: 0;
+}
+
+.leaderboard-shell .panel.leaderboard {
+  position: relative;
+  z-index: 1;
 }
 
 .leaderboard-list.is-open {
@@ -1416,7 +1421,7 @@ h1 {
   position: absolute;
   left: 50%;
   top: 0;
-  transform: translate(-50%, 8px);
+  transform: translate(-50%, -85%);
   width: min(520px, 90%);
   height: auto;
   z-index: -1;

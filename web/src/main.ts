@@ -1219,12 +1219,12 @@ function renderUser(
         </section>
 
         <section class="screen" data-screen="leaderboard">
-          <section class="panel leaderboard center">
-            <div class="leaderboard-stage">
+          <div class="leaderboard-shell">
+            <img class="leaderboard-rada" src="/images/rada.png" alt="" />
+            <section class="panel leaderboard center">
               <div class="leaderboard-list is-open" data-leaderboard-list></div>
-              <img class="leaderboard-rada" src="/images/rada.png" alt="" />
-            </div>
-          </section>
+            </section>
+          </div>
         </section>
       </main>
 
