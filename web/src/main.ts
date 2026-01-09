@@ -1226,22 +1226,34 @@ function renderUser(
       </main>
 
       <nav class="tabbar" role="tablist" aria-label="Навігація">
-        <button class="tabbar-button" type="button" data-tab="profile" role="tab" aria-selected="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="8" r="3.5"></circle>
-            <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"></path>
-          </svg>
+        <button
+          class="tabbar-button"
+          type="button"
+          data-tab="profile"
+          role="tab"
+          aria-selected="false"
+          aria-label="Профіль"
+        >
+          <span class="tabbar-icon tabbar-icon--profile" aria-hidden="true"></span>
         </button>
-        <button class="tabbar-button is-active" type="button" data-tab="matches" role="tab" aria-selected="true">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9"></circle>
-            <polygon points="12 7.2 14.8 9 13.9 12 10.1 12 9.2 9"></polygon>
-            <path d="M8.4 13.2l-1.6 2.9 2.1 2.7 3.1-1.1 3.1 1.1 2.1-2.7-1.6-2.9"></path>
-            <path d="M6.8 9.9l-2.3 0.7 0.4 3.4 3.1 0.8"></path>
-            <path d="M17.2 9.9l2.3 0.7-0.4 3.4-3.1 0.8"></path>
-          </svg>
+        <button
+          class="tabbar-button is-active"
+          type="button"
+          data-tab="matches"
+          role="tab"
+          aria-selected="true"
+          aria-label="Прогнози"
+        >
+          <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
         </button>
-        <button class="tabbar-button" type="button" data-tab="leaderboard" role="tab" aria-selected="false">
+        <button
+          class="tabbar-button"
+          type="button"
+          data-tab="leaderboard"
+          role="tab"
+          aria-selected="false"
+          aria-label="Таблиця"
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 18V9"></path>
             <path d="M12 18V6"></path>

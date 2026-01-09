@@ -173,13 +173,33 @@ body.intro-active {
   color: var(--muted);
   display: grid;
   justify-items: center;
-  gap: 6px;
+  gap: 0;
   padding: 8px 6px;
   border-radius: 14px;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
   cursor: pointer;
+}
+
+.tabbar-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.tabbar-icon--profile {
+  mask-image: url("/icons/shirt.svg");
+  -webkit-mask-image: url("/icons/shirt.svg");
+}
+
+.tabbar-icon--matches {
+  mask-image: url("/icons/ball.svg");
+  -webkit-mask-image: url("/icons/ball.svg");
 }
 
 .tabbar-button svg {
