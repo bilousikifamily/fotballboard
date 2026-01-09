@@ -1093,6 +1093,22 @@ function formatClubName(slug: string): string {
     .join(" ");
 }
 
+function formatUkrainianCount(value: number, one: string, few: string, many: string): string {
+  const absValue = Math.abs(value);
+  const lastTwo = absValue % 100;
+  const last = absValue % 10;
+  if (lastTwo > 10 && lastTwo < 20) {
+    return many;
+  }
+  if (last === 1) {
+    return one;
+  }
+  if (last >= 2 && last <= 4) {
+    return few;
+  }
+  return many;
+}
+
 function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   const stats = profile?.prediction;
   const total = stats?.total ?? 0;
@@ -1165,7 +1181,9 @@ function renderFactions(profile: ProfileStatsPayload | null): string {
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
         : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
-      const members = `${entry.members} людей`;
+      const memberCount = typeof entry.members === "number" ? entry.members : 0;
+      const membersLabel = formatUkrainianCount(memberCount, "депутат", "депутата", "депутатів");
+      const members = `${memberCount} ${membersLabel}`;
       const rank = entry.rank ? `#${entry.rank}` : "—";
       return `
         <div class="faction-card">

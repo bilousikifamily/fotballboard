@@ -1088,7 +1088,8 @@ async function listRecentPredictionResults(supabase: SupabaseClient, userId: num
     if (error || !data) {
       return [];
     }
-    return (data as Array<{ points?: number | null }>).map((row) => {
+    const rows = (data as Array<{ points?: number | null }>).slice().reverse();
+    return rows.map((row) => {
       const points = typeof row.points === "number" ? row.points : 0;
       return {
         hit: points > 0,
