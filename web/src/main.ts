@@ -1173,59 +1173,84 @@ function renderUser(
     : "";
 
   app.innerHTML = `
-    <main class="layout">
-      <section class="panel profile center">
-        ${logoStackMarkup}
-        ${safeName ? `<h1 data-profile-name>${safeName}</h1>` : ""}
-        ${logoOrderMenuMarkup}
-        <div class="stats">
-          <div class="stat">
-            <span class="stat-label">Місце</span>
-            <span class="stat-value">${rankText}</span>
+    <div class="app-shell">
+      <main class="layout">
+        <section class="screen" data-screen="profile">
+          <section class="panel profile center">
+            ${logoStackMarkup}
+            ${safeName ? `<h1 data-profile-name>${safeName}</h1>` : ""}
+            ${logoOrderMenuMarkup}
+            <div class="stats">
+              <div class="stat">
+                <span class="stat-label">Місце</span>
+                <span class="stat-value">${rankText}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Бали</span>
+                <span class="stat-value">${stats.points}</span>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen is-active" data-screen="matches">
+          <section class="panel matches">
+            <div class="section-header">
+              <div class="date-switcher" data-date-switcher>
+                <button class="date-nav" type="button" data-date-prev aria-label="Попередній день">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <div class="date-pill" data-date-label>${safeDateLabel}</div>
+                <button class="date-nav" type="button" data-date-next aria-label="Наступний день">
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
+            </div>
+            <div class="matches-list" data-matches></div>
+          </section>
+
+          <div class="notice-ticker" aria-live="polite">
+            <span class="notice-ticker-text" data-notice-text>
+              ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
+            </span>
           </div>
-          <div class="stat">
-            <span class="stat-label">Бали</span>
-            <span class="stat-value">${stats.points}</span>
-          </div>
-        </div>
-      </section>
 
-      <section class="panel matches">
-        <div class="section-header">
-          <div class="date-switcher" data-date-switcher>
-            <button class="date-nav" type="button" data-date-prev aria-label="Попередній день">
-              <span aria-hidden="true">‹</span>
-            </button>
-            <div class="date-pill" data-date-label>${safeDateLabel}</div>
-            <button class="date-nav" type="button" data-date-next aria-label="Наступний день">
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
-        </div>
-        <div class="matches-list" data-matches></div>
-      </section>
+          ${adminSection}
+        </section>
 
-      <div class="notice-ticker" aria-live="polite">
-        <span class="notice-ticker-text" data-notice-text>
-          ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
-        </span>
-      </div>
+        <section class="screen" data-screen="leaderboard">
+          <section class="panel leaderboard center">
+            <div class="leaderboard-list is-open" data-leaderboard-list></div>
+          </section>
+        </section>
+      </main>
 
-      <section class="panel leaderboard center">
-        <button class="button" type="button" data-leaderboard>ТАБЛИЦЯ</button>
-        <div class="leaderboard-list" data-leaderboard-list></div>
-      </section>
-
-      ${adminSection}
-    </main>
+      <nav class="tabbar" role="tablist" aria-label="Навігація">
+        <button class="tabbar-button" type="button" data-tab="profile" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.5"></circle>
+            <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"></path>
+          </svg>
+          <span>Профіль</span>
+        </button>
+        <button class="tabbar-button is-active" type="button" data-tab="matches" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5"></circle>
+            <path d="M12 6l3 2 1 3-2 3-4 0-2-3 1-3z"></path>
+          </svg>
+          <span>Прогнози</span>
+        </button>
+        <button class="tabbar-button" type="button" data-tab="leaderboard" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 18V9"></path>
+            <path d="M12 18V6"></path>
+            <path d="M19 18v-4"></path>
+          </svg>
+          <span>Таблиця</span>
+        </button>
+      </nav>
+    </div>
   `;
-
-  const leaderboardButton = app.querySelector<HTMLButtonElement>("[data-leaderboard]");
-  if (leaderboardButton) {
-    leaderboardButton.addEventListener("click", () => {
-      void loadLeaderboard();
-    });
-  }
 
   const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");
@@ -1254,6 +1279,7 @@ function renderUser(
     });
   }
 
+  setupTabs();
   setupNoticeTicker();
   setupLogoOrderControls();
 
@@ -2468,6 +2494,37 @@ function formatNoticeRule(rule: string): string {
   return rule.toUpperCase();
 }
 
+function setupTabs(): void {
+  const buttons = app.querySelectorAll<HTMLButtonElement>("[data-tab]");
+  if (!buttons.length) {
+    return;
+  }
+
+  const setActive = (tab: string): void => {
+    app.querySelectorAll<HTMLElement>("[data-screen]").forEach((screen) => {
+      screen.classList.toggle("is-active", screen.dataset.screen === tab);
+    });
+    buttons.forEach((button) => {
+      const isActive = button.dataset.tab === tab;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    if (tab === "leaderboard") {
+      void loadLeaderboard();
+    }
+  };
+
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.tab;
+      if (!tab) {
+        return;
+      }
+      setActive(tab);
+    });
+  });
+}
+
 
 function setupScoreControls(form: HTMLFormElement): void {
   const controls = form.querySelectorAll<HTMLElement>("[data-score-control]");
@@ -3444,7 +3501,7 @@ async function loadLeaderboard(): Promise<void> {
   }
 
   if (leaderboardLoaded) {
-    container.classList.toggle("is-open");
+    container.classList.add("is-open");
     return;
   }
 
