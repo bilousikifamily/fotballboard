@@ -1182,7 +1182,7 @@ function renderFactions(profile: ProfileStatsPayload | null): string {
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
         : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
       const memberCount = typeof entry.members === "number" ? entry.members : 0;
-      const membersLabel = formatUkrainianCount(memberCount, "депутат", "депутата", "депутатів");
+      const membersLabel = formatUkrainianCount(memberCount, "депутат", "депутати", "депутатів");
       const members = `${memberCount} ${membersLabel}`;
       const rank = entry.rank ? `#${entry.rank}` : "—";
       return `
