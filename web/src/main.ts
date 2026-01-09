@@ -1191,6 +1191,12 @@ function renderUser(
               </div>
             </div>
           </section>
+
+          <div class="notice-ticker" aria-live="polite">
+            <span class="notice-ticker-text" data-notice-text>
+              ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
+            </span>
+          </div>
         </section>
 
         <section class="screen is-active" data-screen="matches">
@@ -1208,12 +1214,6 @@ function renderUser(
             </div>
             <div class="matches-list" data-matches></div>
           </section>
-
-          <div class="notice-ticker" aria-live="polite">
-            <span class="notice-ticker-text" data-notice-text>
-              ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
-            </span>
-          </div>
 
           ${adminSection}
         </section>
