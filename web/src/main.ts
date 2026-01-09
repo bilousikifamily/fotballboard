@@ -2519,6 +2519,7 @@ function setupTabs(): void {
     app.querySelectorAll<HTMLElement>("[data-screen]").forEach((screen) => {
       screen.classList.toggle("is-active", screen.dataset.screen === tab);
     });
+    document.body.classList.toggle("leaderboard-fixed", tab === "leaderboard");
     buttons.forEach((button) => {
       const isActive = button.dataset.tab === tab;
       button.classList.toggle("is-active", isActive);

@@ -153,6 +153,9 @@ body.intro-active {
 
 .screen[data-screen="leaderboard"] {
   height: 100dvh;
+}
+
+body.leaderboard-fixed {
   overflow: hidden;
 }
 
