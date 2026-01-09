@@ -144,7 +144,7 @@ body.intro-active {
   gap: 18px;
   min-height: 100dvh;
   align-content: start;
-  padding-top: 10vh;
+  padding-top: 2vh;
 }
 
 .screen.is-active {
