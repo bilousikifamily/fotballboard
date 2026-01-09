@@ -1399,7 +1399,7 @@ h1 {
   width: 100%;
   display: none;
   position: relative;
-  z-index: 0;
+  z-index: 1;
 }
 
 .leaderboard-stage {
@@ -1415,8 +1415,8 @@ h1 {
 .leaderboard-rada {
   position: absolute;
   left: 50%;
-  top: 100%;
-  transform: translate(-50%, -10%);
+  top: 0;
+  transform: translate(-50%, 8px);
   width: min(520px, 90%);
   height: auto;
   z-index: -1;
