@@ -1084,8 +1084,7 @@ async function listRecentPredictionResults(supabase: SupabaseClient, userId: num
       .eq("user_id", userId)
       .eq("matches.status", "finished")
       .not("points", "is", null)
-      .order("kickoff_at", { referencedTable: "matches", ascending: false })
-      .limit(5);
+      .order("kickoff_at", { referencedTable: "matches", ascending: true });
     if (error || !data) {
       return [];
     }

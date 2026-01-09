@@ -1099,11 +1099,7 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   const hits = stats?.hits ?? 0;
   const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
   const lastResults = stats?.last_results ?? [];
-  const icons = Array.from({ length: 5 }, (_, index) => {
-    const entry = lastResults[index];
-    if (!entry) {
-      return `<span class="result-icon is-empty" aria-hidden="true">-</span>`;
-    }
+  const icons = lastResults.map((entry) => {
     if (entry.points === 5) {
       return `<span class="result-icon is-perfect" aria-hidden="true">5</span>`;
     }
@@ -1122,7 +1118,6 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
         <span class="accuracy-bar-text">${accuracy}%</span>
       </div>
       <div class="recent-results">
-        <span class="muted small">Останні 5</span>
         <div class="result-icons">${icons}</div>
       </div>
     </section>
