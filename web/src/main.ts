@@ -3461,7 +3461,7 @@ function updatePredictionCountdowns(): void {
 
     const closeAtMs = getMatchPredictionCloseAtMs(match);
     if (closeAtMs === null) {
-      el.textContent = "До закриття прогнозу: --:--";
+      el.textContent = "закриття прогнозу через --:--";
       return;
     }
 
@@ -3484,7 +3484,7 @@ function updatePredictionCountdowns(): void {
     }
 
     el.classList.remove("is-closed");
-    el.textContent = `До закриття прогнозу: ${formatCountdown(remaining)}`;
+    el.textContent = `закриття прогнозу через ${formatCountdown(remaining)}`;
   });
 }
 
