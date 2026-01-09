@@ -1163,6 +1163,11 @@ h1 {
   padding: 12px 24px;
   min-height: 56px;
   height: 56px;
+  box-shadow: none;
+}
+
+.prediction-submit:active {
+  box-shadow: none;
 }
 
 .match-odds-value {
@@ -1217,7 +1222,7 @@ h1 {
 
 .prediction-countdown {
   text-align: center;
-  margin-top: 6px;
+  margin-top: 10px;
 }
 
 .prediction-countdown.is-closed {

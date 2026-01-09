@@ -3274,7 +3274,6 @@ function renderMatchesList(matches: Match[]): string {
         ? ""
         : `
           <form class="prediction-form" data-prediction-form data-match-id="${match.id}">
-            <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
             <div class="score-row">
               ${homeLogoMarkup}
               <div class="score-controls">
@@ -3294,11 +3293,14 @@ function renderMatchesList(matches: Match[]): string {
               </div>
               ${awayLogoMarkup}
             </div>
-            <p class="prediction-countdown muted small" data-prediction-countdown data-match-id="${match.id}"></p>
+            <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
             <p class="muted small" data-prediction-status></p>
             <button class="button small-button prediction-submit" type="submit">ПРОГОЛОСУВАТИ</button>
           </form>
         `;
+      const countdown = closed || predicted
+        ? ""
+        : `<p class="prediction-countdown muted small" data-prediction-countdown data-match-id="${match.id}"></p>`;
 
       return `
         <div class="match-item ${predicted ? "has-prediction" : ""}">
@@ -3329,6 +3331,7 @@ function renderMatchesList(matches: Match[]): string {
             }></div>
             ${closed ? statusLine : ""}
           </article>
+          ${countdown}
         </div>
       `;
     })
@@ -3393,7 +3396,7 @@ function updatePredictionCountdowns(): void {
     if (remaining <= 0) {
       el.textContent = "Прогнози закрито.";
       el.classList.add("is-closed");
-      const form = el.closest<HTMLFormElement>("[data-prediction-form]");
+      const form = app.querySelector<HTMLFormElement>(`[data-prediction-form][data-match-id="${matchId}"]`);
       if (form) {
         form.classList.add("is-closed");
         form.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
