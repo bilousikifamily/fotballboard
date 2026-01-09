@@ -2641,7 +2641,6 @@ function setupTabs(): void {
     app.querySelectorAll<HTMLElement>("[data-screen]").forEach((screen) => {
       screen.classList.toggle("is-active", screen.dataset.screen === tab);
     });
-    document.body.classList.toggle("leaderboard-fixed", tab === "leaderboard");
     buttons.forEach((button) => {
       const isActive = button.dataset.tab === tab;
       button.classList.toggle("is-active", isActive);
@@ -3647,7 +3646,7 @@ async function loadLeaderboard(): Promise<void> {
   container.classList.add("is-open");
 
   try {
-    const response = await fetch(`${apiBase}/api/leaderboard?limit=10`, {
+    const response = await fetch(`${apiBase}/api/leaderboard`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

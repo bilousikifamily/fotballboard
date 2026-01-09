@@ -975,14 +975,17 @@ async function storeUser(supabase: SupabaseClient | null, user: TelegramUser): P
   }
 }
 
-async function listLeaderboard(supabase: SupabaseClient, limit: number): Promise<StoredUser[] | null> {
+async function listLeaderboard(supabase: SupabaseClient, limit?: number | null): Promise<StoredUser[] | null> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("users")
       .select("id, username, first_name, last_name, photo_url, points_total, updated_at, nickname, avatar_choice")
       .order("points_total", { ascending: false })
-      .order("updated_at", { ascending: false })
-      .limit(limit);
+      .order("updated_at", { ascending: false });
+    if (typeof limit === "number") {
+      query = query.limit(limit);
+    }
+    const { data, error } = await query;
 
     if (error) {
       console.error("Failed to fetch users", error);
@@ -3817,9 +3820,9 @@ function normalizeNickname(value: unknown): string | null {
   return trimmed;
 }
 
-function parseLimit(value: string | null, fallback: number, max: number): number {
+function parseLimit(value: string | null, fallback: number, max: number): number | null {
   if (!value) {
-    return fallback;
+    return null;
   }
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {

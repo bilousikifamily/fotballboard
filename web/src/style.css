@@ -151,13 +151,6 @@ body.intro-active {
   display: grid;
 }
 
-.screen[data-screen="leaderboard"] {
-  height: 100dvh;
-}
-
-body.leaderboard-fixed {
-  overflow: hidden;
-}
 
 .tabbar {
   position: fixed;
@@ -1571,10 +1564,6 @@ h1 {
 
 .leaderboard-list.is-open {
   display: block;
-  max-height: calc(100dvh - var(--tabbar-offset) - 18vh);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-gutter: stable;
 }
 
 .leaderboard-rada {
