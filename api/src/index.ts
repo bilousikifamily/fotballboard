@@ -1063,7 +1063,7 @@ async function countPredictions(
       .eq("user_id", userId)
       .eq("matches.status", "finished");
     if (hitsOnly) {
-      query = query.gt("points", 1);
+      query = query.gt("points", 0);
     }
     const { count } = await query;
     return typeof count === "number" ? count : 0;
@@ -1085,9 +1085,13 @@ async function listRecentPredictionResults(supabase: SupabaseClient, userId: num
     if (error || !data) {
       return [];
     }
-    return (data as Array<{ points?: number | null }>).map((row) => ({
-      hit: (row.points ?? 0) > 1
-    }));
+    return (data as Array<{ points?: number | null }>).map((row) => {
+      const points = typeof row.points === "number" ? row.points : 0;
+      return {
+        hit: points > 0,
+        points
+      };
+    });
   } catch (error) {
     console.error("Failed to list recent prediction results", error);
     return [];
@@ -4249,6 +4253,7 @@ type FactionKey = "classico_choice" | "eu_club_id" | "ua_club_id";
 
 interface PredictionResult {
   hit: boolean;
+  points: number;
 }
 
 interface PredictionStats {

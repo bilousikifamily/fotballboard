@@ -83,7 +83,7 @@ type ProfileStatsPayload = {
     hits: number;
     accuracy_pct: number;
     streak: number;
-    last_results: Array<{ hit: boolean }>;
+    last_results: Array<{ hit: boolean; points: number }>;
   };
   factions: FactionEntry[];
 };
@@ -1097,13 +1097,20 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   const stats = profile?.prediction;
   const total = stats?.total ?? 0;
   const hits = stats?.hits ?? 0;
-  const accuracy = stats?.accuracy_pct ?? 0;
-  const streak = stats?.streak ?? 0;
+  const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
   const lastResults = stats?.last_results ?? [];
-  const dots = Array.from({ length: 5 }, (_, index) => {
+  const icons = Array.from({ length: 5 }, (_, index) => {
     const entry = lastResults[index];
-    const state = entry ? (entry.hit ? "is-hit" : "is-miss") : "is-empty";
-    return `<span class="result-dot ${state}" aria-hidden="true"></span>`;
+    if (!entry) {
+      return `<span class="result-icon is-empty" aria-hidden="true">-</span>`;
+    }
+    if (entry.points === 5) {
+      return `<span class="result-icon is-perfect" aria-hidden="true">5</span>`;
+    }
+    if (entry.points > 0) {
+      return `<span class="result-icon is-hit" aria-hidden="true">✓</span>`;
+    }
+    return `<span class="result-icon is-miss" aria-hidden="true">✕</span>`;
   }).join("");
   return `
     <section class="panel profile-metrics">
@@ -1112,6 +1119,7 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
       </div>
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
+        <span class="accuracy-bar-text">${accuracy}%</span>
       </div>
       <div class="accuracy-meta">
         <span class="accuracy-count">${hits}/${total} влучних</span>
@@ -1119,11 +1127,7 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
       </div>
       <div class="recent-results">
         <span class="muted small">Останні 5</span>
-        <div class="result-dots">${dots}</div>
-      </div>
-      <div class="streak-row">
-        <span class="muted small">Серія</span>
-        <span class="streak-value">${streak}</span>
+        <div class="result-icons">${icons}</div>
       </div>
     </section>
   `;

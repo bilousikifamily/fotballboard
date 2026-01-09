@@ -325,7 +325,7 @@ body.leaderboard-fixed {
 .accuracy-bar {
   position: relative;
   width: 100%;
-  height: 10px;
+  height: 14px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
@@ -334,9 +334,26 @@ body.leaderboard-fixed {
 
 .accuracy-bar-fill {
   display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent-strong));
   border-radius: inherit;
+}
+
+.accuracy-bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.02em;
+  z-index: 1;
 }
 
 .accuracy-meta {
@@ -357,42 +374,44 @@ body.leaderboard-fixed {
   gap: 10px;
 }
 
-.result-dots {
+.result-icons {
   display: flex;
   gap: 6px;
 }
 
-.result-dot {
-  width: 10px;
-  height: 10px;
+.result-icon {
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.15);
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.result-dot.is-hit {
-  background: var(--accent);
-  border-color: rgba(255, 154, 31, 0.6);
+.result-icon.is-hit {
+  color: #4ce386;
+  background: rgba(76, 227, 134, 0.18);
+  border-color: rgba(76, 227, 134, 0.45);
 }
 
-.result-dot.is-miss {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.25);
+.result-icon.is-miss {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.15);
+  border-color: rgba(255, 107, 107, 0.45);
 }
 
-.result-dot.is-empty {
+.result-icon.is-perfect {
+  color: var(--accent);
+  background: rgba(255, 154, 31, 0.18);
+  border-color: rgba(255, 154, 31, 0.45);
+}
+
+.result-icon.is-empty {
   opacity: 0.45;
-}
-
-.streak-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.85rem;
-}
-
-.streak-value {
-  font-weight: 600;
 }
 
 .faction-list {
