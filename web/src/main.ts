@@ -1220,7 +1220,10 @@ function renderUser(
 
         <section class="screen" data-screen="leaderboard">
           <section class="panel leaderboard center">
-            <div class="leaderboard-list is-open" data-leaderboard-list></div>
+            <div class="leaderboard-stage">
+              <div class="leaderboard-list is-open" data-leaderboard-list></div>
+              <img class="leaderboard-rada" src="/images/rada.png" alt="" />
+            </div>
           </section>
         </section>
       </main>

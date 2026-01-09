@@ -1398,10 +1398,29 @@ h1 {
 .leaderboard-list {
   width: 100%;
   display: none;
+  position: relative;
+  z-index: 0;
+}
+
+.leaderboard-stage {
+  position: relative;
+  width: 100%;
+  z-index: 0;
 }
 
 .leaderboard-list.is-open {
   display: block;
+}
+
+.leaderboard-rada {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -10%);
+  width: min(520px, 90%);
+  height: auto;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .leaderboard-rows {
