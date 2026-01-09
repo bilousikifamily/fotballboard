@@ -13,6 +13,8 @@
   --accent-soft: rgba(255, 122, 26, 0.2);
   --outline-light: rgba(255, 255, 255, 0.18);
   --outline-dark: rgba(0, 0, 0, 0.75);
+  --tabbar-height: 72px;
+  --tabbar-offset: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
 }
 
 * {
@@ -128,16 +130,21 @@ body.intro-active {
 .layout {
   display: grid;
   gap: 18px;
-  padding-bottom: 96px;
+  min-height: 100dvh;
+  padding-bottom: 0;
 }
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
 }
 
 .screen {
   display: none;
   gap: 18px;
+  min-height: 100dvh;
+  align-content: center;
 }
 
 .screen.is-active {
@@ -154,6 +161,7 @@ body.intro-active {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
+  min-height: var(--tabbar-height);
   background: rgba(16, 17, 20, 0.92);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(16px);
