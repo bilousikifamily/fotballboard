@@ -1231,14 +1231,15 @@ function renderUser(
             <circle cx="12" cy="8" r="3.5"></circle>
             <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"></path>
           </svg>
-          <span>Профіль</span>
         </button>
         <button class="tabbar-button is-active" type="button" data-tab="matches" role="tab" aria-selected="true">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="8.5"></circle>
-            <path d="M12 6l3 2 1 3-2 3-4 0-2-3 1-3z"></path>
+            <circle cx="12" cy="12" r="9"></circle>
+            <polygon points="12 7.2 14.8 9 13.9 12 10.1 12 9.2 9"></polygon>
+            <path d="M8.4 13.2l-1.6 2.9 2.1 2.7 3.1-1.1 3.1 1.1 2.1-2.7-1.6-2.9"></path>
+            <path d="M6.8 9.9l-2.3 0.7 0.4 3.4 3.1 0.8"></path>
+            <path d="M17.2 9.9l2.3 0.7-0.4 3.4-3.1 0.8"></path>
           </svg>
-          <span>Прогнози</span>
         </button>
         <button class="tabbar-button" type="button" data-tab="leaderboard" role="tab" aria-selected="false">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1246,7 +1247,6 @@ function renderUser(
             <path d="M12 18V6"></path>
             <path d="M19 18v-4"></path>
           </svg>
-          <span>Таблиця</span>
         </button>
       </nav>
     </div>
