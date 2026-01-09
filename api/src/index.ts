@@ -13,6 +13,9 @@ const WEATHER_PROVIDER_PRIMARY = "open-meteo";
 const WEATHER_PROVIDER_FALLBACK = "weatherapi";
 const WEATHER_UNITS = "metric";
 const WEATHER_LANG = "uk";
+const WEATHER_DB_REFRESH_MIN = 60;
+const WEATHER_DB_LOOKAHEAD_HOURS = 24;
+const WEATHER_DB_REFRESH_LIMIT = 24;
 
 type WeatherCacheEntry = {
   value: number | null;
@@ -48,6 +51,9 @@ interface Env {
   WEATHER_RETRY_MAX_ATTEMPTS?: string;
   WEATHER_RETRY_BASE_DELAY_MS?: string;
   WEATHER_RETRY_DELAY_CAP_MS?: string;
+  WEATHER_DB_REFRESH_MIN?: string;
+  WEATHER_DB_LOOKAHEAD_H?: string;
+  WEATHER_DB_REFRESH_LIMIT?: string;
   WEATHERAPI_KEY?: string;
   WEATHERAPI_BASE?: string;
 }
@@ -813,6 +819,7 @@ export default {
   },
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(handlePredictionReminders(env));
+    ctx.waitUntil(handleWeatherRefresh(env));
   }
 };
 
@@ -2345,6 +2352,18 @@ function getWeatherRateLimitPerMin(env: Env): number {
   return Math.max(1, parseEnvNumber(env.WEATHER_RATE_LIMIT_PER_MIN, 10));
 }
 
+function getWeatherDbRefreshMin(env: Env): number {
+  return Math.max(5, parseEnvNumber(env.WEATHER_DB_REFRESH_MIN, WEATHER_DB_REFRESH_MIN));
+}
+
+function getWeatherDbLookaheadHours(env: Env): number {
+  return Math.max(1, parseEnvNumber(env.WEATHER_DB_LOOKAHEAD_H, WEATHER_DB_LOOKAHEAD_HOURS));
+}
+
+function getWeatherDbRefreshLimit(env: Env): number {
+  return Math.max(1, parseEnvNumber(env.WEATHER_DB_REFRESH_LIMIT, WEATHER_DB_REFRESH_LIMIT));
+}
+
 function createRateLimiter(): {
   allow: (env: Env) => boolean;
 } {
@@ -3870,6 +3889,32 @@ async function handlePredictionReminders(env: Env): Promise<void> {
   }
 }
 
+async function handleWeatherRefresh(env: Env): Promise<void> {
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Failed to refresh weather: missing_supabase");
+    return;
+  }
+
+  const now = new Date();
+  const lookaheadHours = getWeatherDbLookaheadHours(env);
+  const refreshMin = getWeatherDbRefreshMin(env);
+  const limit = getWeatherDbRefreshLimit(env);
+  const end = new Date(now.getTime() + lookaheadHours * 60 * 60 * 1000);
+  const staleBefore = new Date(now.getTime() - refreshMin * 60 * 1000);
+  const matches = await listMatchesForWeatherRefresh(supabase, now, end, staleBefore, limit);
+  if (!matches || matches.length === 0) {
+    return;
+  }
+
+  for (const match of matches) {
+    const result = await fetchMatchWeatherDetailed(env, supabase, match);
+    if (!result.ok) {
+      continue;
+    }
+  }
+}
+
 function getPredictionReminderWindow(now: Date): { start: Date; end: Date } {
   const leadMs = PREDICTION_CUTOFF_MS + PREDICTION_REMINDER_BEFORE_CLOSE_MS;
   const start = new Date(now.getTime() + leadMs);
@@ -3900,6 +3945,38 @@ async function listMatchesForPredictionReminders(
     return (data as PredictionReminderMatch[]) ?? [];
   } catch (error) {
     console.error("Failed to list matches for reminders", error);
+    return null;
+  }
+}
+
+async function listMatchesForWeatherRefresh(
+  supabase: SupabaseClient,
+  start: Date,
+  end: Date,
+  staleBefore: Date,
+  limit: number
+): Promise<WeatherRefreshMatch[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("matches")
+      .select(
+        "id, kickoff_at, venue_name, venue_city, venue_lat, venue_lon, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone"
+      )
+      .eq("status", "scheduled")
+      .gte("kickoff_at", start.toISOString())
+      .lte("kickoff_at", end.toISOString())
+      .or(`weather_fetched_at.is.null,weather_fetched_at.lt.${staleBefore.toISOString()}`)
+      .order("kickoff_at", { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error("Failed to list matches for weather refresh", error);
+      return null;
+    }
+
+    return (data as WeatherRefreshMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list matches for weather refresh", error);
     return null;
   }
 }
@@ -4194,4 +4271,18 @@ interface PredictionReminderMatch {
   home_team: string;
   away_team: string;
   kickoff_at: string;
+}
+
+interface WeatherRefreshMatch {
+  id: number;
+  kickoff_at: string;
+  venue_name?: string | null;
+  venue_city?: string | null;
+  venue_lat?: number | null;
+  venue_lon?: number | null;
+  rain_probability?: number | null;
+  weather_fetched_at?: string | null;
+  weather_condition?: string | null;
+  weather_temp_c?: number | null;
+  weather_timezone?: string | null;
 }
