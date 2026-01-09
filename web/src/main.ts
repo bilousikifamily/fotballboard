@@ -145,6 +145,7 @@ type Match = {
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   has_prediction?: boolean;
+  prediction_closes_at?: string | null;
 };
 
 type PredictionUser = {
@@ -214,6 +215,7 @@ let currentLogoOrder: string[] | null = null;
 let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
+let predictionCountdownId: number | null = null;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -1727,6 +1729,7 @@ async function loadMatches(date: string): Promise<void> {
     bindMatchActions();
     renderAdminMatchOptions(data.matches);
     void loadMatchWeather(data.matches);
+    startPredictionCountdowns();
   } catch {
     container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
   }
@@ -3249,7 +3252,8 @@ function renderMatchesList(matches: Match[]): string {
         `
         : "";
       const finished = match.status === "finished";
-      const closed = finished || isPredictionClosed(match.kickoff_at);
+      const closeAtMs = getMatchPredictionCloseAtMs(match);
+      const closed = finished || (closeAtMs !== null && Date.now() > closeAtMs);
       const predicted = Boolean(match.has_prediction);
       const result =
         finished && match.home_score !== null && match.away_score !== null
@@ -3270,6 +3274,7 @@ function renderMatchesList(matches: Match[]): string {
         ? ""
         : `
           <form class="prediction-form" data-prediction-form data-match-id="${match.id}">
+            <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
             <div class="score-row">
               ${homeLogoMarkup}
               <div class="score-controls">
@@ -3289,7 +3294,7 @@ function renderMatchesList(matches: Match[]): string {
               </div>
               ${awayLogoMarkup}
             </div>
-            <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
+            <p class="prediction-countdown muted small" data-prediction-countdown data-match-id="${match.id}"></p>
             <p class="muted small" data-prediction-status></p>
             <button class="button small-button prediction-submit" type="submit">ПРОГОЛОСУВАТИ</button>
           </form>
@@ -3330,13 +3335,91 @@ function renderMatchesList(matches: Match[]): string {
     .join("");
 }
 
-function isPredictionClosed(kickoffAt: string): boolean {
+function getPredictionCloseAtMs(kickoffAt: string): number | null {
   const kickoff = new Date(kickoffAt);
   if (Number.isNaN(kickoff.getTime())) {
-    return false;
+    return null;
   }
-  const cutoff = kickoff.getTime() - 60 * 60 * 1000;
-  return Date.now() > cutoff;
+  return kickoff.getTime() - 60 * 60 * 1000;
+}
+
+function getMatchPredictionCloseAtMs(match: Match): number | null {
+  if (match.prediction_closes_at) {
+    const parsed = new Date(match.prediction_closes_at).getTime();
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return getPredictionCloseAtMs(match.kickoff_at);
+}
+
+function formatCountdown(msRemaining: number): string {
+  const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+function updatePredictionCountdowns(): void {
+  const elements = app.querySelectorAll<HTMLElement>("[data-prediction-countdown]");
+  if (!elements.length) {
+    return;
+  }
+
+  const now = Date.now();
+  elements.forEach((el) => {
+    const matchId = Number.parseInt(el.dataset.matchId || "", 10);
+    if (!Number.isFinite(matchId)) {
+      el.textContent = "";
+      return;
+    }
+    const match = matchesById.get(matchId);
+    if (!match) {
+      el.textContent = "";
+      return;
+    }
+
+    const closeAtMs = getMatchPredictionCloseAtMs(match);
+    if (closeAtMs === null) {
+      el.textContent = "До закриття прогнозу: --:--";
+      return;
+    }
+
+    const remaining = closeAtMs - now;
+    if (remaining <= 0) {
+      el.textContent = "Прогнози закрито.";
+      el.classList.add("is-closed");
+      const form = el.closest<HTMLFormElement>("[data-prediction-form]");
+      if (form) {
+        form.classList.add("is-closed");
+        form.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+          button.disabled = true;
+        });
+        const status = form.querySelector<HTMLElement>("[data-prediction-status]");
+        if (status) {
+          status.textContent = "Прогнози закрито.";
+        }
+      }
+      return;
+    }
+
+    el.classList.remove("is-closed");
+    el.textContent = `До закриття прогнозу: ${formatCountdown(remaining)}`;
+  });
+}
+
+function startPredictionCountdowns(): void {
+  if (predictionCountdownId !== null) {
+    window.clearInterval(predictionCountdownId);
+    predictionCountdownId = null;
+  }
+
+  updatePredictionCountdowns();
+  predictionCountdownId = window.setInterval(updatePredictionCountdowns, 1000);
 }
 
 function parseScore(value?: string): number | null {

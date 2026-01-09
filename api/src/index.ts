@@ -457,21 +457,26 @@ export default {
           return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
         }
 
-        let matchesWithPrediction = matches;
-        if (auth.user && matches.length) {
-          const predicted = await listUserPredictedMatches(
-            supabase,
-            auth.user.id,
-            matches.map((match) => match.id)
-          );
-          matchesWithPrediction = matches.map((match) => ({
-            ...match,
-            has_prediction: predicted.has(match.id)
-          }));
-        }
-
-        return jsonResponse({ ok: true, matches: matchesWithPrediction }, 200, corsHeaders());
+      let matchesWithPrediction = matches;
+      if (auth.user && matches.length) {
+        const predicted = await listUserPredictedMatches(
+          supabase,
+          auth.user.id,
+          matches.map((match) => match.id)
+        );
+        matchesWithPrediction = matches.map((match) => ({
+          ...match,
+          has_prediction: predicted.has(match.id)
+        }));
       }
+
+      const matchesWithCountdown = matchesWithPrediction.map((match) => ({
+        ...match,
+        prediction_closes_at: getPredictionCloseAt(match.kickoff_at)
+      }));
+
+      return jsonResponse({ ok: true, matches: matchesWithCountdown }, 200, corsHeaders());
+    }
 
       if (request.method !== "POST") {
         return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
@@ -3042,6 +3047,17 @@ function canPredict(kickoffAt?: string | null): boolean {
   }
   const cutoffMs = kickoffMs - PREDICTION_CUTOFF_MS;
   return Date.now() <= cutoffMs;
+}
+
+function getPredictionCloseAt(kickoffAt?: string | null): string | null {
+  if (!kickoffAt) {
+    return null;
+  }
+  const kickoffMs = new Date(kickoffAt).getTime();
+  if (Number.isNaN(kickoffMs)) {
+    return null;
+  }
+  return new Date(kickoffMs - PREDICTION_CUTOFF_MS).toISOString();
 }
 
 async function findPrediction(

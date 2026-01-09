@@ -1215,6 +1215,19 @@ h1 {
   display: none;
 }
 
+.prediction-countdown {
+  text-align: center;
+  margin-top: 6px;
+}
+
+.prediction-countdown.is-closed {
+  color: var(--muted);
+}
+
+.prediction-form.is-closed {
+  opacity: 0.7;
+}
+
 .match-average {
   display: none;
   grid-template-columns: 1fr;

@@ -127,8 +127,9 @@
 ### 4.5) `.prediction-form`
 - Роль: форма прогнозу.
 - Вміст:
+  - `.match-odds-score` (ймовірність рахунку, над вводом)
   - `.score-row` (контроли рахунку)
-  - `.match-odds-score` (ймовірність рахунку)
+  - `.prediction-countdown` (лічильник до закриття прогнозу)
   - `p[data-prediction-status]` (статус)
   - `.prediction-submit` (кнопка ПРОГНОЗ)
 - Висота:
