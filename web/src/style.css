@@ -49,7 +49,6 @@ body {
   width: min(520px, 92vw, 92vh);
   padding: 24px 0 40px;
   opacity: 1;
-  transform: translateY(0);
 }
 
 #app.app-hidden {
