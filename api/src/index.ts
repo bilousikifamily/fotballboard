@@ -157,12 +157,14 @@ export default {
       const supabase = createSupabaseClient(env);
       let isAdmin = false;
       let stats: UserStats | null = null;
+      let profileStats: ProfileStats | null = null;
       let onboarding: UserOnboarding | null = null;
       if (valid.user) {
         await storeUser(supabase, valid.user);
         if (supabase) {
           isAdmin = await checkAdmin(supabase, valid.user.id);
           stats = await getUserStats(supabase, valid.user.id);
+          profileStats = await getProfileStats(supabase, valid.user.id);
           onboarding = await getUserOnboarding(supabase, valid.user.id);
         }
       }
@@ -174,6 +176,7 @@ export default {
           admin: isAdmin,
           points_total: stats?.points_total ?? STARTING_POINTS,
           rank: stats?.rank ?? null,
+          profile: profileStats,
           onboarding
         },
         200,
@@ -1025,6 +1028,144 @@ async function getUserStats(supabase: SupabaseClient, userId: number): Promise<U
   } catch {
     return null;
   }
+}
+
+async function getPredictionStats(supabase: SupabaseClient, userId: number): Promise<PredictionStats> {
+  const total = await countPredictions(supabase, userId);
+  const hits = await countPredictions(supabase, userId, true);
+  const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
+  const lastResults = await listRecentPredictionResults(supabase, userId);
+  let streak = 0;
+  for (const entry of lastResults) {
+    if (!entry.hit) {
+      break;
+    }
+    streak += 1;
+  }
+  return {
+    total,
+    hits,
+    accuracy_pct: accuracy,
+    streak,
+    last_results: lastResults
+  };
+}
+
+async function countPredictions(
+  supabase: SupabaseClient,
+  userId: number,
+  hitsOnly = false
+): Promise<number> {
+  try {
+    let query = supabase
+      .from("predictions")
+      .select("id, matches!inner(status)", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("matches.status", "finished");
+    if (hitsOnly) {
+      query = query.gt("points", 1);
+    }
+    const { count } = await query;
+    return typeof count === "number" ? count : 0;
+  } catch (error) {
+    console.error("Failed to count predictions", error);
+    return 0;
+  }
+}
+
+async function listRecentPredictionResults(supabase: SupabaseClient, userId: number): Promise<PredictionResult[]> {
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("points, matches!inner(kickoff_at, status)")
+      .eq("user_id", userId)
+      .eq("matches.status", "finished")
+      .order("kickoff_at", { referencedTable: "matches", ascending: false })
+      .limit(5);
+    if (error || !data) {
+      return [];
+    }
+    return (data as Array<{ points?: number | null }>).map((row) => ({
+      hit: (row.points ?? 0) > 1
+    }));
+  } catch (error) {
+    console.error("Failed to list recent prediction results", error);
+    return [];
+  }
+}
+
+async function getFactionStats(supabase: SupabaseClient, userId: number): Promise<FactionStat[]> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("classico_choice, eu_club_id, ua_club_id, points_total")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) {
+      return [];
+    }
+    const points = typeof data.points_total === "number" ? data.points_total : STARTING_POINTS;
+    const order: Array<FactionKey> = ["classico_choice", "eu_club_id", "ua_club_id"];
+    const entries: FactionStat[] = [];
+    for (const key of order) {
+      const value = (data as Record<string, string | null | undefined>)[key];
+      if (!value) {
+        continue;
+      }
+      const members = await countFactionMembers(supabase, key, value);
+      const rank = await getFactionRank(supabase, key, value, points);
+      entries.push({ key, value, members, rank });
+    }
+    return entries;
+  } catch (error) {
+    console.error("Failed to build faction stats", error);
+    return [];
+  }
+}
+
+async function countFactionMembers(supabase: SupabaseClient, key: FactionKey, value: string): Promise<number> {
+  try {
+    const { count } = await supabase.from("users").select("id", { count: "exact", head: true }).eq(key, value);
+    return typeof count === "number" ? count : 0;
+  } catch (error) {
+    console.error("Failed to count faction members", error);
+    return 0;
+  }
+}
+
+async function getFactionRank(
+  supabase: SupabaseClient,
+  key: FactionKey,
+  value: string,
+  points: number
+): Promise<number | null> {
+  try {
+    const { data: higherPoints, error } = await supabase
+      .from("users")
+      .select("points_total")
+      .eq(key, value)
+      .gt("points_total", points);
+    if (error) {
+      return null;
+    }
+    const distinctHigher = new Set(
+      (higherPoints as Array<{ points_total?: number | null }> | null)?.map((row) => row.points_total).filter(
+        (entry): entry is number => typeof entry === "number"
+      ) ?? []
+    );
+    return distinctHigher.size + 1;
+  } catch (error) {
+    console.error("Failed to compute faction rank", error);
+    return null;
+  }
+}
+
+async function getProfileStats(supabase: SupabaseClient, userId: number): Promise<ProfileStats> {
+  const [prediction, factions] = await Promise.all([
+    getPredictionStats(supabase, userId),
+    getFactionStats(supabase, userId)
+  ]);
+  return { prediction, factions };
 }
 
 async function getUserOnboarding(supabase: SupabaseClient, userId: number): Promise<UserOnboarding | null> {
@@ -4102,6 +4243,32 @@ interface StoredUser {
 interface UserStats {
   points_total: number;
   rank: number | null;
+}
+
+type FactionKey = "classico_choice" | "eu_club_id" | "ua_club_id";
+
+interface PredictionResult {
+  hit: boolean;
+}
+
+interface PredictionStats {
+  total: number;
+  hits: number;
+  accuracy_pct: number;
+  streak: number;
+  last_results: PredictionResult[];
+}
+
+interface FactionStat {
+  key: FactionKey;
+  value: string;
+  members: number;
+  rank: number | null;
+}
+
+interface ProfileStats {
+  prediction: PredictionStats;
+  factions: FactionStat[];
 }
 
 interface CreateMatchPayload {

@@ -317,6 +317,134 @@ body.leaderboard-fixed {
   border: none;
 }
 
+.profile-metrics .section-header,
+.profile-factions .section-header {
+  margin-bottom: 6px;
+}
+
+.accuracy-bar {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+}
+
+.accuracy-bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  border-radius: inherit;
+}
+
+.accuracy-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.accuracy-percent {
+  font-weight: 600;
+}
+
+.recent-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.result-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.result-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.result-dot.is-hit {
+  background: var(--accent);
+  border-color: rgba(255, 154, 31, 0.6);
+}
+
+.result-dot.is-miss {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.result-dot.is-empty {
+  opacity: 0.45;
+}
+
+.streak-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.streak-value {
+  font-weight: 600;
+}
+
+.faction-list {
+  display: grid;
+  gap: 10px;
+}
+
+.faction-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.faction-logo-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+}
+
+.faction-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.faction-logo.placeholder {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.faction-name {
+  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.faction-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .logo-stack {
   position: relative;
   width: 100%;

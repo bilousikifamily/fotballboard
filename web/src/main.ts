@@ -8,6 +8,7 @@ type AuthResponse =
       admin?: boolean;
       points_total?: number;
       rank?: number | null;
+      profile?: ProfileStatsPayload | null;
       onboarding?: OnboardingInfo | null;
     }
   | { ok: false; error: string };
@@ -68,6 +69,24 @@ type MatchWeatherDebugInfo = {
 type MatchWeatherDebugResponse =
   | { ok: true; rain_probability: number | null; debug?: MatchWeatherDebugInfo }
   | { ok: false; error: string; debug?: MatchWeatherDebugInfo };
+
+type FactionEntry = {
+  key: "classico_choice" | "eu_club_id" | "ua_club_id";
+  value: string;
+  members: number;
+  rank: number | null;
+};
+
+type ProfileStatsPayload = {
+  prediction: {
+    total: number;
+    hits: number;
+    accuracy_pct: number;
+    streak: number;
+    last_results: Array<{ hit: boolean }>;
+  };
+  factions: FactionEntry[];
+};
 
 type CreateMatchResponse =
   | { ok: true; match: Match }
@@ -295,7 +314,6 @@ function resolveLogoLeagueId(leagueId: MatchLeagueId | null): AllLeagueId | null
 }
 
 const NOTICE_RULES = [
-  "Прогнози приймаються\nза 60 хв до старту матча",
   "Вгаданий результат +1 бал",
   "Вгаданий рахунок +5 балів",
   "Не вгаданий результат -1 бал"
@@ -441,7 +459,7 @@ async function bootstrap(data: string): Promise<void> {
       return;
     }
 
-    renderUser(payload.user, stats, isAdmin, currentDate, currentNickname);
+    renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
     await loadMatches(currentDate);
   } catch {
     renderMessage("Network error", "Check your connection and try again.");
@@ -790,7 +808,7 @@ async function submitOnboarding(
       logo_order: currentLogoOrder,
       completed: true
     };
-    renderUser(user, stats, isAdmin, currentDate, currentNickname);
+    renderUser(user, stats, isAdmin, currentDate, currentNickname, null);
     await loadMatches(currentDate);
   } catch {
     if (status) {
@@ -1075,12 +1093,107 @@ function formatClubName(slug: string): string {
     .join(" ");
 }
 
+function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
+  const stats = profile?.prediction;
+  const total = stats?.total ?? 0;
+  const hits = stats?.hits ?? 0;
+  const accuracy = stats?.accuracy_pct ?? 0;
+  const streak = stats?.streak ?? 0;
+  const lastResults = stats?.last_results ?? [];
+  const dots = Array.from({ length: 5 }, (_, index) => {
+    const entry = lastResults[index];
+    const state = entry ? (entry.hit ? "is-hit" : "is-miss") : "is-empty";
+    return `<span class="result-dot ${state}" aria-hidden="true"></span>`;
+  }).join("");
+  return `
+    <section class="panel profile-metrics">
+      <div class="section-header">
+        <h2>Якість прогнозів</h2>
+      </div>
+      <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
+        <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
+      </div>
+      <div class="accuracy-meta">
+        <span class="accuracy-count">${hits}/${total} влучних</span>
+        <span class="accuracy-percent">${accuracy}%</span>
+      </div>
+      <div class="recent-results">
+        <span class="muted small">Останні 5</span>
+        <div class="result-dots">${dots}</div>
+      </div>
+      <div class="streak-row">
+        <span class="muted small">Серія</span>
+        <span class="streak-value">${streak}</span>
+      </div>
+    </section>
+  `;
+}
+
+function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | null } {
+  if (entry.key === "classico_choice") {
+    const classico =
+      entry.value === "real_madrid" || entry.value === "barcelona" ? entry.value : null;
+    const slug = getClassicoLogoSlug(classico);
+    return {
+      name: slug ? formatClubName(slug) : formatClubName(entry.value),
+      logo: slug ? getClubLogoPath("la-liga", slug) : null
+    };
+  }
+  if (entry.key === "eu_club_id") {
+    const league = findEuropeanClubLeague(entry.value);
+    return {
+      name: formatClubName(entry.value),
+      logo: league ? getClubLogoPath(league, entry.value) : null
+    };
+  }
+  return {
+    name: formatClubName(entry.value),
+    logo: getClubLogoPath("ukrainian-premier-league", entry.value)
+  };
+}
+
+function renderFactions(profile: ProfileStatsPayload | null): string {
+  const factions = profile?.factions ?? [];
+  const cards = factions
+    .map((entry) => {
+      const display = getFactionDisplay(entry);
+      const name = escapeHtml(display.name);
+      const logo = display.logo
+        ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
+        : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
+      const members = `${entry.members} людей`;
+      const rank = entry.rank ? `#${entry.rank}` : "—";
+      return `
+        <div class="faction-card">
+          <div class="faction-logo-wrap">${logo}</div>
+          <div class="faction-info">
+            <div class="faction-name">${name}</div>
+            <div class="faction-meta">${members} | ${rank}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+  const content = cards || `<p class="muted small">Фракції ще не обрані.</p>`;
+  return `
+    <section class="panel profile-factions">
+      <div class="section-header">
+        <h2>Фракції</h2>
+      </div>
+      <div class="faction-list">
+        ${content}
+      </div>
+    </section>
+  `;
+}
+
 function renderUser(
   user: TelegramWebAppUser | undefined,
   stats: UserStats,
   admin: boolean,
   date: string,
-  nickname?: string | null
+  nickname?: string | null,
+  profile?: ProfileStatsPayload | null
 ): void {
   const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
@@ -1099,6 +1212,8 @@ function renderUser(
   const dateValue = date || getKyivDateString();
   const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
   const rankText = stats.rank ? `#${stats.rank}` : "—";
+  const predictionQualityMarkup = renderPredictionQuality(profile ?? null);
+  const factionsMarkup = renderFactions(profile ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
@@ -1191,6 +1306,9 @@ function renderUser(
               </div>
             </div>
           </section>
+
+          ${predictionQualityMarkup}
+          ${factionsMarkup}
 
           <div class="notice-ticker" aria-live="polite">
             <span class="notice-ticker-text" data-notice-text>
