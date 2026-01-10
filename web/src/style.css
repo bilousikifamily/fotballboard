@@ -1755,8 +1755,8 @@ h1 {
 
 .analitika-line {
   display: grid;
-  grid-template-columns: 46px 1fr;
-  gap: 10px;
+  grid-template-columns: 36px 1fr;
+  gap: 6px;
   --line-logo-size: 36px;
   --line-score-gap: 8px;
 }
@@ -1768,6 +1768,7 @@ h1 {
   font-size: 0.75rem;
   color: var(--muted);
   padding: 16px 0 120px;
+  align-items: flex-start;
 }
 
 .analitika-line-canvas {
@@ -1888,6 +1889,26 @@ h1 {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.analitika-card.is-graph {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.analitika-card.is-graph .analitika-card-header {
+  padding: 0 8px 8px;
+}
+
+.analitika-card.is-graph .analitika-card-body {
+  padding: 0 4px 12px;
+}
+
+.analitika-card.is-graph .analitika-line {
+  width: 95%;
+  margin-left: 0;
+  margin-right: auto;
+}
 .analitika-card {
   border-radius: 18px;
   background: rgba(11, 12, 14, 0.85);

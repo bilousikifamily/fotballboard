@@ -3713,12 +3713,13 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
       `;
     })
     .join("");
-  const axisLabels = [maxRating, minRating]
+  const midRating = (maxRating + minRating) / 2;
+  const axisLabels = [maxRating, midRating, minRating]
     .map((value) => `<span>${value.toFixed(1)}</span>`)
     .join("");
 
   return `
-    <section class="analitika-card">
+    <section class="analitika-card is-graph">
       <div class="analitika-card-header">
         <h3>${escapeHtml(`${teamLabel} — останні матчі`)}</h3>
       </div>
