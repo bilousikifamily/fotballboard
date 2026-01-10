@@ -1757,6 +1757,8 @@ h1 {
   display: grid;
   grid-template-columns: 46px 1fr;
   gap: 10px;
+  --line-logo-size: 36px;
+  --line-score-gap: 8px;
 }
 
 .analitika-line-axis {
@@ -1834,31 +1836,55 @@ h1 {
   height: 0;
 }
 
-.analitika-line-logo-wrap {
+.analitika-line-logo {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 0;
+  top: 0;
   transform: translate(-50%, -50%);
   display: grid;
   justify-items: center;
-  gap: 6px;
 }
 
-.analitika-line-logo-wrap .match-logo,
-.analitika-line-logo-wrap .match-logo-fallback {
-  width: 34px;
-  height: 34px;
+.analitika-line-logo .match-logo,
+.analitika-line-logo .match-logo-fallback {
+  width: var(--line-logo-size);
+  height: var(--line-logo-size);
   border-radius: 10px;
 }
 
 .analitika-line-score {
-  background: rgba(224, 224, 224, 0.92);
-  color: #111111;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+  background: rgba(12, 12, 14, 0.75);
+  color: #f4f4f4;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 8px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+.analitika-line-score.is-win {
+  color: #51e59b;
+  border-color: rgba(81, 229, 155, 0.6);
+}
+
+.analitika-line-score.is-loss {
+  color: #ff6c6c;
+  border-color: rgba(255, 108, 108, 0.6);
+}
+
+.analitika-line-score.is-draw {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.analitika-line-score.is-missing {
+  color: var(--muted);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .analitika-card {

@@ -3648,20 +3648,26 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
   if (!items.length) {
     return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
   }
-  const minRating = 6.0;
-  const maxRating = 7.5;
-  const ratingSpan = maxRating - minRating || 1;
-  const pointsCount = items.length;
-  const points = items.map((item, index) => {
+  const orderedItems = items.slice().reverse();
+  const ratingValues = orderedItems
+    .map((item) => parseTeamMatchRating(item.avg_rating))
+    .filter((value): value is number => value !== null);
+  const minRating = ratingValues.length ? Math.min(...ratingValues) : 6.0;
+  const maxRating = ratingValues.length ? Math.max(...ratingValues) : 7.5;
+  const hasSpan = maxRating > minRating;
+  const ratingSpan = hasSpan ? maxRating - minRating : 1;
+  const pointsCount = orderedItems.length;
+  const points = orderedItems.map((item, index) => {
     const ratingValue = parseTeamMatchRating(item.avg_rating);
     const clamped = ratingValue === null ? null : Math.min(maxRating, Math.max(minRating, ratingValue));
-    const y = clamped === null ? 100 : ((maxRating - clamped) / ratingSpan) * 100;
+    const y = clamped === null ? 100 : hasSpan ? ((maxRating - clamped) / ratingSpan) * 100 : 50;
     const x = pointsCount > 1 ? (index / (pointsCount - 1)) * 100 : 50;
     const opponent = item.opponent_name || "—";
     const opponentLogo = resolveClubLogoByName(opponent);
     const scoreLabel = formatTeamMatchScoreLabel(item);
-    const dateLabel = item.match_date ? formatKyivDateTime(item.match_date) : "";
+    const dateLabel = item.match_date ? formatKyivDateShort(item.match_date) : "";
     const homeAway = getHomeAwayLabel(item) ?? "";
+    const outcomeClass = getTeamMatchOutcomeClass(item);
 
     return {
       x,
@@ -3670,7 +3676,8 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
       opponentLogo,
       scoreLabel,
       dateLabel,
-      homeAway
+      homeAway,
+      outcomeClass
     };
   });
   const polyline = points
@@ -3693,19 +3700,20 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
     .join("");
   const pointMarkup = points
     .map((point) => {
-      const score =
-        point.scoreLabel !== "—" ? `<span class="analitika-line-score">${escapeHtml(point.scoreLabel)}</span>` : "";
+      const score = `<span class="analitika-line-score ${escapeAttribute(point.outcomeClass)}">${escapeHtml(
+        point.scoreLabel
+      )}</span>`;
       return `
         <div class="analitika-line-point" style="--x:${point.x}%; --y:${point.y}%;">
-          <div class="analitika-line-logo-wrap">
+          <div class="analitika-line-logo">
             ${renderTeamLogo(point.opponent, point.opponentLogo)}
-            ${score}
           </div>
+          ${score}
         </div>
       `;
     })
     .join("");
-  const axisLabels = [7.5, 7.0, 6.5, 6.0]
+  const axisLabels = [maxRating, minRating]
     .map((value) => `<span>${value.toFixed(1)}</span>`)
     .join("");
 
@@ -3838,6 +3846,21 @@ function formatTeamMatchScoreLabel(item: TeamMatchStat): string {
     return `${opponentGoals}:${teamGoals}`;
   }
   return `${teamGoals}:${opponentGoals}`;
+}
+
+function getTeamMatchOutcomeClass(item: TeamMatchStat): string {
+  const teamGoals = parseTeamMatchNumber(item.team_goals);
+  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
+  if (teamGoals === null || opponentGoals === null) {
+    return "is-missing";
+  }
+  if (teamGoals > opponentGoals) {
+    return "is-win";
+  }
+  if (teamGoals < opponentGoals) {
+    return "is-loss";
+  }
+  return "is-draw";
 }
 
 function buildAnalitikaStatus(items: AnalitikaItem[]): string {
@@ -4568,6 +4591,18 @@ function formatKyivDateTime(value: string): string {
     month: "2-digit",
     hour: "2-digit",
     minute: "2-digit"
+  }).format(date);
+}
+
+function formatKyivDateShort(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone: "Europe/Kyiv",
+    day: "2-digit",
+    month: "2-digit"
   }).format(date);
 }
 
