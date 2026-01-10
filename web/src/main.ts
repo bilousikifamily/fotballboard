@@ -116,6 +116,10 @@ type AnalitikaResponse =
   | { ok: true; items: AnalitikaItem[] }
   | { ok: false; error: string };
 
+type AnalitikaRefreshResponse =
+  | { ok: true; updated: number; warnings?: string[] }
+  | { ok: false; error: string; detail?: string };
+
 type OddsRefreshResponse =
   | { ok: true; debug?: OddsRefreshDebug }
   | { ok: false; error: string; detail?: string; debug?: OddsRefreshDebug };
@@ -276,6 +280,7 @@ let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
 let currentAnalitikaTeam = ANALITIKA_TEAMS[0]?.slug ?? "manchester-city";
 let analitikaLoading = false;
+let analitikaRefreshing = false;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -1343,6 +1348,11 @@ function renderUser(
             ${analitikaTeamButtons}
           </div>
         </div>
+        <div class="analitika-actions">
+          <button class="button secondary small-button" type="button" data-analitika-refresh>
+            ОНОВИТИ АНАЛІТИКУ
+          </button>
+        </div>
         <p class="muted small" data-analitika-status></p>
         <div class="analitika-grid" data-analitika-content></div>
       </section>
@@ -2051,6 +2061,7 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
 
 function setupAnalitikaFilters(): void {
   const buttons = app.querySelectorAll<HTMLButtonElement>("[data-analitika-team]");
+  const refreshButton = app.querySelector<HTMLButtonElement>("[data-analitika-refresh]");
   if (!buttons.length) {
     return;
   }
@@ -2074,6 +2085,12 @@ function setupAnalitikaFilters(): void {
       void loadAnalitika(teamSlug);
     });
   });
+
+  if (refreshButton) {
+    refreshButton.addEventListener("click", () => {
+      void refreshAnalitika(currentAnalitikaTeam);
+    });
+  }
 }
 
 async function loadAnalitika(teamSlug: string): Promise<void> {
@@ -2128,6 +2145,50 @@ async function loadAnalitika(teamSlug: string): Promise<void> {
     }
   } finally {
     analitikaLoading = false;
+  }
+}
+
+async function refreshAnalitika(teamSlug: string): Promise<void> {
+  if (!apiBase || analitikaRefreshing) {
+    return;
+  }
+  const status = app.querySelector<HTMLElement>("[data-analitika-status]");
+  const button = app.querySelector<HTMLButtonElement>("[data-analitika-refresh]");
+  analitikaRefreshing = true;
+  if (button) {
+    button.disabled = true;
+  }
+  if (status) {
+    status.textContent = "Оновлення аналітики...";
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/analitika/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData, team: teamSlug })
+    });
+    const data = (await response.json()) as AnalitikaRefreshResponse;
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося оновити аналітику.";
+      }
+      return;
+    }
+    if (status) {
+      const warnings = data.warnings?.length ? ` (попередження: ${data.warnings.length})` : "";
+      status.textContent = `Оновлено: ${data.updated}${warnings}`;
+    }
+    await loadAnalitika(teamSlug);
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося оновити аналітику.";
+    }
+  } finally {
+    analitikaRefreshing = false;
+    if (button) {
+      button.disabled = false;
+    }
   }
 }
 

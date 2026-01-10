@@ -1664,6 +1664,15 @@ h1 {
   gap: 8px;
 }
 
+.analitika-actions {
+  display: grid;
+}
+
+.analitika-actions .button {
+  width: 100%;
+  text-align: center;
+}
+
 .chip {
   border: 1px solid var(--outline-light);
   background: var(--surface);

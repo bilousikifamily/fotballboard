@@ -7,6 +7,8 @@ const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
 const MATCHES_ANNOUNCEMENT_MESSAGE = "На тебе вже чекають прогнози на сьогоднішні матчі.";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const ANALITIKA_LEAGUE_ID = "english-premier-league";
+const ANALITIKA_HEAD_TO_HEAD_LIMIT = 10;
 
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
 const WEATHER_PROVIDER_PRIMARY = "open-meteo";
@@ -16,6 +18,19 @@ const WEATHER_LANG = "uk";
 const WEATHER_DB_REFRESH_MIN = 60;
 const WEATHER_DB_LOOKAHEAD_HOURS = 24;
 const WEATHER_DB_REFRESH_LIMIT = 24;
+
+const ANALITIKA_TEAMS = [
+  { slug: "manchester-city", name: "Manchester City" },
+  { slug: "chelsea", name: "Chelsea" }
+];
+
+type AnalitikaDataType =
+  | "team_stats"
+  | "standings"
+  | "standings_home_away"
+  | "top_scorers"
+  | "top_assists"
+  | "head_to_head";
 
 type WeatherCacheEntry = {
   value: number | null;
@@ -475,6 +490,52 @@ export default {
       }
 
       return jsonResponse({ ok: true, items }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/analitika/refresh") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<AnalitikaRefreshPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      const teamSlug = normalizeTeamSlug(body.team ?? null);
+      if (body.team && !teamSlug) {
+        return jsonResponse({ ok: false, error: "bad_team" }, 400, corsHeaders());
+      }
+
+      const refreshResult = await refreshAnalitika(env, supabase, teamSlug ? [teamSlug] : undefined);
+      if (!refreshResult.ok) {
+        return jsonResponse({ ok: false, error: refreshResult.error, detail: refreshResult.detail }, 500, corsHeaders());
+      }
+
+      return jsonResponse(
+        { ok: true, updated: refreshResult.updated, warnings: refreshResult.warnings },
+        200,
+        corsHeaders()
+      );
     }
 
     if (url.pathname === "/api/matches") {
@@ -1057,6 +1118,155 @@ async function listAnalitika(
     console.error("Failed to list analitika", error);
     return null;
   }
+}
+
+async function refreshAnalitika(
+  env: Env,
+  supabase: SupabaseClient,
+  teamSlugs?: string[]
+): Promise<{ ok: true; updated: number; warnings: string[] } | { ok: false; error: string; detail?: string }> {
+  if (!env.API_FOOTBALL_KEY) {
+    return { ok: false, error: "missing_api_key" };
+  }
+
+  const timezone = getApiFootballTimezone(env);
+  if (!timezone) {
+    return { ok: false, error: "missing_timezone" };
+  }
+
+  const leagueId = resolveApiLeagueId(env, ANALITIKA_LEAGUE_ID);
+  if (!leagueId) {
+    return { ok: false, error: "missing_league_mapping" };
+  }
+
+  const season = resolveSeasonForDate(new Date(), timezone);
+  const seasonRange = getSeasonDateRange(season, timezone);
+  const teamsResult = await resolveAnalitikaTeams(env, teamSlugs);
+  if (!teamsResult.ok) {
+    return { ok: false, error: teamsResult.error, detail: teamsResult.detail };
+  }
+
+  const teams = teamsResult.teams;
+  const warnings: string[] = [];
+  const nowIso = new Date().toISOString();
+  const updates: AnalitikaUpsert[] = [];
+
+  const standingsResult = await fetchLeagueStandings(env, leagueId, season);
+  if (!standingsResult.ok) {
+    warnings.push(`standings_status_${standingsResult.status}`);
+  }
+
+  const topScorersResult = await fetchTopPlayers(env, leagueId, season, "scorers");
+  if (!topScorersResult.ok) {
+    warnings.push(`top_scorers_status_${topScorersResult.status}`);
+  }
+
+  const topAssistsResult = await fetchTopPlayers(env, leagueId, season, "assists");
+  if (!topAssistsResult.ok) {
+    warnings.push(`top_assists_status_${topAssistsResult.status}`);
+  }
+
+  let headToHeadPayload: AnalitikaPayload | null = null;
+  if (teams.length >= 2) {
+    const h2hResult = await fetchHeadToHeadSeason(
+      env,
+      teams[0].teamId,
+      teams[1].teamId,
+      seasonRange.from,
+      seasonRange.to,
+      timezone
+    );
+    if (h2hResult.ok) {
+      headToHeadPayload = buildHeadToHeadPayload(h2hResult.payload);
+    } else {
+      warnings.push(`head_to_head_status_${h2hResult.status}`);
+    }
+  } else {
+    warnings.push("head_to_head_missing_team");
+  }
+
+  for (const team of teams) {
+    const teamStatsResult = await fetchTeamStats(env, team.teamId, leagueId, season);
+    if (teamStatsResult.ok) {
+      const payload = buildTeamStatsPayload(teamStatsResult.payload);
+      updates.push(
+        buildAnalitikaUpsert(team.slug, "team_stats", ANALITIKA_LEAGUE_ID, season, payload, nowIso)
+      );
+    } else {
+      warnings.push(`team_stats_${team.slug}_status_${teamStatsResult.status}`);
+    }
+
+    if (standingsResult.ok) {
+      const row = findStandingsRow(standingsResult.payload, team.teamId);
+      if (row) {
+        updates.push(
+          buildAnalitikaUpsert(
+            team.slug,
+            "standings",
+            ANALITIKA_LEAGUE_ID,
+            season,
+            buildStandingsPayload(row),
+            nowIso
+          )
+        );
+        updates.push(
+          buildAnalitikaUpsert(
+            team.slug,
+            "standings_home_away",
+            ANALITIKA_LEAGUE_ID,
+            season,
+            buildHomeAwayPayload(row),
+            nowIso
+          )
+        );
+      } else {
+        warnings.push(`standings_missing_team_${team.slug}`);
+      }
+    }
+
+    if (topScorersResult.ok) {
+      updates.push(
+        buildAnalitikaUpsert(
+          team.slug,
+          "top_scorers",
+          ANALITIKA_LEAGUE_ID,
+          season,
+          buildTopPlayersPayload(topScorersResult.payload),
+          nowIso
+        )
+      );
+    }
+
+    if (topAssistsResult.ok) {
+      updates.push(
+        buildAnalitikaUpsert(
+          team.slug,
+          "top_assists",
+          ANALITIKA_LEAGUE_ID,
+          season,
+          buildTopPlayersPayload(topAssistsResult.payload),
+          nowIso
+        )
+      );
+    }
+
+    if (headToHeadPayload) {
+      updates.push(
+        buildAnalitikaUpsert(team.slug, "head_to_head", ANALITIKA_LEAGUE_ID, season, headToHeadPayload, nowIso)
+      );
+    }
+  }
+
+  if (!updates.length) {
+    return { ok: false, error: "api_error", detail: "no_data" };
+  }
+
+  const upserted = await upsertAnalitika(supabase, updates);
+  if (!upserted) {
+    return { ok: false, error: "db_error" };
+  }
+
+  return { ok: true, updated: updates.length, warnings };
 }
 
 async function getUserStats(supabase: SupabaseClient, userId: number): Promise<UserStats | null> {
@@ -1692,6 +1902,347 @@ function formatDateString(date: Date, timeZone: string): string {
     month: "2-digit",
     day: "2-digit"
   }).format(date);
+}
+
+function getSeasonDateRange(season: number, timeZone: string): { from: string; to: string } {
+  const start = new Date(Date.UTC(season, 6, 1, 12));
+  const end = new Date(Date.UTC(season + 1, 5, 30, 12));
+  return {
+    from: formatDateString(start, timeZone),
+    to: formatDateString(end, timeZone)
+  };
+}
+
+function buildAnalitikaCacheKey(
+  teamSlug: string,
+  dataType: AnalitikaDataType,
+  leagueId: string,
+  season: number
+): string {
+  return `team:${teamSlug}:${dataType}:${leagueId}:${season}`;
+}
+
+function getAnalitikaTtlHours(dataType: AnalitikaDataType): number {
+  switch (dataType) {
+    case "standings":
+    case "standings_home_away":
+    case "top_scorers":
+    case "top_assists":
+      return 6;
+    case "team_stats":
+    case "head_to_head":
+    default:
+      return 24;
+  }
+}
+
+function buildAnalitikaUpsert(
+  teamSlug: string,
+  dataType: AnalitikaDataType,
+  leagueId: string,
+  season: number,
+  payload: AnalitikaPayload,
+  fetchedAt: string
+): AnalitikaUpsert {
+  const ttlHours = getAnalitikaTtlHours(dataType);
+  const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
+  return {
+    cache_key: buildAnalitikaCacheKey(teamSlug, dataType, leagueId, season),
+    team_slug: teamSlug,
+    data_type: dataType,
+    league_id: leagueId,
+    season,
+    payload,
+    fetched_at: fetchedAt,
+    expires_at: expiresAt
+  };
+}
+
+async function upsertAnalitika(
+  supabase: SupabaseClient,
+  rows: AnalitikaUpsert[]
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("analitika").upsert(rows, { onConflict: "cache_key" });
+    if (error) {
+      console.error("Failed to upsert analitika", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to upsert analitika", error);
+    return false;
+  }
+}
+
+async function resolveAnalitikaTeams(
+  env: Env,
+  teamSlugs?: string[]
+): Promise<{ ok: true; teams: AnalitikaTeam[] } | { ok: false; error: string; detail?: string }> {
+  const requested = teamSlugs?.length
+    ? teamSlugs
+    : ANALITIKA_TEAMS.map((team) => team.slug);
+  const targets = requested
+    .map((slug) => ANALITIKA_TEAMS.find((entry) => entry.slug === slug))
+    .filter((entry): entry is { slug: string; name: string } => Boolean(entry));
+  if (!targets.length) {
+    return { ok: false, error: "bad_team" };
+  }
+
+  const resolved: AnalitikaTeam[] = [];
+  for (const team of targets) {
+    const resolvedTeam = await resolveTeamId(env, team.name);
+    if (!resolvedTeam.id) {
+      return { ok: false, error: "team_not_found", detail: team.slug };
+    }
+    resolved.push({ slug: team.slug, name: team.name, teamId: resolvedTeam.id });
+  }
+
+  return { ok: true, teams: resolved };
+}
+
+async function fetchApiFootballPayload(
+  env: Env,
+  path: string
+): Promise<{ ok: true; payload: unknown; status: number } | { ok: false; status: number }> {
+  const response = await fetchApiFootball(env, path);
+  const status = response.status;
+  if (!response.ok) {
+    return { ok: false, status };
+  }
+  try {
+    const payload = (await response.json()) as unknown;
+    return { ok: true, payload, status };
+  } catch (error) {
+    console.warn("API-Football payload parse error", error);
+    return { ok: false, status };
+  }
+}
+
+async function fetchTeamStats(
+  env: Env,
+  teamId: number,
+  leagueId: number,
+  season: number
+): Promise<{ ok: true; payload: unknown; status: number } | { ok: false; status: number }> {
+  const path = buildApiPath("/teams/statistics", { team: teamId, league: leagueId, season });
+  return fetchApiFootballPayload(env, path);
+}
+
+async function fetchLeagueStandings(
+  env: Env,
+  leagueId: number,
+  season: number
+): Promise<{ ok: true; payload: unknown; status: number } | { ok: false; status: number }> {
+  const path = buildApiPath("/standings", { league: leagueId, season });
+  return fetchApiFootballPayload(env, path);
+}
+
+async function fetchTopPlayers(
+  env: Env,
+  leagueId: number,
+  season: number,
+  type: "scorers" | "assists"
+): Promise<{ ok: true; payload: unknown; status: number } | { ok: false; status: number }> {
+  const endpoint = type === "scorers" ? "/players/topscorers" : "/players/topassists";
+  const path = buildApiPath(endpoint, { league: leagueId, season });
+  return fetchApiFootballPayload(env, path);
+}
+
+async function fetchHeadToHeadSeason(
+  env: Env,
+  homeTeamId: number,
+  awayTeamId: number,
+  from: string,
+  to: string,
+  timezone: string
+): Promise<{ ok: true; payload: unknown; status: number } | { ok: false; status: number }> {
+  const h2h = `${homeTeamId}-${awayTeamId}`;
+  const path = buildApiPath("/fixtures/headtohead", {
+    h2h,
+    from,
+    to,
+    last: ANALITIKA_HEAD_TO_HEAD_LIMIT,
+    timezone
+  });
+  return fetchApiFootballPayload(env, path);
+}
+
+function buildTeamStatsPayload(payload: unknown): AnalitikaPayload {
+  const response = toRecord(payload)?.response ?? payload;
+  const record = toRecord(response);
+  const goals = toRecord(record?.goals);
+  const goalsFor = toRecord(goals?.for);
+  const goalsAgainst = toRecord(goals?.against);
+  const goalsForTotal = toRecord(goalsFor?.total);
+  const goalsAgainstTotal = toRecord(goalsAgainst?.total);
+  const cleanSheet = toRecord(record?.clean_sheet);
+  const shots = toRecord(record?.shots);
+  const possession = record?.ball_possession ?? record?.possession ?? null;
+
+  return {
+    gf: extractStatValue(goalsForTotal?.total),
+    ga: extractStatValue(goalsAgainstTotal?.total),
+    xg: null,
+    ppda: null,
+    shots: extractStatValue(shots?.total ?? shots?.shots_total),
+    shots_on_target: extractStatValue(shots?.on ?? shots?.on_target),
+    possession: extractStatValue(possession),
+    clean_sheets: extractStatValue(cleanSheet?.total ?? cleanSheet?.home ?? cleanSheet?.away)
+  };
+}
+
+function findStandingsRow(payload: unknown, teamId: number): Record<string, unknown> | null {
+  const response = toRecord(payload)?.response;
+  if (!Array.isArray(response) || !response.length) {
+    return null;
+  }
+  const league = toRecord(response[0])?.league;
+  const standings = toRecord(league)?.standings;
+  if (!Array.isArray(standings) || !standings.length) {
+    return null;
+  }
+  const rows = Array.isArray(standings[0]) ? standings[0] : [];
+  const row = rows.find((entry) => {
+    const team = toRecord(entry)?.team;
+    return toRecord(team)?.id === teamId;
+  });
+  return toRecord(row);
+}
+
+function buildStandingsPayload(row: Record<string, unknown>): AnalitikaPayload {
+  const all = toRecord(row.all);
+  const goals = toRecord(all?.goals);
+  return {
+    rank: extractStatValue(row.rank),
+    points: extractStatValue(row.points),
+    played: extractStatValue(all?.played),
+    wins: extractStatValue(all?.win),
+    draws: extractStatValue(all?.draw),
+    losses: extractStatValue(all?.lose),
+    gf: extractStatValue(goals?.for),
+    ga: extractStatValue(goals?.against),
+    gd: extractStatValue(row.goalsDiff ?? row.goals_diff),
+    form: extractStatValue(row.form)
+  };
+}
+
+function buildHomeAwayPayload(row: Record<string, unknown>): AnalitikaPayload {
+  return {
+    home: buildHomeAwayRow(toRecord(row.home)),
+    away: buildHomeAwayRow(toRecord(row.away))
+  };
+}
+
+function buildHomeAwayRow(row: Record<string, unknown> | null): Record<string, unknown> {
+  if (!row) {
+    return {};
+  }
+  const goals = toRecord(row.goals);
+  return {
+    played: extractStatValue(row.played),
+    wins: extractStatValue(row.win),
+    draws: extractStatValue(row.draw),
+    losses: extractStatValue(row.lose),
+    gf: extractStatValue(goals?.for),
+    ga: extractStatValue(goals?.against),
+    points: extractStatValue(row.points),
+    form: extractStatValue(row.form)
+  };
+}
+
+function buildTopPlayersPayload(payload: unknown): AnalitikaPayload {
+  const response = toRecord(payload)?.response;
+  if (!Array.isArray(response)) {
+    return { entries: [] };
+  }
+  const entries = response.slice(0, 10).map((entry) => {
+    const record = toRecord(entry);
+    const player = toRecord(record?.player);
+    const stats = Array.isArray(record?.statistics) ? record?.statistics[0] : null;
+    const statsRecord = toRecord(stats);
+    const team = toRecord(statsRecord?.team);
+    const goals = toRecord(statsRecord?.goals);
+    const games = toRecord(statsRecord?.games);
+    return {
+      player: { name: player?.name ?? "" },
+      team: { name: team?.name ?? "" },
+      goals: extractStatValue(goals?.total),
+      assists: extractStatValue(goals?.assists),
+      rating: extractStatValue(games?.rating),
+      minutes: extractStatValue(games?.minutes)
+    };
+  });
+  return { entries };
+}
+
+function buildHeadToHeadPayload(payload: unknown): AnalitikaPayload {
+  const response = toRecord(payload)?.response;
+  if (!Array.isArray(response)) {
+    return { entries: [] };
+  }
+  const entries = response.slice(0, ANALITIKA_HEAD_TO_HEAD_LIMIT).map((entry) => {
+    const record = toRecord(entry);
+    const fixture = toRecord(record?.fixture);
+    const teams = toRecord(record?.teams);
+    const home = toRecord(teams?.home);
+    const away = toRecord(teams?.away);
+    const goals = toRecord(record?.goals);
+    const league = toRecord(record?.league);
+    return {
+      date: fixture?.date ?? "",
+      home: home?.name ?? "",
+      away: away?.name ?? "",
+      score: formatScore(goals?.home, goals?.away),
+      league: league?.name ?? ""
+    };
+  });
+  return { entries };
+}
+
+function formatScore(home: unknown, away: unknown): string {
+  const homeValue = extractStatValue(home);
+  const awayValue = extractStatValue(away);
+  if (homeValue === null || awayValue === null) {
+    return "—";
+  }
+  return `${homeValue}:${awayValue}`;
+}
+
+function extractStatValue(value: unknown): string | number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  const record = toRecord(value);
+  if (!record) {
+    return null;
+  }
+  if ("total" in record) {
+    return extractStatValue(record.total);
+  }
+  if ("value" in record) {
+    return extractStatValue(record.value);
+  }
+  if ("avg" in record) {
+    return extractStatValue(record.avg);
+  }
+  if ("average" in record) {
+    return extractStatValue(record.average);
+  }
+  return null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
 }
 
 type FixturePayload = {
@@ -4346,6 +4897,30 @@ function normalizeTeamSlug(value: string | null): string | null {
   }
   return trimmed.replace(/\s+/g, "-");
 }
+
+interface AnalitikaRefreshPayload {
+  initData?: string;
+  team?: string;
+}
+
+interface AnalitikaTeam {
+  slug: string;
+  name: string;
+  teamId: number;
+}
+
+type AnalitikaPayload = Record<string, unknown> | { entries: Array<Record<string, unknown>> };
+
+type AnalitikaUpsert = {
+  cache_key: string;
+  team_slug: string;
+  data_type: AnalitikaDataType;
+  league_id: string;
+  season: number;
+  payload: AnalitikaPayload;
+  fetched_at: string;
+  expires_at: string | null;
+};
 
 interface CreateMatchPayload {
   initData?: string;
