@@ -3648,40 +3648,63 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
   if (!items.length) {
     return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
   }
-  const teamLogo = resolveClubLogoByName(teamLabel) ?? resolveTeamLogoBySlug(teamSlug);
-  const chartItems = items
-    .map((item) => {
-      const opponent = item.opponent_name || "—";
-      const opponentLogo = resolveClubLogoByName(opponent);
-      const matchup = resolveMatchupDisplay(item, teamLabel, teamLogo, opponent, opponentLogo);
-      const ratingValue = parseTeamMatchRating(item.avg_rating);
-      const ratingLabel = ratingValue !== null ? ratingValue.toFixed(1) : "—";
-      const barValue = ratingValue ?? 0.4;
-      const barClass = ratingValue === null ? "is-missing" : getTeamMatchOutcomeClass(item);
-      const meta = [
-        item.match_date ? formatKyivDateTime(item.match_date) : null,
-        getHomeAwayLabel(item)
-      ]
-        .filter(Boolean)
-        .join(" · ");
+  const minRating = 6.0;
+  const maxRating = 7.5;
+  const ratingSpan = maxRating - minRating || 1;
+  const pointsCount = items.length;
+  const points = items.map((item, index) => {
+    const ratingValue = parseTeamMatchRating(item.avg_rating);
+    const ratingLabel = ratingValue !== null ? ratingValue.toFixed(1) : "—";
+    const clamped = ratingValue === null ? null : Math.min(maxRating, Math.max(minRating, ratingValue));
+    const y = clamped === null ? 100 : ((maxRating - clamped) / ratingSpan) * 100;
+    const x = pointsCount > 1 ? (index / (pointsCount - 1)) * 100 : 50;
+    const opponent = item.opponent_name || "—";
+    const opponentLogo = resolveClubLogoByName(opponent);
+    const scoreLabel = formatTeamMatchScoreLabel(item);
+    const meta = [
+      item.match_date ? formatKyivDateTime(item.match_date) : null,
+      getHomeAwayLabel(item)
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
+    return {
+      x,
+      y,
+      ratingLabel,
+      opponent,
+      opponentLogo,
+      scoreLabel,
+      meta
+    };
+  });
+  const polyline = points
+    .map((point) => `${point.x},${point.y}`)
+    .join(" ");
+  const gridLines = points
+    .map((point) => `<span class="analitika-line-gridline" style="--x:${point.x}%"></span>`)
+    .join("");
+  const pointMarkup = points
+    .map((point) => {
+      const score = point.scoreLabel !== "—" ? `<span class="analitika-line-score">${escapeHtml(point.scoreLabel)}</span>` : "";
+      const meta = point.meta ? `<div class="analitika-line-details">${escapeHtml(point.meta)}</div>` : "";
       return `
-        <div class="analitika-chart-item">
-          <div class="analitika-chart-bar ${barClass}" style="--value:${barValue}">
-            <span class="analitika-chart-value">${escapeHtml(ratingLabel)}</span>
+        <div class="analitika-line-point" style="--x:${point.x}%; --y:${point.y}%;">
+          <span class="analitika-line-rating">${escapeHtml(point.ratingLabel)}</span>
+          <div class="analitika-line-logo-wrap">
+            ${score}
+            ${renderTeamLogo(point.opponent, point.opponentLogo)}
           </div>
-          <div class="analitika-chart-match">
-            <div class="analitika-chart-logos">
-              ${renderTeamLogo(matchup.homeName, matchup.homeLogo)}
-              <span class="analitika-chart-score">${escapeHtml(matchup.score)}</span>
-              ${renderTeamLogo(matchup.awayName, matchup.awayLogo)}
-            </div>
-            <div class="analitika-chart-opponent">${escapeHtml(opponent)}</div>
-            ${meta ? `<div class="analitika-chart-meta">${escapeHtml(meta)}</div>` : ""}
+          <div class="analitika-line-meta">
+            <div class="analitika-line-opponent">${escapeHtml(point.opponent)}</div>
+            ${meta}
           </div>
         </div>
       `;
     })
+    .join("");
+  const axisLabels = [7.5, 7.0, 6.5, 6.0]
+    .map((value) => `<span>${value.toFixed(1)}</span>`)
     .join("");
 
   return `
@@ -3690,9 +3713,18 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
         <h3>${escapeHtml(`${teamLabel} — останні матчі`)}</h3>
       </div>
       <div class="analitika-card-body">
-        <div class="analitika-chart">
-          <div class="analitika-chart-grid">
-            ${chartItems}
+        <div class="analitika-line">
+          <div class="analitika-line-axis">
+            ${axisLabels}
+          </div>
+          <div class="analitika-line-canvas">
+            <div class="analitika-line-plot">
+              <div class="analitika-line-grid">${gridLines}</div>
+              <svg class="analitika-line-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <polyline points="${polyline}"></polyline>
+              </svg>
+              ${pointMarkup}
+            </div>
           </div>
         </div>
       </div>
@@ -3717,11 +3749,6 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
 };
 
 let clubNameLookup: Map<string, { leagueId: LeagueId; slug: string }> | null = null;
-
-function resolveTeamLogoBySlug(teamSlug: string): string | null {
-  const league = findClubLeague(teamSlug);
-  return league ? getClubLogoPath(league, teamSlug) : null;
-}
 
 function resolveClubLogoByName(name: string): string | null {
   const normalized = normalizeClubName(name);
@@ -3782,52 +3809,6 @@ function getHomeAwayLabel(item: TeamMatchStat): string | null {
   return null;
 }
 
-function resolveMatchupDisplay(
-  item: TeamMatchStat,
-  teamLabel: string,
-  teamLogo: string | null,
-  opponentName: string,
-  opponentLogo: string | null
-): { homeName: string; homeLogo: string | null; awayName: string; awayLogo: string | null; score: string } {
-  const teamGoals = parseTeamMatchNumber(item.team_goals);
-  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
-  let homeName = teamLabel;
-  let homeLogo = teamLogo;
-  let awayName = opponentName;
-  let awayLogo = opponentLogo;
-  let homeGoals = teamGoals;
-  let awayGoals = opponentGoals;
-
-  if (item.is_home === false) {
-    homeName = opponentName;
-    homeLogo = opponentLogo;
-    awayName = teamLabel;
-    awayLogo = teamLogo;
-    homeGoals = opponentGoals;
-    awayGoals = teamGoals;
-  }
-
-  const score =
-    homeGoals === null || awayGoals === null ? "—" : `${homeGoals}:${awayGoals}`;
-
-  return { homeName, homeLogo, awayName, awayLogo, score };
-}
-
-function getTeamMatchOutcomeClass(item: TeamMatchStat): string {
-  const teamGoals = parseTeamMatchNumber(item.team_goals);
-  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
-  if (teamGoals === null || opponentGoals === null) {
-    return "is-missing";
-  }
-  if (teamGoals > opponentGoals) {
-    return "is-win";
-  }
-  if (teamGoals < opponentGoals) {
-    return "is-loss";
-  }
-  return "is-draw";
-}
-
 function parseTeamMatchNumber(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -3843,6 +3824,15 @@ function parseTeamMatchRating(value: number | string | null | undefined): number
   }
   const clamped = Math.max(0, Math.min(10, numeric));
   return Math.round(clamped * 10) / 10;
+}
+
+function formatTeamMatchScoreLabel(item: TeamMatchStat): string {
+  const teamGoals = parseTeamMatchNumber(item.team_goals);
+  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
+  if (teamGoals === null || opponentGoals === null) {
+    return "—";
+  }
+  return `${teamGoals}:${opponentGoals}`;
 }
 
 function buildAnalitikaStatus(items: AnalitikaItem[]): string {
