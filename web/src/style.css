@@ -1753,10 +1753,24 @@ h1 {
   gap: 12px;
 }
 
+.matches-analytics {
+  width: 95%;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.matches-analytics .analitika-filter,
+.matches-analytics .analitika-actions,
+.matches-analytics .muted {
+  width: 100%;
+}
+
 .analitika-line {
   display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 6px;
+  grid-template-columns: 28px 1fr;
+  gap: 4px;
   --line-logo-size: 36px;
   --line-score-gap: 8px;
 }
@@ -1897,15 +1911,15 @@ h1 {
 }
 
 .analitika-card.is-graph .analitika-card-header {
-  padding: 0 8px 8px;
+  padding: 0 0 8px;
 }
 
 .analitika-card.is-graph .analitika-card-body {
-  padding: 0 4px 12px;
+  padding: 0 0 12px;
 }
 
 .analitika-card.is-graph .analitika-line {
-  width: 95%;
+  width: 100%;
   margin-left: 0;
   margin-right: auto;
 }

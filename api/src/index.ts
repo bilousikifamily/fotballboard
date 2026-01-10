@@ -476,10 +476,6 @@ export default {
       }
 
       await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
-      }
 
       const teamSlug = normalizeTeamSlug(url.searchParams.get("team"));
       const team = resolveTeamMatchStatsTeam(teamSlug);

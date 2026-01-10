@@ -516,6 +516,7 @@ async function bootstrap(data: string): Promise<void> {
 
     renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
     await loadMatches(currentDate);
+    void loadAnalitika(currentAnalitikaTeam);
   } catch {
     renderMessage("Network error", "Check your connection and try again.");
   }
@@ -1344,12 +1345,8 @@ function renderUser(
       </button>
     `;
   }).join("");
-  const analitikaPanel = admin
-    ? `
-      <section class="panel admin-analytics">
-        <div class="section-header">
-          <h2>Аналітика</h2>
-        </div>
+  const analitikaPanel = `
+      <section class="matches-analytics">
         <div class="analitika-filter">
           ${analitikaTeamButtons}
         </div>
@@ -1361,13 +1358,11 @@ function renderUser(
         <p class="muted small" data-analitika-status></p>
         <div class="analitika-grid" data-analitika-content></div>
       </section>
-    `
-    : "";
+  `;
   const adminScreen = admin
     ? `
       <section class="screen" data-screen="admin">
         ${adminPanel}
-        ${analitikaPanel}
       </section>
     `
     : "";
@@ -1434,6 +1429,7 @@ function renderUser(
             </div>
             <div class="matches-list" data-matches></div>
           </section>
+          ${analitikaPanel}
         </section>
 
         ${adminScreen}
@@ -1593,8 +1589,9 @@ function renderUser(
       });
     }
 
-    setupAnalitikaFilters();
   }
+
+  setupAnalitikaFilters();
 }
 
 function setupLogoOrderControls(): void {
@@ -2661,6 +2658,9 @@ function setupTabs(): void {
     });
     if (tab === "leaderboard") {
       void loadLeaderboard();
+    }
+    if (tab === "matches") {
+      void loadAnalitika(currentAnalitikaTeam);
     }
     if (tab === "admin") {
       void loadAnalitika(currentAnalitikaTeam);
