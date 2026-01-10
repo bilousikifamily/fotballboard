@@ -1260,11 +1260,11 @@ function renderUser(
           <h2>Адмін</h2>
         </div>
         <div class="admin-actions">
-          <button class="button secondary" type="button" data-admin-toggle-add>Додати матч</button>
-          <button class="button secondary" type="button" data-admin-toggle-result>Ввести результат</button>
-          <button class="button secondary" type="button" data-admin-toggle-odds>Коефіцієнти</button>
-          <button class="button secondary" type="button" data-admin-toggle-weather>Погода (debug)</button>
-          <button class="button secondary" type="button" data-admin-announce>Повідомити в боті</button>
+          <button class="button secondary" type="button" data-admin-toggle-add>ДОДАТИ МАТЧ</button>
+          <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
+          <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
+          <button class="button secondary" type="button" data-admin-toggle-weather>DEBUG</button>
+          <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
         </div>
         <p class="muted small" data-admin-announce-status></p>
         <form class="admin-form" data-admin-form>

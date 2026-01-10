@@ -1635,8 +1635,14 @@ h1 {
 
 .admin-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.admin-actions .button {
+  width: 100%;
+  text-align: center;
+  letter-spacing: 0.06em;
 }
 
 .admin-form {
