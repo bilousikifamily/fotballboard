@@ -486,7 +486,10 @@ export default {
         return jsonResponse({ ok: false, error: "bad_team" }, 400, corsHeaders());
       }
 
-      const items = await listAnalitika(supabase, teamSlug);
+      const seasonOverride = parseEnvNumber(env.ANALITIKA_SEASON, 0);
+      const seasonParam = parseInteger(url.searchParams.get("season"));
+      const seasonFilter = seasonParam && seasonParam > 0 ? seasonParam : seasonOverride > 0 ? seasonOverride : null;
+      const items = await listAnalitika(supabase, teamSlug, seasonFilter);
       if (!items) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -1116,15 +1119,18 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
 
 async function listAnalitika(
   supabase: SupabaseClient,
-  teamSlug: string
+  teamSlug: string,
+  season?: number | null
 ): Promise<DbAnalitika[] | null> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("analitika")
       .select("id, cache_key, team_slug, data_type, league_id, season, payload, fetched_at, expires_at")
-      .eq("team_slug", teamSlug)
-      .order("data_type", { ascending: true })
-      .order("fetched_at", { ascending: false });
+      .eq("team_slug", teamSlug);
+    if (season) {
+      query = query.eq("season", season);
+    }
+    const { data, error } = await query.order("data_type", { ascending: true }).order("fetched_at", { ascending: false });
     if (error) {
       console.error("Failed to list analitika", error);
       return null;
