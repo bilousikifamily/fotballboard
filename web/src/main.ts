@@ -2069,16 +2069,12 @@ function setupMatchAnalitikaFilters(): void {
 
 async function loadMatchAnalitika(panel: HTMLElement, teamSlug: string): Promise<void> {
   const container = panel.querySelector<HTMLElement>("[data-match-analitika-content]");
-  const status = panel.querySelector<HTMLElement>("[data-match-analitika-status]");
   if (!container) {
     return;
   }
 
   if (!ANALITIKA_TEAM_SLUGS.has(teamSlug)) {
     container.innerHTML = "";
-    if (status) {
-      status.textContent = "";
-    }
     return;
   }
 
@@ -2086,31 +2082,19 @@ async function loadMatchAnalitika(panel: HTMLElement, teamSlug: string): Promise
     return;
   }
   panel.dataset.loading = teamSlug;
-  if (status) {
-    status.textContent = "Завантаження...";
-  }
   container.innerHTML = "";
 
   const items = await fetchAnalitikaTeam(teamSlug);
   if (!items) {
     container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
-    if (status) {
-      status.textContent = "Помилка завантаження.";
-    }
     panel.dataset.loading = "";
     return;
   }
 
   if (!items.length) {
     container.innerHTML = "";
-    if (status) {
-      status.textContent = "";
-    }
   } else {
     container.innerHTML = renderTeamMatchStatsList(items, teamSlug);
-    if (status) {
-      status.textContent = buildTeamMatchStatsStatus(items);
-    }
   }
   panel.dataset.loading = "";
 }
@@ -3579,10 +3563,10 @@ function renderMatchAnalitika(matchId: number, homeName: string, awayName: strin
     <div class="match-analitika" data-match-analitika data-match-id="${matchId}" data-default-team="${escapeAttribute(
       defaultSlug
     )}">
+      <p class="match-analitika-title">ОСТАННІ 5 МАТЧІВ</p>
       <div class="analitika-filter match-analitika-filter">
         ${buttons}
       </div>
-      <p class="muted small" data-match-analitika-status></p>
       <div class="analitika-grid" data-match-analitika-content></div>
     </div>
   `;
@@ -3783,10 +3767,7 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
     .join("");
 
   return `
-    <section class="analitika-card is-graph">
-      <div class="analitika-card-header">
-        <h3>${escapeHtml(`${teamLabel} — останні матчі`)}</h3>
-      </div>
+    <section class="analitika-card is-graph" aria-label="${escapeAttribute(`${teamLabel} — останні матчі`)}">
       <div class="analitika-card-body">
         <div class="analitika-line">
           <div class="analitika-line-axis">

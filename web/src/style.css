@@ -1754,22 +1754,29 @@ h1 {
 }
 
 .match-analitika {
-  width: calc(100% + 16px);
-  margin: 12px -8px 0;
+  width: 95vw;
+  margin: 12px calc(50% - 47.5vw) 0;
   display: grid;
   gap: 10px;
-  justify-items: start;
+  justify-items: stretch;
   text-align: left;
 }
 
-.match-analitika .analitika-filter,
-.match-analitika .muted {
+.match-analitika-title {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.match-analitika .analitika-filter {
   width: 100%;
 }
 
 .analitika-line {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 26px 1fr;
   gap: 4px;
   --line-logo-size: 36px;
   --line-score-gap: 8px;
@@ -1792,7 +1799,7 @@ h1 {
 
 .analitika-line-plot {
   position: absolute;
-  inset: 16px 8px 120px;
+  inset: 16px 4px 120px;
 }
 
 .analitika-line-grid {
@@ -1918,9 +1925,8 @@ h1 {
 }
 
 .analitika-card.is-graph .analitika-line {
-  width: 95%;
-  margin-left: 0;
-  margin-right: auto;
+  width: 100%;
+  margin: 0;
 }
 .analitika-card {
   border-radius: 18px;
