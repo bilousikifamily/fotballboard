@@ -1754,8 +1754,8 @@ h1 {
 }
 
 .match-analitika {
-  width: calc(100% + 36px);
-  margin: 12px -18px 0;
+  width: 100%;
+  margin: 12px 0 0;
   display: grid;
   gap: 12px;
   justify-items: stretch;
@@ -1770,6 +1770,8 @@ h1 {
   text-transform: uppercase;
   color: var(--ink);
   text-align: center;
+  width: 100%;
+  justify-self: center;
 }
 
 .match-analitika .analitika-filter {

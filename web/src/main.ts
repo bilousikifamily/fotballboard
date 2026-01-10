@@ -3527,8 +3527,8 @@ function renderMatchesList(matches: Match[]): string {
               predicted ? "data-auto-open='true'" : ""
             }></div>
             ${closed ? statusLine : ""}
-            ${matchAnalitika}
           </article>
+          ${matchAnalitika}
           ${countdown}
         </div>
       `;
