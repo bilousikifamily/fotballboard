@@ -1659,8 +1659,8 @@ h1 {
 }
 
 .analitika-filter {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1671,6 +1671,33 @@ h1 {
 .analitika-actions .button {
   width: 100%;
   text-align: center;
+}
+
+.analitika-debug {
+  display: none;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(12, 13, 16, 0.7);
+  font-size: 0.8rem;
+}
+
+.analitika-debug.is-open {
+  display: grid;
+  gap: 12px;
+}
+
+.analitika-debug-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.analitika-debug-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 6px;
 }
 
 .chip {
@@ -1684,6 +1711,8 @@ h1 {
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  width: 100%;
+  text-align: center;
 }
 
 .chip.is-active {
@@ -1719,14 +1748,6 @@ h1 {
   font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.analitika-meta {
-  display: grid;
-  gap: 2px;
-  font-size: 0.65rem;
-  color: var(--muted);
-  text-align: right;
 }
 
 .analitika-card-body {

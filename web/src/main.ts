@@ -117,8 +117,23 @@ type AnalitikaResponse =
   | { ok: false; error: string };
 
 type AnalitikaRefreshResponse =
-  | { ok: true; updated: number; warnings?: string[] }
-  | { ok: false; error: string; detail?: string };
+  | { ok: true; updated: number; warnings?: string[]; debug?: AnalitikaDebugInfo }
+  | { ok: false; error: string; detail?: string; debug?: AnalitikaDebugInfo };
+
+type AnalitikaDebugInfo = {
+  league_slug?: string;
+  api_league_id?: number | null;
+  season?: number | null;
+  timezone?: string | null;
+  teams?: Array<{ slug: string; name: string; team_id?: number | null }>;
+  statuses?: {
+    standings?: number;
+    top_scorers?: number;
+    top_assists?: number;
+    head_to_head?: number;
+    team_stats?: Record<string, number>;
+  };
+};
 
 type OddsRefreshResponse =
   | { ok: true; debug?: OddsRefreshDebug }
@@ -281,6 +296,7 @@ let predictionCountdownId: number | null = null;
 let currentAnalitikaTeam = ANALITIKA_TEAMS[0]?.slug ?? "manchester-city";
 let analitikaLoading = false;
 let analitikaRefreshing = false;
+let analitikaDebugOpen = false;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -1344,9 +1360,9 @@ function renderUser(
       <section class="panel admin-analytics">
         <div class="section-header">
           <h2>Аналітика</h2>
-          <div class="analitika-filter">
-            ${analitikaTeamButtons}
-          </div>
+        </div>
+        <div class="analitika-filter">
+          ${analitikaTeamButtons}
         </div>
         <div class="analitika-actions">
           <button class="button secondary small-button" type="button" data-analitika-refresh>
@@ -1354,6 +1370,7 @@ function renderUser(
           </button>
         </div>
         <p class="muted small" data-analitika-status></p>
+        <div class="analitika-debug" data-analitika-debug></div>
         <div class="analitika-grid" data-analitika-content></div>
       </section>
     `
@@ -1579,6 +1596,7 @@ function renderUser(
     if (toggleWeather && weatherForm) {
       toggleWeather.addEventListener("click", () => {
         weatherForm.classList.toggle("is-open");
+        toggleAnalitikaDebug();
       });
     }
 
@@ -2189,6 +2207,50 @@ async function refreshAnalitika(teamSlug: string): Promise<void> {
     if (button) {
       button.disabled = false;
     }
+  }
+}
+
+function toggleAnalitikaDebug(): void {
+  const panel = app.querySelector<HTMLElement>("[data-analitika-debug]");
+  if (!panel) {
+    return;
+  }
+  analitikaDebugOpen = !analitikaDebugOpen;
+  panel.classList.toggle("is-open", analitikaDebugOpen);
+  if (analitikaDebugOpen) {
+    void refreshAnalitikaDebug(currentAnalitikaTeam);
+  }
+}
+
+async function refreshAnalitikaDebug(teamSlug: string): Promise<void> {
+  if (!apiBase || analitikaRefreshing) {
+    return;
+  }
+  const panel = app.querySelector<HTMLElement>("[data-analitika-debug]");
+  if (!panel) {
+    return;
+  }
+
+  analitikaRefreshing = true;
+  panel.innerHTML = `<p class="muted small">Діагностика...</p>`;
+
+  try {
+    const response = await fetch(`${apiBase}/api/analitika/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData, team: teamSlug, debug: true })
+    });
+    const data = (await response.json()) as AnalitikaRefreshResponse;
+    if (!response.ok || !data.ok) {
+      panel.innerHTML = renderAnalitikaDebugError(data);
+      return;
+    }
+    panel.innerHTML = renderAnalitikaDebugInfo(data.debug ?? null, data.warnings ?? []);
+    await loadAnalitika(teamSlug);
+  } catch {
+    panel.innerHTML = `<p class="muted small">Не вдалося отримати діагностику.</p>`;
+  } finally {
+    analitikaRefreshing = false;
   }
 }
 
@@ -3894,22 +3956,12 @@ function renderAnalitikaList(items: AnalitikaItem[]): string {
 
 function renderAnalitikaSection(dataType: string, items: AnalitikaItem[]): string {
   const title = ANALITIKA_TYPE_LABELS[dataType] ?? dataType;
-  const latest = getLatestAnalitikaItem(items);
-  const meta = latest
-    ? `
-      <div class="analitika-meta">
-        <span>оновлено ${escapeHtml(formatAnalitikaDate(latest.fetched_at))}</span>
-        ${latest.expires_at ? `<span>TTL до ${escapeHtml(formatAnalitikaDate(latest.expires_at))}</span>` : ""}
-      </div>
-    `
-    : "";
   const body = renderAnalitikaBody(dataType, items);
 
   return `
     <section class="analitika-card" data-analitika-type="${escapeAttribute(dataType)}">
       <div class="analitika-card-header">
         <h3>${escapeHtml(title)}</h3>
-        ${meta}
       </div>
       <div class="analitika-card-body">
         ${body}
@@ -4186,8 +4238,10 @@ function formatAnalitikaDate(value: string | null | undefined): string {
     return value;
   }
   return new Intl.DateTimeFormat("uk-UA", {
-    dateStyle: "medium",
-    timeStyle: "short"
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
   }).format(date);
 }
 
@@ -4212,6 +4266,71 @@ function formatAnalitikaCell(value: unknown): string {
     }
   }
   return String(value);
+}
+
+function renderAnalitikaDebugInfo(debug: AnalitikaDebugInfo | null, warnings: string[]): string {
+  if (!debug) {
+    return `<p class="muted small">Немає діагностичних даних.</p>`;
+  }
+  const teamRows = (debug.teams ?? []).map((team) => [
+    team.slug,
+    team.team_id ?? "—"
+  ]);
+  const statusRows = [
+    ["standings", debug.statuses?.standings ?? "—"],
+    ["top_scorers", debug.statuses?.top_scorers ?? "—"],
+    ["top_assists", debug.statuses?.top_assists ?? "—"],
+    ["head_to_head", debug.statuses?.head_to_head ?? "—"]
+  ];
+  const teamStats = debug.statuses?.team_stats ?? {};
+  Object.entries(teamStats).forEach(([slug, status]) => {
+    statusRows.push([`team_stats:${slug}`, status]);
+  });
+
+  const warningsMarkup = warnings.length
+    ? `<p class="muted small">Попередження: ${escapeHtml(warnings.join(", "))}</p>`
+    : "";
+
+  return `
+    <div class="analitika-debug-grid">
+      <div>
+        <div class="analitika-debug-title">Конфіг</div>
+        ${renderAnalitikaTable(
+          ["Поле", "Значення"],
+          [
+            ["league", debug.league_slug ?? "—"],
+            ["api_league_id", debug.api_league_id ?? "—"],
+            ["season", debug.season ?? "—"],
+            ["timezone", debug.timezone ?? "—"]
+          ]
+        )}
+      </div>
+      <div>
+        <div class="analitika-debug-title">Команди (ID)</div>
+        ${renderAnalitikaTable(["slug", "team_id"], teamRows)}
+      </div>
+      <div>
+        <div class="analitika-debug-title">Статуси API</div>
+        ${renderAnalitikaTable(["endpoint", "status"], statusRows)}
+      </div>
+    </div>
+    ${warningsMarkup}
+  `;
+}
+
+function renderAnalitikaDebugError(response: AnalitikaRefreshResponse): string {
+  if (!response || response.ok) {
+    return `<p class="muted small">Немає даних про помилку.</p>`;
+  }
+  const detail = response.detail ? ` (${escapeHtml(response.detail)})` : "";
+  const error = escapeHtml(response.error ?? "unknown");
+  const debug = response.debug ? renderAnalitikaDebugInfo(response.debug, []) : "";
+  return `
+    <div class="analitika-debug-error">
+      <p class="muted small">Помилка: ${error}${detail}</p>
+      ${debug}
+    </div>
+  `;
 }
 
 function getLatestAnalitikaItem(items: AnalitikaItem[]): AnalitikaItem | null {

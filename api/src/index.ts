@@ -528,11 +528,25 @@ export default {
 
       const refreshResult = await refreshAnalitika(env, supabase, teamSlug ? [teamSlug] : undefined);
       if (!refreshResult.ok) {
-        return jsonResponse({ ok: false, error: refreshResult.error, detail: refreshResult.detail }, 500, corsHeaders());
+        return jsonResponse(
+          {
+            ok: false,
+            error: refreshResult.error,
+            detail: refreshResult.detail,
+            debug: body.debug ? refreshResult.debug : undefined
+          },
+          500,
+          corsHeaders()
+        );
       }
 
       return jsonResponse(
-        { ok: true, updated: refreshResult.updated, warnings: refreshResult.warnings },
+        {
+          ok: true,
+          updated: refreshResult.updated,
+          warnings: refreshResult.warnings,
+          debug: body.debug ? refreshResult.debug : undefined
+        },
         200,
         corsHeaders()
       );
@@ -1124,44 +1138,62 @@ async function refreshAnalitika(
   env: Env,
   supabase: SupabaseClient,
   teamSlugs?: string[]
-): Promise<{ ok: true; updated: number; warnings: string[] } | { ok: false; error: string; detail?: string }> {
+): Promise<
+  | { ok: true; updated: number; warnings: string[]; debug: AnalitikaDebugInfo }
+  | { ok: false; error: string; detail?: string; debug: AnalitikaDebugInfo }
+> {
+  const debug: AnalitikaDebugInfo = {
+    league_slug: ANALITIKA_LEAGUE_ID,
+    api_league_id: null,
+    season: null,
+    timezone: null,
+    teams: [],
+    statuses: {}
+  };
   if (!env.API_FOOTBALL_KEY) {
-    return { ok: false, error: "missing_api_key" };
+    return { ok: false, error: "missing_api_key", debug };
   }
 
   const timezone = getApiFootballTimezone(env);
   if (!timezone) {
-    return { ok: false, error: "missing_timezone" };
+    return { ok: false, error: "missing_timezone", debug };
   }
+  debug.timezone = timezone;
 
   const leagueId = resolveApiLeagueId(env, ANALITIKA_LEAGUE_ID);
   if (!leagueId) {
-    return { ok: false, error: "missing_league_mapping" };
+    return { ok: false, error: "missing_league_mapping", debug };
   }
+  debug.api_league_id = leagueId;
 
   const season = resolveSeasonForDate(new Date(), timezone);
+  debug.season = season;
   const seasonRange = getSeasonDateRange(season, timezone);
   const teamsResult = await resolveAnalitikaTeams(env, teamSlugs);
   if (!teamsResult.ok) {
-    return { ok: false, error: teamsResult.error, detail: teamsResult.detail };
+    return { ok: false, error: teamsResult.error, detail: teamsResult.detail, debug };
   }
 
   const teams = teamsResult.teams;
+  debug.teams = teams.map((team) => ({ slug: team.slug, name: team.name, team_id: team.teamId ?? null }));
   const warnings: string[] = [];
   const nowIso = new Date().toISOString();
   const updates: AnalitikaUpsert[] = [];
 
   const standingsResult = await fetchLeagueStandings(env, leagueId, season);
+  debug.statuses.standings = standingsResult.status;
   if (!standingsResult.ok) {
     warnings.push(`standings_status_${standingsResult.status}`);
   }
 
   const topScorersResult = await fetchTopPlayers(env, leagueId, season, "scorers");
+  debug.statuses.top_scorers = topScorersResult.status;
   if (!topScorersResult.ok) {
     warnings.push(`top_scorers_status_${topScorersResult.status}`);
   }
 
   const topAssistsResult = await fetchTopPlayers(env, leagueId, season, "assists");
+  debug.statuses.top_assists = topAssistsResult.status;
   if (!topAssistsResult.ok) {
     warnings.push(`top_assists_status_${topAssistsResult.status}`);
   }
@@ -1176,6 +1208,7 @@ async function refreshAnalitika(
       seasonRange.to,
       timezone
     );
+    debug.statuses.head_to_head = h2hResult.status;
     if (h2hResult.ok) {
       headToHeadPayload = buildHeadToHeadPayload(h2hResult.payload);
     } else {
@@ -1187,6 +1220,10 @@ async function refreshAnalitika(
 
   for (const team of teams) {
     const teamStatsResult = await fetchTeamStats(env, team.teamId, leagueId, season);
+    if (!debug.statuses.team_stats) {
+      debug.statuses.team_stats = {};
+    }
+    debug.statuses.team_stats[team.slug] = teamStatsResult.status;
     if (teamStatsResult.ok) {
       const payload = buildTeamStatsPayload(teamStatsResult.payload);
       updates.push(
@@ -1258,15 +1295,15 @@ async function refreshAnalitika(
   }
 
   if (!updates.length) {
-    return { ok: false, error: "api_error", detail: "no_data" };
+    return { ok: false, error: "api_error", detail: "no_data", debug };
   }
 
   const upserted = await upsertAnalitika(supabase, updates);
   if (!upserted) {
-    return { ok: false, error: "db_error" };
+    return { ok: false, error: "db_error", debug };
   }
 
-  return { ok: true, updated: updates.length, warnings };
+  return { ok: true, updated: updates.length, warnings, debug };
 }
 
 async function getUserStats(supabase: SupabaseClient, userId: number): Promise<UserStats | null> {
@@ -4901,6 +4938,7 @@ function normalizeTeamSlug(value: string | null): string | null {
 interface AnalitikaRefreshPayload {
   initData?: string;
   team?: string;
+  debug?: boolean;
 }
 
 interface AnalitikaTeam {
@@ -4920,6 +4958,21 @@ type AnalitikaUpsert = {
   payload: AnalitikaPayload;
   fetched_at: string;
   expires_at: string | null;
+};
+
+type AnalitikaDebugInfo = {
+  league_slug: string;
+  api_league_id: number | null;
+  season: number | null;
+  timezone: string | null;
+  teams: Array<{ slug: string; name: string; team_id: number | null }>;
+  statuses: {
+    standings?: number;
+    top_scorers?: number;
+    top_assists?: number;
+    head_to_head?: number;
+    team_stats?: Record<string, number>;
+  };
 };
 
 interface CreateMatchPayload {
