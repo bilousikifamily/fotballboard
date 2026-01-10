@@ -3705,11 +3705,13 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
   const hasSpan = maxRating > minRating;
   const ratingSpan = hasSpan ? maxRating - minRating : 1;
   const pointsCount = orderedItems.length;
+  const edgePad = pointsCount > 1 ? 8 : 0;
+  const xSpan = 100 - edgePad * 2;
   const points = orderedItems.map((item, index) => {
     const ratingValue = parseTeamMatchRating(item.avg_rating);
     const clamped = ratingValue === null ? null : Math.min(maxRating, Math.max(minRating, ratingValue));
     const y = clamped === null ? 100 : hasSpan ? ((maxRating - clamped) / ratingSpan) * 100 : 50;
-    const x = pointsCount > 1 ? (index / (pointsCount - 1)) * 100 : 50;
+    const x = pointsCount > 1 ? edgePad + (index / (pointsCount - 1)) * xSpan : 50;
     const opponent = item.opponent_name || "—";
     const opponentLogo = resolveClubLogoByName(opponent);
     const scoreLabel = formatTeamMatchScoreLabel(item);

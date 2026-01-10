@@ -1776,6 +1776,37 @@ h1 {
 
 .match-analitika .analitika-filter {
   width: 100%;
+  max-width: 75vw;
+  margin: 0 auto;
+  gap: 0;
+  border-radius: 999px;
+  border: 1px solid var(--outline-light);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.match-analitika .analitika-filter .chip {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.match-analitika .analitika-filter .chip.is-active {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.4), rgba(255, 154, 31, 0.6));
+  color: #ffffff;
+}
+
+.match-analitika .analitika-filter .chip:first-child {
+  border-radius: 999px 0 0 999px;
+}
+
+.match-analitika .analitika-filter .chip:last-child {
+  border-radius: 0 999px 999px 0;
+}
+
+.match-analitika .analitika-filter .chip + .chip {
+  border-left: 1px solid var(--outline-dark);
 }
 
 .analitika-line {
