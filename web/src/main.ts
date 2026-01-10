@@ -1334,6 +1334,9 @@ function renderUser(
           <button class="button secondary small-button" type="button" data-analitika-refresh>
             ОНОВИТИ АНАЛІТИКУ
           </button>
+          <button class="button secondary small-button" type="button" data-analitika-debug-toggle>
+            DEBUG АНАЛІТИКИ
+          </button>
         </div>
         <p class="muted small" data-analitika-status></p>
         <div class="analitika-debug" data-analitika-debug></div>
@@ -2039,6 +2042,7 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
 function setupAnalitikaFilters(): void {
   const buttons = app.querySelectorAll<HTMLButtonElement>("[data-analitika-team]");
   const refreshButton = app.querySelector<HTMLButtonElement>("[data-analitika-refresh]");
+  const debugButton = app.querySelector<HTMLButtonElement>("[data-analitika-debug-toggle]");
   if (!buttons.length) {
     return;
   }
@@ -2066,6 +2070,12 @@ function setupAnalitikaFilters(): void {
   if (refreshButton) {
     refreshButton.addEventListener("click", () => {
       void refreshAnalitika(currentAnalitikaTeam);
+    });
+  }
+
+  if (debugButton) {
+    debugButton.addEventListener("click", () => {
+      toggleAnalitikaDebug();
     });
   }
 }
@@ -2106,7 +2116,7 @@ async function loadAnalitika(teamSlug: string): Promise<void> {
     if (!data.items.length) {
       container.innerHTML = `<p class="muted">Немає даних для цієї команди.</p>`;
       if (status) {
-        status.textContent = "Дані відсутні.";
+        status.textContent = "Дані відсутні. Натисни DEBUG АНАЛІТИКИ.";
       }
       return;
     }

@@ -1692,6 +1692,7 @@ h1 {
 
 .analitika-actions {
   display: grid;
+  gap: 8px;
 }
 
 .analitika-actions .button {
