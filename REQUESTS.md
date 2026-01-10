@@ -81,6 +81,7 @@
 - `POST /api/matches` -> API-Football (odds, якщо є ключ)
 - `POST /api/matches/odds` -> API-Football
 - `GET /api/matches/weather` -> Open-Meteo (+ WeatherAPI fallback)
-- `POST /api/analitika/refresh` -> API-Football (командна аналітика)
 - `POST /api/matches/announcement` -> Telegram sendMessage
 
+## Аналітика через Supabase
+- `GET /api/analitika` -> Supabase `team_match_stats` (без зовнішнього API)

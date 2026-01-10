@@ -482,14 +482,14 @@ export default {
       }
 
       const teamSlug = normalizeTeamSlug(url.searchParams.get("team"));
-      if (!teamSlug) {
+      const team = resolveTeamMatchStatsTeam(teamSlug);
+      if (!team) {
         return jsonResponse({ ok: false, error: "bad_team" }, 400, corsHeaders());
       }
 
-      const seasonOverride = parseEnvNumber(env.ANALITIKA_SEASON, 0);
-      const seasonParam = parseInteger(url.searchParams.get("season"));
-      const seasonFilter = seasonParam && seasonParam > 0 ? seasonParam : seasonOverride > 0 ? seasonOverride : null;
-      const items = await listAnalitika(supabase, teamSlug, seasonFilter);
+      const limitParam = parseLimit(url.searchParams.get("limit"), 20, 200);
+      const limit = typeof limitParam === "number" ? limitParam : 20;
+      const items = await listTeamMatchStats(supabase, team.name, limit);
       if (!items) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -501,60 +501,7 @@ export default {
       if (request.method === "OPTIONS") {
         return corsResponse();
       }
-      if (request.method !== "POST") {
-        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
-      }
-
-      const supabase = createSupabaseClient(env);
-      if (!supabase) {
-        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
-      }
-
-      const body = await readJson<AnalitikaRefreshPayload>(request);
-      if (!body) {
-        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
-      }
-
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
-      }
-
-      const teamSlug = normalizeTeamSlug(body.team ?? null);
-      if (body.team && !teamSlug) {
-        return jsonResponse({ ok: false, error: "bad_team" }, 400, corsHeaders());
-      }
-
-      const refreshResult = await refreshAnalitika(env, supabase, teamSlug ? [teamSlug] : undefined);
-      if (!refreshResult.ok) {
-        return jsonResponse(
-          {
-            ok: false,
-            error: refreshResult.error,
-            detail: refreshResult.detail,
-            debug: body.debug ? refreshResult.debug : undefined
-          },
-          500,
-          corsHeaders()
-        );
-      }
-
-      return jsonResponse(
-        {
-          ok: true,
-          updated: refreshResult.updated,
-          warnings: refreshResult.warnings,
-          debug: body.debug ? refreshResult.debug : undefined
-        },
-        200,
-        corsHeaders()
-      );
+      return jsonResponse({ ok: false, error: "disabled" }, 410, corsHeaders());
     }
 
     if (url.pathname === "/api/matches") {
@@ -1138,6 +1085,32 @@ async function listAnalitika(
     return (data as DbAnalitika[]) ?? [];
   } catch (error) {
     console.error("Failed to list analitika", error);
+    return null;
+  }
+}
+
+async function listTeamMatchStats(
+  supabase: SupabaseClient,
+  teamName: string,
+  limit?: number | null
+): Promise<DbTeamMatchStat[] | null> {
+  try {
+    let query = supabase
+      .from("team_match_stats")
+      .select("id, team_name, opponent_name, match_date, is_home, team_goals, opponent_goals, avg_rating")
+      .eq("team_name", teamName)
+      .order("match_date", { ascending: false });
+    if (typeof limit === "number") {
+      query = query.limit(limit);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to list team_match_stats", error);
+      return null;
+    }
+    return (data as DbTeamMatchStat[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list team_match_stats", error);
     return null;
   }
 }
@@ -5167,6 +5140,13 @@ function normalizeTeamSlug(value: string | null): string | null {
   return trimmed.replace(/\s+/g, "-");
 }
 
+function resolveTeamMatchStatsTeam(teamSlug: string | null): { slug: string; name: string } | null {
+  if (!teamSlug) {
+    return null;
+  }
+  return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug) ?? null;
+}
+
 interface AnalitikaRefreshPayload {
   initData?: string;
   team?: string;
@@ -5292,6 +5272,17 @@ interface DbAnalitika {
   payload: unknown;
   fetched_at: string;
   expires_at?: string | null;
+}
+
+interface DbTeamMatchStat {
+  id: string;
+  team_name: string;
+  opponent_name: string;
+  match_date: string;
+  is_home?: boolean | null;
+  team_goals?: number | string | null;
+  opponent_goals?: number | string | null;
+  avg_rating?: number | string | null;
 }
 
 interface DbPrediction {

@@ -115,6 +115,21 @@ type AnalitikaDebugInfo = {
   };
 };
 
+type TeamMatchStat = {
+  id: string;
+  team_name: string;
+  opponent_name: string;
+  match_date: string;
+  is_home?: boolean | null;
+  team_goals?: number | string | null;
+  opponent_goals?: number | string | null;
+  avg_rating?: number | string | null;
+};
+
+type TeamMatchStatsResponse =
+  | { ok: true; items: TeamMatchStat[] }
+  | { ok: false; error: string };
+
 type OddsRefreshResponse =
   | { ok: true; debug?: OddsRefreshDebug }
   | { ok: false; error: string; detail?: string; debug?: OddsRefreshDebug };
@@ -237,8 +252,8 @@ if (shouldShowIntro) {
 }
 
 const ANALITIKA_TEAMS = [
-  { slug: "manchester-city", label: "Manchester City" },
-  { slug: "chelsea", label: "Chelsea" }
+  { slug: "chelsea", label: "Chelsea" },
+  { slug: "manchester-city", label: "Manchester City" }
 ];
 
 const ANALITIKA_TYPE_LABELS: Record<string, string> = {
@@ -273,10 +288,8 @@ let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
-let currentAnalitikaTeam = ANALITIKA_TEAMS[0]?.slug ?? "manchester-city";
+let currentAnalitikaTeam = ANALITIKA_TEAMS[0]?.slug ?? "chelsea";
 let analitikaLoading = false;
-let analitikaRefreshing = false;
-let analitikaDebugOpen = false;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -1342,14 +1355,10 @@ function renderUser(
         </div>
         <div class="analitika-actions">
           <button class="button secondary small-button" type="button" data-analitika-refresh>
-            ОНОВИТИ АНАЛІТИКУ
-          </button>
-          <button class="button secondary small-button" type="button" data-analitika-debug-toggle>
-            DEBUG АНАЛІТИКИ
+            ОНОВИТИ ТАБЛИЦЮ
           </button>
         </div>
         <p class="muted small" data-analitika-status></p>
-        <div class="analitika-debug" data-analitika-debug></div>
         <div class="analitika-grid" data-analitika-content></div>
       </section>
     `
@@ -1575,7 +1584,6 @@ function renderUser(
     if (toggleDebug && debugPanel) {
       toggleDebug.addEventListener("click", () => {
         debugPanel.classList.toggle("is-open");
-        toggleAnalitikaDebug();
       });
     }
 
@@ -2052,8 +2060,7 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
 function setupAnalitikaFilters(): void {
   const buttons = app.querySelectorAll<HTMLButtonElement>("[data-analitika-team]");
   const refreshButton = app.querySelector<HTMLButtonElement>("[data-analitika-refresh]");
-  const debugButton = app.querySelector<HTMLButtonElement>("[data-analitika-debug-toggle]");
-  if (!buttons.length) {
+  if (!buttons.length && !refreshButton) {
     return;
   }
 
@@ -2079,13 +2086,7 @@ function setupAnalitikaFilters(): void {
 
   if (refreshButton) {
     refreshButton.addEventListener("click", () => {
-      void refreshAnalitika(currentAnalitikaTeam);
-    });
-  }
-
-  if (debugButton) {
-    debugButton.addEventListener("click", () => {
-      toggleAnalitikaDebug();
+      void loadAnalitika(currentAnalitikaTeam);
     });
   }
 }
@@ -2114,122 +2115,26 @@ async function loadAnalitika(teamSlug: string): Promise<void> {
         "X-Telegram-InitData": initData
       }
     });
-    const data = (await response.json()) as AnalitikaResponse;
+    const data = (await response.json()) as TeamMatchStatsResponse;
     if (!response.ok || !data.ok) {
-      container.innerHTML = `<p class="muted">Не вдалося завантажити аналітику.</p>`;
+      container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
       if (status) {
         status.textContent = "Помилка завантаження.";
       }
       return;
     }
 
-    if (!data.items.length) {
-      container.innerHTML = `<p class="muted">Немає даних для цієї команди.</p>`;
-      if (status) {
-        status.textContent = "Дані відсутні. Натисни DEBUG АНАЛІТИКИ.";
-      }
-      return;
-    }
-
-    container.innerHTML = renderAnalitikaList(data.items);
+    container.innerHTML = renderTeamMatchStatsList(data.items, teamSlug);
     if (status) {
-      status.textContent = buildAnalitikaStatus(data.items);
+      status.textContent = buildTeamMatchStatsStatus(data.items);
     }
   } catch {
-    container.innerHTML = `<p class="muted">Не вдалося завантажити аналітику.</p>`;
+    container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
     if (status) {
       status.textContent = "Помилка завантаження.";
     }
   } finally {
     analitikaLoading = false;
-  }
-}
-
-async function refreshAnalitika(teamSlug: string): Promise<void> {
-  if (!apiBase || analitikaRefreshing) {
-    return;
-  }
-  const status = app.querySelector<HTMLElement>("[data-analitika-status]");
-  const button = app.querySelector<HTMLButtonElement>("[data-analitika-refresh]");
-  analitikaRefreshing = true;
-  if (button) {
-    button.disabled = true;
-  }
-  if (status) {
-    status.textContent = "Оновлення аналітики...";
-  }
-
-  try {
-    const response = await fetch(`${apiBase}/api/analitika/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData, team: teamSlug })
-    });
-    const data = (await response.json()) as AnalitikaRefreshResponse;
-    if (!response.ok || !data.ok) {
-      if (status) {
-        status.textContent = "Не вдалося оновити аналітику.";
-      }
-      return;
-    }
-    if (status) {
-      const warnings = data.warnings?.length ? ` (попередження: ${data.warnings.length})` : "";
-      status.textContent = `Оновлено: ${data.updated}${warnings}`;
-    }
-    await loadAnalitika(teamSlug);
-  } catch {
-    if (status) {
-      status.textContent = "Не вдалося оновити аналітику.";
-    }
-  } finally {
-    analitikaRefreshing = false;
-    if (button) {
-      button.disabled = false;
-    }
-  }
-}
-
-function toggleAnalitikaDebug(): void {
-  const panel = app.querySelector<HTMLElement>("[data-analitika-debug]");
-  if (!panel) {
-    return;
-  }
-  analitikaDebugOpen = !analitikaDebugOpen;
-  panel.classList.toggle("is-open", analitikaDebugOpen);
-  if (analitikaDebugOpen) {
-    void refreshAnalitikaDebug(currentAnalitikaTeam);
-  }
-}
-
-async function refreshAnalitikaDebug(teamSlug: string): Promise<void> {
-  if (!apiBase || analitikaRefreshing) {
-    return;
-  }
-  const panel = app.querySelector<HTMLElement>("[data-analitika-debug]");
-  if (!panel) {
-    return;
-  }
-
-  analitikaRefreshing = true;
-  panel.innerHTML = `<p class="muted small">Діагностика...</p>`;
-
-  try {
-    const response = await fetch(`${apiBase}/api/analitika/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData, team: teamSlug, debug: true })
-    });
-    const data = (await response.json()) as AnalitikaRefreshResponse;
-    if (!response.ok || !data.ok) {
-      panel.innerHTML = renderAnalitikaDebugError(data);
-      return;
-    }
-    panel.innerHTML = renderAnalitikaDebugInfo(data.debug ?? null, data.warnings ?? []);
-    await loadAnalitika(teamSlug);
-  } catch {
-    panel.innerHTML = `<p class="muted small">Не вдалося отримати діагностику.</p>`;
-  } finally {
-    analitikaRefreshing = false;
   }
 }
 
@@ -3727,6 +3632,71 @@ function parseScore(value?: string): number | null {
   }
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function buildTeamMatchStatsStatus(items: TeamMatchStat[]): string {
+  if (!items.length) {
+    return "Немає даних.";
+  }
+  const latest = items[0];
+  const latestDate = latest.match_date ? formatKyivDateTime(latest.match_date) : "—";
+  return `Останній матч: ${latestDate} · Всього: ${items.length}`;
+}
+
+function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): string {
+  const teamLabel = resolveTeamLabel(teamSlug);
+  if (!items.length) {
+    return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
+  }
+  const rows = items.map((item) => [
+    item.match_date ? formatKyivDateTime(item.match_date) : "—",
+    item.opponent_name || "—",
+    item.is_home === null || item.is_home === undefined ? "—" : item.is_home ? "Дома" : "Виїзд",
+    formatTeamMatchScore(item),
+    formatTeamMatchRating(item.avg_rating)
+  ]);
+
+  return `
+    <section class="analitika-card">
+      <div class="analitika-card-header">
+        <h3>${escapeHtml(`${teamLabel} — останні матчі`)}</h3>
+      </div>
+      <div class="analitika-card-body">
+        ${renderAnalitikaTable(["Дата", "Суперник", "Д/В", "Рахунок", "Рейтинг"], rows)}
+      </div>
+    </section>
+  `;
+}
+
+function resolveTeamLabel(teamSlug: string): string {
+  return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug)?.label ?? teamSlug;
+}
+
+function formatTeamMatchScore(item: TeamMatchStat): string {
+  if (item.team_goals === null || item.team_goals === undefined) {
+    return "—";
+  }
+  if (item.opponent_goals === null || item.opponent_goals === undefined) {
+    return "—";
+  }
+  const teamGoals = typeof item.team_goals === "number" ? item.team_goals : Number(item.team_goals);
+  const opponentGoals =
+    typeof item.opponent_goals === "number" ? item.opponent_goals : Number(item.opponent_goals);
+  if (!Number.isFinite(teamGoals) || !Number.isFinite(opponentGoals)) {
+    return "—";
+  }
+  return `${teamGoals}:${opponentGoals}`;
+}
+
+function formatTeamMatchRating(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "—";
+  }
+  return numeric.toFixed(1);
 }
 
 function buildAnalitikaStatus(items: AnalitikaItem[]): string {
