@@ -1767,17 +1767,17 @@ h1 {
   justify-content: space-between;
   font-size: 0.75rem;
   color: var(--muted);
-  padding: 16px 0 72px;
+  padding: 16px 0 120px;
 }
 
 .analitika-line-canvas {
   position: relative;
-  height: 260px;
+  height: 320px;
 }
 
 .analitika-line-plot {
   position: absolute;
-  inset: 16px 8px 72px;
+  inset: 16px 8px 120px;
 }
 
 .analitika-line-grid {
@@ -1798,7 +1798,7 @@ h1 {
   position: absolute;
   top: 100%;
   left: 50%;
-  transform: translate(-50%, 18px);
+  transform: translate(-50%, 60px);
   font-size: 0.7rem;
   color: var(--muted);
   white-space: nowrap;
@@ -1821,7 +1821,7 @@ h1 {
 
 .analitika-line-path polyline {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.6);
+  stroke: var(--accent);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1857,29 +1857,30 @@ h1 {
   left: 0;
   top: 0;
   transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
-  background: rgba(12, 12, 14, 0.75);
-  color: #f4f4f4;
+  background: rgba(12, 12, 14, 0.85);
+  color: var(--ink);
   font-size: 0.7rem;
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--outline-light);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
 .analitika-line-score.is-win {
-  color: #51e59b;
-  border-color: rgba(81, 229, 155, 0.6);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  box-shadow: 0 6px 16px rgba(255, 122, 26, 0.2);
 }
 
 .analitika-line-score.is-loss {
-  color: #ff6c6c;
-  border-color: rgba(255, 108, 108, 0.6);
+  color: var(--muted);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .analitika-line-score.is-draw {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.5);
+  color: var(--ink);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .analitika-line-score.is-missing {

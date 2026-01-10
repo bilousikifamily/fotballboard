@@ -3811,10 +3811,10 @@ function normalizeClubName(value: string): string {
 
 function getHomeAwayLabel(item: TeamMatchStat): string | null {
   if (item.is_home === true) {
-    return "Дома";
+    return "ВДОМА";
   }
   if (item.is_home === false) {
-    return "Виїзд";
+    return "ВИЇЗД";
   }
   return null;
 }
