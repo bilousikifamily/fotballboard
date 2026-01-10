@@ -3654,50 +3654,52 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
   const pointsCount = items.length;
   const points = items.map((item, index) => {
     const ratingValue = parseTeamMatchRating(item.avg_rating);
-    const ratingLabel = ratingValue !== null ? ratingValue.toFixed(1) : "—";
     const clamped = ratingValue === null ? null : Math.min(maxRating, Math.max(minRating, ratingValue));
     const y = clamped === null ? 100 : ((maxRating - clamped) / ratingSpan) * 100;
     const x = pointsCount > 1 ? (index / (pointsCount - 1)) * 100 : 50;
     const opponent = item.opponent_name || "—";
     const opponentLogo = resolveClubLogoByName(opponent);
     const scoreLabel = formatTeamMatchScoreLabel(item);
-    const meta = [
-      item.match_date ? formatKyivDateTime(item.match_date) : null,
-      getHomeAwayLabel(item)
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    const dateLabel = item.match_date ? formatKyivDateTime(item.match_date) : "";
+    const homeAway = getHomeAwayLabel(item) ?? "";
 
     return {
       x,
       y,
-      ratingLabel,
       opponent,
       opponentLogo,
       scoreLabel,
-      meta
+      dateLabel,
+      homeAway
     };
   });
   const polyline = points
     .map((point) => `${point.x},${point.y}`)
     .join(" ");
   const gridLines = points
-    .map((point) => `<span class="analitika-line-gridline" style="--x:${point.x}%"></span>`)
+    .map((point) => {
+      const dateMeta = `
+        <span class="analitika-line-date">
+          ${point.dateLabel ? `<span>${escapeHtml(point.dateLabel)}</span>` : ""}
+          ${point.homeAway ? `<span class="analitika-line-homeaway">${escapeHtml(point.homeAway)}</span>` : ""}
+        </span>
+      `;
+      return `
+        <span class="analitika-line-gridline" style="--x:${point.x}%">
+          ${point.dateLabel || point.homeAway ? dateMeta : ""}
+        </span>
+      `;
+    })
     .join("");
   const pointMarkup = points
     .map((point) => {
-      const score = point.scoreLabel !== "—" ? `<span class="analitika-line-score">${escapeHtml(point.scoreLabel)}</span>` : "";
-      const meta = point.meta ? `<div class="analitika-line-details">${escapeHtml(point.meta)}</div>` : "";
+      const score =
+        point.scoreLabel !== "—" ? `<span class="analitika-line-score">${escapeHtml(point.scoreLabel)}</span>` : "";
       return `
         <div class="analitika-line-point" style="--x:${point.x}%; --y:${point.y}%;">
-          <span class="analitika-line-rating">${escapeHtml(point.ratingLabel)}</span>
           <div class="analitika-line-logo-wrap">
-            ${score}
             ${renderTeamLogo(point.opponent, point.opponentLogo)}
-          </div>
-          <div class="analitika-line-meta">
-            <div class="analitika-line-opponent">${escapeHtml(point.opponent)}</div>
-            ${meta}
+            ${score}
           </div>
         </div>
       `;
@@ -3831,6 +3833,9 @@ function formatTeamMatchScoreLabel(item: TeamMatchStat): string {
   const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
   if (teamGoals === null || opponentGoals === null) {
     return "—";
+  }
+  if (item.is_home === false) {
+    return `${opponentGoals}:${teamGoals}`;
   }
   return `${teamGoals}:${opponentGoals}`;
 }

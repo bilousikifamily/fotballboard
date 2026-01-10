@@ -1792,6 +1792,24 @@ h1 {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.analitika-line-date {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 18px);
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.analitika-line-homeaway {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
 .analitika-line-path {
   position: absolute;
   inset: 0;
@@ -1816,22 +1834,13 @@ h1 {
   height: 0;
 }
 
-.analitika-line-rating {
-  position: absolute;
-  bottom: 42px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
 .analitika-line-logo-wrap {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
+  display: grid;
+  justify-items: center;
   gap: 6px;
 }
 
@@ -1850,24 +1859,6 @@ h1 {
   padding: 4px 8px;
   border-radius: 8px;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
-}
-
-.analitika-line-meta {
-  position: absolute;
-  top: 46px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  width: 120px;
-}
-
-.analitika-line-opponent {
-  font-size: 0.78rem;
-}
-
-.analitika-line-details {
-  font-size: 0.7rem;
-  color: var(--muted);
 }
 
 .analitika-card {
