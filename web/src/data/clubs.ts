@@ -43,6 +43,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "brentford",
     "brighton",
     "burnley",
+    "charlton",
     "chelsea",
     "crystal-palace",
     "everton",
