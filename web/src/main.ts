@@ -288,8 +288,9 @@ let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
-let currentAnalitikaTeam = ANALITIKA_TEAMS[0]?.slug ?? "chelsea";
-let analitikaLoading = false;
+const ANALITIKA_TEAM_SLUGS = new Set(ANALITIKA_TEAMS.map((team) => team.slug));
+const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
+const analitikaTeamInFlight = new Map<string, Promise<TeamMatchStat[] | null>>();
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -516,7 +517,6 @@ async function bootstrap(data: string): Promise<void> {
 
     renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
     await loadMatches(currentDate);
-    void loadAnalitika(currentAnalitikaTeam);
   } catch {
     renderMessage("Network error", "Check your connection and try again.");
   }
@@ -1332,33 +1332,6 @@ function renderUser(
       </section>
     `
     : "";
-  const analitikaTeamButtons = ANALITIKA_TEAMS.map((team, index) => {
-    const isActive = team.slug === currentAnalitikaTeam || (!currentAnalitikaTeam && index === 0);
-    return `
-      <button
-        class="chip${isActive ? " is-active" : ""}"
-        type="button"
-        data-analitika-team="${escapeAttribute(team.slug)}"
-        aria-pressed="${isActive ? "true" : "false"}"
-      >
-        ${escapeHtml(team.label)}
-      </button>
-    `;
-  }).join("");
-  const analitikaPanel = `
-      <section class="matches-analytics">
-        <div class="analitika-filter">
-          ${analitikaTeamButtons}
-        </div>
-        <div class="analitika-actions">
-          <button class="button secondary small-button" type="button" data-analitika-refresh>
-            ОНОВИТИ ТАБЛИЦЮ
-          </button>
-        </div>
-        <p class="muted small" data-analitika-status></p>
-        <div class="analitika-grid" data-analitika-content></div>
-      </section>
-  `;
   const adminScreen = admin
     ? `
       <section class="screen" data-screen="admin">
@@ -1429,7 +1402,6 @@ function renderUser(
             </div>
             <div class="matches-list" data-matches></div>
           </section>
-          ${analitikaPanel}
         </section>
 
         ${adminScreen}
@@ -1591,7 +1563,6 @@ function renderUser(
 
   }
 
-  setupAnalitikaFilters();
 }
 
 function setupLogoOrderControls(): void {
@@ -1981,6 +1952,7 @@ async function loadMatches(date: string): Promise<void> {
     });
     container.innerHTML = renderMatchesList(data.matches);
     bindMatchActions();
+    setupMatchAnalitikaFilters();
     renderAdminMatchOptions(data.matches);
     void loadMatchWeather(data.matches);
     startPredictionCountdowns();
@@ -2054,85 +2026,130 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
   await Promise.all(tasks);
 }
 
-function setupAnalitikaFilters(): void {
-  const buttons = app.querySelectorAll<HTMLButtonElement>("[data-analitika-team]");
-  const refreshButton = app.querySelector<HTMLButtonElement>("[data-analitika-refresh]");
-  if (!buttons.length && !refreshButton) {
+function setupMatchAnalitikaFilters(): void {
+  const panels = app.querySelectorAll<HTMLElement>("[data-match-analitika]");
+  if (!panels.length) {
     return;
   }
 
-  const setActive = (teamSlug: string): void => {
-    currentAnalitikaTeam = teamSlug;
+  panels.forEach((panel) => {
+    const buttons = panel.querySelectorAll<HTMLButtonElement>("[data-match-analitika-team]");
+    if (!buttons.length) {
+      return;
+    }
+    const defaultSlug =
+      panel.dataset.defaultTeam || buttons[0]?.dataset.matchAnalitikaTeam || "";
+
+    const setActive = (teamSlug: string): void => {
+      panel.dataset.activeTeam = teamSlug;
+      buttons.forEach((button) => {
+        const isActive = button.dataset.matchAnalitikaTeam === teamSlug;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+    };
+
     buttons.forEach((button) => {
-      const isActive = button.dataset.analitikaTeam === teamSlug;
-      button.classList.toggle("is-active", isActive);
-      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      button.addEventListener("click", () => {
+        const teamSlug = button.dataset.matchAnalitikaTeam || "";
+        if (!teamSlug || panel.dataset.activeTeam === teamSlug) {
+          return;
+        }
+        setActive(teamSlug);
+        void loadMatchAnalitika(panel, teamSlug);
+      });
     });
-  };
 
-  buttons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const teamSlug = button.dataset.analitikaTeam;
-      if (!teamSlug || teamSlug === currentAnalitikaTeam) {
-        return;
-      }
-      setActive(teamSlug);
-      void loadAnalitika(teamSlug);
-    });
+    if (defaultSlug) {
+      setActive(defaultSlug);
+      void loadMatchAnalitika(panel, defaultSlug);
+    }
   });
-
-  if (refreshButton) {
-    refreshButton.addEventListener("click", () => {
-      void loadAnalitika(currentAnalitikaTeam);
-    });
-  }
 }
 
-async function loadAnalitika(teamSlug: string): Promise<void> {
-  if (!apiBase || analitikaLoading) {
-    return;
-  }
-  const container = app.querySelector<HTMLElement>("[data-analitika-content]");
-  const status = app.querySelector<HTMLElement>("[data-analitika-status]");
+async function loadMatchAnalitika(panel: HTMLElement, teamSlug: string): Promise<void> {
+  const container = panel.querySelector<HTMLElement>("[data-match-analitika-content]");
+  const status = panel.querySelector<HTMLElement>("[data-match-analitika-status]");
   if (!container) {
     return;
   }
 
-  analitikaLoading = true;
+  if (!ANALITIKA_TEAM_SLUGS.has(teamSlug)) {
+    container.innerHTML = "";
+    if (status) {
+      status.textContent = "";
+    }
+    return;
+  }
+
+  if (panel.dataset.loading === teamSlug) {
+    return;
+  }
+  panel.dataset.loading = teamSlug;
   if (status) {
     status.textContent = "Завантаження...";
   }
   container.innerHTML = "";
 
-  try {
-    const response = await fetch(`${apiBase}/api/analitika?team=${encodeURIComponent(teamSlug)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Telegram-InitData": initData
-      }
-    });
-    const data = (await response.json()) as TeamMatchStatsResponse;
-    if (!response.ok || !data.ok) {
-      container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
-      if (status) {
-        status.textContent = "Помилка завантаження.";
-      }
-      return;
-    }
-
-    container.innerHTML = renderTeamMatchStatsList(data.items, teamSlug);
-    if (status) {
-      status.textContent = buildTeamMatchStatsStatus(data.items);
-    }
-  } catch {
+  const items = await fetchAnalitikaTeam(teamSlug);
+  if (!items) {
     container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
     if (status) {
       status.textContent = "Помилка завантаження.";
     }
-  } finally {
-    analitikaLoading = false;
+    panel.dataset.loading = "";
+    return;
   }
+
+  if (!items.length) {
+    container.innerHTML = "";
+    if (status) {
+      status.textContent = "";
+    }
+  } else {
+    container.innerHTML = renderTeamMatchStatsList(items, teamSlug);
+    if (status) {
+      status.textContent = buildTeamMatchStatsStatus(items);
+    }
+  }
+  panel.dataset.loading = "";
+}
+
+async function fetchAnalitikaTeam(teamSlug: string): Promise<TeamMatchStat[] | null> {
+  if (!apiBase) {
+    return null;
+  }
+  const cached = analitikaTeamCache.get(teamSlug);
+  if (cached) {
+    return cached;
+  }
+  const inFlight = analitikaTeamInFlight.get(teamSlug);
+  if (inFlight) {
+    return inFlight;
+  }
+  const promise = (async () => {
+    try {
+      const response = await fetch(`${apiBase}/api/analitika?team=${encodeURIComponent(teamSlug)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Telegram-InitData": initData
+        }
+      });
+      const data = (await response.json()) as TeamMatchStatsResponse;
+      if (!response.ok || !data.ok) {
+        return null;
+      }
+      analitikaTeamCache.set(teamSlug, data.items);
+      return data.items;
+    } catch {
+      return null;
+    } finally {
+      analitikaTeamInFlight.delete(teamSlug);
+    }
+  })();
+  analitikaTeamInFlight.set(teamSlug, promise);
+  return promise;
 }
 
 function isWeatherFresh(match: Match): boolean {
@@ -2658,12 +2675,6 @@ function setupTabs(): void {
     });
     if (tab === "leaderboard") {
       void loadLeaderboard();
-    }
-    if (tab === "matches") {
-      void loadAnalitika(currentAnalitikaTeam);
-    }
-    if (tab === "admin") {
-      void loadAnalitika(currentAnalitikaTeam);
     }
   };
 
@@ -3452,6 +3463,7 @@ function renderMatchesList(matches: Match[]): string {
           </div>
         `
         : "";
+      const matchAnalitika = renderMatchAnalitika(match.id, homeName, awayName);
       const finished = match.status === "finished";
       const closeAtMs = getMatchPredictionCloseAtMs(match);
       const closed = finished || (closeAtMs !== null && Date.now() > closeAtMs);
@@ -3531,12 +3543,64 @@ function renderMatchesList(matches: Match[]): string {
               predicted ? "data-auto-open='true'" : ""
             }></div>
             ${closed ? statusLine : ""}
+            ${matchAnalitika}
           </article>
           ${countdown}
         </div>
       `;
     })
     .join("");
+}
+
+function renderMatchAnalitika(matchId: number, homeName: string, awayName: string): string {
+  const homeSlug = normalizeTeamSlugValue(homeName);
+  const awaySlug = normalizeTeamSlugValue(awayName);
+  const defaultSlug = resolveDefaultAnalitikaTeam(homeSlug, awaySlug);
+  const buttons = [
+    { slug: homeSlug, label: homeName },
+    { slug: awaySlug, label: awayName }
+  ]
+    .map((team, index) => {
+      const isActive = team.slug === defaultSlug || (!defaultSlug && index === 0);
+      return `
+        <button
+          class="chip${isActive ? " is-active" : ""}"
+          type="button"
+          data-match-analitika-team="${escapeAttribute(team.slug)}"
+          aria-pressed="${isActive ? "true" : "false"}"
+        >
+          ${escapeHtml(team.label)}
+        </button>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="match-analitika" data-match-analitika data-match-id="${matchId}" data-default-team="${escapeAttribute(
+      defaultSlug
+    )}">
+      <div class="analitika-filter match-analitika-filter">
+        ${buttons}
+      </div>
+      <p class="muted small" data-match-analitika-status></p>
+      <div class="analitika-grid" data-match-analitika-content></div>
+    </div>
+  `;
+}
+
+function resolveDefaultAnalitikaTeam(homeSlug: string, awaySlug: string): string {
+  if (homeSlug === "chelsea" || awaySlug === "chelsea") {
+    return "chelsea";
+  }
+  return homeSlug || awaySlug;
+}
+
+function normalizeTeamSlugValue(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function getPredictionCloseAtMs(kickoffAt: string): number | null {
