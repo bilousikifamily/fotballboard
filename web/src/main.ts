@@ -100,6 +100,22 @@ type AnnouncementResponse =
   | { ok: true }
   | { ok: false; error: string };
 
+type AnalitikaItem = {
+  id: number;
+  cache_key: string;
+  team_slug: string;
+  data_type: string;
+  league_id?: string | null;
+  season?: number | null;
+  payload: unknown;
+  fetched_at: string;
+  expires_at?: string | null;
+};
+
+type AnalitikaResponse =
+  | { ok: true; items: AnalitikaItem[] }
+  | { ok: false; error: string };
+
 type OddsRefreshResponse =
   | { ok: true; debug?: OddsRefreshDebug }
   | { ok: false; error: string; detail?: string; debug?: OddsRefreshDebug };
@@ -235,6 +251,8 @@ let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
+let currentAnalitikaTeam = ANALITIKA_TEAMS[0]?.slug ?? "manchester-city";
+let analitikaLoading = false;
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -275,6 +293,29 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "dfb-pokal", label: "Кубок Німеччини" },
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
+
+const ANALITIKA_TEAMS = [
+  { slug: "manchester-city", label: "Manchester City" },
+  { slug: "chelsea", label: "Chelsea" }
+];
+
+const ANALITIKA_TYPE_LABELS: Record<string, string> = {
+  team_stats: "Статистика команди (сезон)",
+  standings: "Позиція в таблиці + форма",
+  standings_home_away: "Домашні / виїзні показники",
+  form_trends: "Тренди результатів",
+  top_scorers: "Топ-бомбардири",
+  top_assists: "Топ-асистенти",
+  player_ratings: "Лідери за рейтингом",
+  player_stats: "Статистика гравців",
+  lineups: "Склади та формації",
+  expected_lineups: "Очікувані склади",
+  injuries: "Травми та доступність",
+  head_to_head: "H2H протистояння",
+  referee_cards: "Рефері та картки"
+};
+
+const ANALITIKA_TYPE_ORDER = Object.keys(ANALITIKA_TYPE_LABELS);
 
 function isAllLeagueId(value: MatchLeagueId): value is AllLeagueId {
   return (
@@ -1212,7 +1253,7 @@ function renderUser(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
 
-  const adminSection = admin
+  const adminPanel = admin
     ? `
       <section class="panel admin">
         <div class="section-header">
@@ -1280,6 +1321,58 @@ function renderUser(
       </section>
     `
     : "";
+  const analitikaTeamButtons = ANALITIKA_TEAMS.map((team, index) => {
+    const isActive = team.slug === currentAnalitikaTeam || (!currentAnalitikaTeam && index === 0);
+    return `
+      <button
+        class="chip${isActive ? " is-active" : ""}"
+        type="button"
+        data-analitika-team="${escapeAttribute(team.slug)}"
+        aria-pressed="${isActive ? "true" : "false"}"
+      >
+        ${escapeHtml(team.label)}
+      </button>
+    `;
+  }).join("");
+  const analitikaPanel = admin
+    ? `
+      <section class="panel admin-analytics">
+        <div class="section-header">
+          <h2>Аналітика</h2>
+          <div class="analitika-filter">
+            ${analitikaTeamButtons}
+          </div>
+        </div>
+        <p class="muted small" data-analitika-status></p>
+        <div class="analitika-grid" data-analitika-content></div>
+      </section>
+    `
+    : "";
+  const adminScreen = admin
+    ? `
+      <section class="screen" data-screen="admin">
+        ${adminPanel}
+        ${analitikaPanel}
+      </section>
+    `
+    : "";
+  const adminTabButton = admin
+    ? `
+        <button
+          class="tabbar-button"
+          type="button"
+          data-tab="admin"
+          role="tab"
+          aria-selected="false"
+          aria-label="Адмін"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"></path>
+          </svg>
+        </button>
+      `
+    : "";
+  const tabbarClass = admin ? "tabbar is-admin" : "tabbar";
 
   app.innerHTML = `
     <div class="app-shell">
@@ -1326,9 +1419,9 @@ function renderUser(
             </div>
             <div class="matches-list" data-matches></div>
           </section>
-
-          ${adminSection}
         </section>
+
+        ${adminScreen}
 
         <section class="screen" data-screen="leaderboard">
           <div class="leaderboard-shell">
@@ -1340,7 +1433,7 @@ function renderUser(
         </section>
       </main>
 
-      <nav class="tabbar" role="tablist" aria-label="Навігація">
+      <nav class="${tabbarClass}" role="tablist" aria-label="Навігація">
         <button
           class="tabbar-button"
           type="button"
@@ -1375,6 +1468,7 @@ function renderUser(
             <path d="M19 18v-4"></path>
           </svg>
         </button>
+        ${adminTabButton}
       </nav>
     </div>
   `;
@@ -1490,6 +1584,8 @@ function renderUser(
         void publishMatchesAnnouncement();
       });
     }
+
+    setupAnalitikaFilters();
   }
 }
 
@@ -1951,6 +2047,88 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
     }
   });
   await Promise.all(tasks);
+}
+
+function setupAnalitikaFilters(): void {
+  const buttons = app.querySelectorAll<HTMLButtonElement>("[data-analitika-team]");
+  if (!buttons.length) {
+    return;
+  }
+
+  const setActive = (teamSlug: string): void => {
+    currentAnalitikaTeam = teamSlug;
+    buttons.forEach((button) => {
+      const isActive = button.dataset.analitikaTeam === teamSlug;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  };
+
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const teamSlug = button.dataset.analitikaTeam;
+      if (!teamSlug || teamSlug === currentAnalitikaTeam) {
+        return;
+      }
+      setActive(teamSlug);
+      void loadAnalitika(teamSlug);
+    });
+  });
+}
+
+async function loadAnalitika(teamSlug: string): Promise<void> {
+  if (!apiBase || analitikaLoading) {
+    return;
+  }
+  const container = app.querySelector<HTMLElement>("[data-analitika-content]");
+  const status = app.querySelector<HTMLElement>("[data-analitika-status]");
+  if (!container) {
+    return;
+  }
+
+  analitikaLoading = true;
+  if (status) {
+    status.textContent = "Завантаження...";
+  }
+  container.innerHTML = "";
+
+  try {
+    const response = await fetch(`${apiBase}/api/analitika?team=${encodeURIComponent(teamSlug)}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-InitData": initData
+      }
+    });
+    const data = (await response.json()) as AnalitikaResponse;
+    if (!response.ok || !data.ok) {
+      container.innerHTML = `<p class="muted">Не вдалося завантажити аналітику.</p>`;
+      if (status) {
+        status.textContent = "Помилка завантаження.";
+      }
+      return;
+    }
+
+    if (!data.items.length) {
+      container.innerHTML = `<p class="muted">Немає даних для цієї команди.</p>`;
+      if (status) {
+        status.textContent = "Дані відсутні.";
+      }
+      return;
+    }
+
+    container.innerHTML = renderAnalitikaList(data.items);
+    if (status) {
+      status.textContent = buildAnalitikaStatus(data.items);
+    }
+  } catch {
+    container.innerHTML = `<p class="muted">Не вдалося завантажити аналітику.</p>`;
+    if (status) {
+      status.textContent = "Помилка завантаження.";
+    }
+  } finally {
+    analitikaLoading = false;
+  }
 }
 
 function isWeatherFresh(match: Match): boolean {
@@ -2638,6 +2816,9 @@ function setupTabs(): void {
     });
     if (tab === "leaderboard") {
       void loadLeaderboard();
+    }
+    if (tab === "admin") {
+      void loadAnalitika(currentAnalitikaTeam);
     }
   };
 
@@ -3615,6 +3796,475 @@ function parseScore(value?: string): number | null {
   }
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function buildAnalitikaStatus(items: AnalitikaItem[]): string {
+  const latest = getLatestAnalitikaItem(items);
+  if (!latest) {
+    return "";
+  }
+  const updated = formatAnalitikaDate(latest.fetched_at);
+  const expires = latest.expires_at ? formatAnalitikaDate(latest.expires_at) : "";
+  if (expires) {
+    return `Оновлено: ${updated} · TTL до ${expires}`;
+  }
+  return `Оновлено: ${updated}`;
+}
+
+function renderAnalitikaList(items: AnalitikaItem[]): string {
+  const grouped = new Map<string, AnalitikaItem[]>();
+  items.forEach((item) => {
+    const group = grouped.get(item.data_type) ?? [];
+    group.push(item);
+    grouped.set(item.data_type, group);
+  });
+
+  return Array.from(grouped.entries())
+    .sort((a, b) => {
+      const indexA = ANALITIKA_TYPE_ORDER.indexOf(a[0]);
+      const indexB = ANALITIKA_TYPE_ORDER.indexOf(b[0]);
+      const safeA = indexA === -1 ? Number.MAX_SAFE_INTEGER : indexA;
+      const safeB = indexB === -1 ? Number.MAX_SAFE_INTEGER : indexB;
+      return safeA - safeB;
+    })
+    .map(([dataType, group]) => renderAnalitikaSection(dataType, group))
+    .join("");
+}
+
+function renderAnalitikaSection(dataType: string, items: AnalitikaItem[]): string {
+  const title = ANALITIKA_TYPE_LABELS[dataType] ?? dataType;
+  const latest = getLatestAnalitikaItem(items);
+  const meta = latest
+    ? `
+      <div class="analitika-meta">
+        <span>оновлено ${escapeHtml(formatAnalitikaDate(latest.fetched_at))}</span>
+        ${latest.expires_at ? `<span>TTL до ${escapeHtml(formatAnalitikaDate(latest.expires_at))}</span>` : ""}
+      </div>
+    `
+    : "";
+  const body = renderAnalitikaBody(dataType, items);
+
+  return `
+    <section class="analitika-card" data-analitika-type="${escapeAttribute(dataType)}">
+      <div class="analitika-card-header">
+        <h3>${escapeHtml(title)}</h3>
+        ${meta}
+      </div>
+      <div class="analitika-card-body">
+        ${body}
+      </div>
+    </section>
+  `;
+}
+
+function renderAnalitikaBody(dataType: string, items: AnalitikaItem[]): string {
+  if (!items.length) {
+    return renderAnalitikaEmpty();
+  }
+
+  const payload = items[0]?.payload;
+
+  switch (dataType) {
+    case "team_stats":
+      return renderAnalitikaKeyValueTable(payload, [
+        { key: "gf", label: "Голи забито" },
+        { key: "ga", label: "Голи пропущено" },
+        { key: "xg", label: "xG" },
+        { key: "ppda", label: "PPDA" },
+        { key: "shots", label: "Удари за матч" },
+        { key: "shots_on_target", label: "Удари в площину" },
+        { key: "possession", label: "Володіння (%)" },
+        { key: "clean_sheets", label: "Сухі матчі" }
+      ]);
+    case "standings":
+      return renderAnalitikaKeyValueTable(payload, [
+        { key: "rank", label: "Позиція" },
+        { key: "points", label: "Очки" },
+        { key: "played", label: "Матчі" },
+        { key: "wins", label: "Перемоги" },
+        { key: "draws", label: "Нічиї" },
+        { key: "losses", label: "Поразки" },
+        { key: "gf", label: "Забито" },
+        { key: "ga", label: "Пропущено" },
+        { key: "gd", label: "Різниця" },
+        { key: "form", label: "Форма" }
+      ]);
+    case "standings_home_away":
+      return renderAnalitikaHomeAway(payload);
+    case "form_trends":
+      return renderAnalitikaKeyValueTable(payload, [
+        { key: "streak_type", label: "Тип серії" },
+        { key: "streak_len", label: "Довжина серії" },
+        { key: "form", label: "Форма" },
+        { key: "last_results", label: "Останні результати" }
+      ]);
+    case "top_scorers":
+      return renderAnalitikaRankingTable(payload, "Голи", "goals");
+    case "top_assists":
+      return renderAnalitikaRankingTable(payload, "Асисти", "assists");
+    case "player_ratings":
+      return renderAnalitikaRankingTable(payload, "Рейтинг", "rating");
+    case "player_stats":
+      return renderAnalitikaPlayerStats(payload);
+    case "lineups":
+      return renderAnalitikaLineups(payload);
+    case "expected_lineups":
+      return renderAnalitikaLineups(payload);
+    case "injuries":
+      return renderAnalitikaInjuries(payload);
+    case "head_to_head":
+      return renderAnalitikaHeadToHead(payload);
+    case "referee_cards":
+      return renderAnalitikaReferees(payload);
+    default:
+      return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+}
+
+function renderAnalitikaKeyValueTable(
+  payload: unknown,
+  fields: Array<{ key: string; label: string }>
+): string {
+  const record = toRecord(payload);
+  if (!record) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const rows = fields
+    .map((field) => ({
+      label: field.label,
+      value: record[field.key]
+    }))
+    .filter((row) => row.value !== null && row.value !== undefined && row.value !== "");
+  if (!rows.length) {
+    return renderAnalitikaEmpty();
+  }
+  return renderAnalitikaTable(
+    ["Показник", "Значення"],
+    rows.map((row) => [row.label, row.value])
+  );
+}
+
+function renderAnalitikaHomeAway(payload: unknown): string {
+  const record = toRecord(payload);
+  if (!record) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const home = toRecord(record.home);
+  const away = toRecord(record.away);
+  if (!home && !away) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+
+  const fields = [
+    { key: "played", label: "Матчі" },
+    { key: "wins", label: "Перемоги" },
+    { key: "draws", label: "Нічиї" },
+    { key: "losses", label: "Поразки" },
+    { key: "gf", label: "Забито" },
+    { key: "ga", label: "Пропущено" },
+    { key: "points", label: "Очки" },
+    { key: "form", label: "Форма" }
+  ];
+  const rows = fields.map((field) => [
+    field.label,
+    home?.[field.key] ?? null,
+    away?.[field.key] ?? null
+  ]);
+
+  return renderAnalitikaTable(["Показник", "Домашні", "Виїзні"], rows);
+}
+
+function renderAnalitikaRankingTable(payload: unknown, valueLabel: string, valueKey: string): string {
+  const entries = toEntryList(payload);
+  if (!entries.length) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const rows = entries.map((entry) => [
+    getEntryName(entry, "player"),
+    getEntryName(entry, "team"),
+    getEntryStat(entry, valueKey)
+  ]);
+  return renderAnalitikaTable(["Гравець", "Команда", valueLabel], rows);
+}
+
+function renderAnalitikaPlayerStats(payload: unknown): string {
+  const entries = toEntryList(payload);
+  if (!entries.length) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const rows = entries.map((entry) => [
+    getEntryName(entry, "player"),
+    getEntryName(entry, "team"),
+    getEntryStat(entry, "goals"),
+    getEntryStat(entry, "assists"),
+    getEntryStat(entry, "rating"),
+    getEntryStat(entry, "minutes")
+  ]);
+  return renderAnalitikaTable(["Гравець", "Команда", "Голи", "Асисти", "Рейтинг", "Хвилини"], rows);
+}
+
+function renderAnalitikaLineups(payload: unknown): string {
+  const entries = toEntryList(payload);
+  if (!entries.length) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const rows = entries.map((entry) => [
+    getEntryLabel(entry, "fixture"),
+    getEntryLabel(entry, "formation"),
+    normalizeNameList(entry.start_xi ?? entry.starting ?? entry.startXI),
+    normalizeNameList(entry.subs ?? entry.substitutes ?? entry.bench)
+  ]);
+  return renderAnalitikaTable(["Матч", "Схема", "Старт", "Запас"], rows);
+}
+
+function renderAnalitikaInjuries(payload: unknown): string {
+  const entries = toEntryList(payload);
+  if (!entries.length) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const rows = entries.map((entry) => [
+    getEntryName(entry, "player"),
+    getEntryLabel(entry, "status"),
+    getEntryLabel(entry, "reason"),
+    getEntryLabel(entry, "since"),
+    getEntryLabel(entry, "until")
+  ]);
+  return renderAnalitikaTable(["Гравець", "Статус", "Причина", "З", "По"], rows);
+}
+
+function renderAnalitikaHeadToHead(payload: unknown): string {
+  const entries = toEntryList(payload);
+  if (!entries.length) {
+    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+  }
+  const rows = entries.map((entry) => [
+    getEntryLabel(entry, "date"),
+    getEntryLabel(entry, "home"),
+    getEntryLabel(entry, "away"),
+    getEntryLabel(entry, "score"),
+    getEntryLabel(entry, "league")
+  ]);
+  return renderAnalitikaTable(["Дата", "Господарі", "Гості", "Рахунок", "Ліга"], rows);
+}
+
+function renderAnalitikaReferees(payload: unknown): string {
+  const entries = toEntryList(payload);
+  if (!entries.length) {
+    const record = toRecord(payload);
+    if (!record) {
+      return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
+    }
+    const rows = [
+      ["Рефері", record.referee ?? record.name],
+      ["Матчів", record.matches],
+      ["Жовті / матч", record.yellow_avg],
+      ["Червоні / матч", record.red_avg]
+    ];
+    return renderAnalitikaTable(["Показник", "Значення"], rows);
+  }
+  const rows = entries.map((entry) => [
+    getEntryName(entry, "referee"),
+    getEntryStat(entry, "matches"),
+    getEntryStat(entry, "yellow_avg"),
+    getEntryStat(entry, "red_avg")
+  ]);
+  return renderAnalitikaTable(["Рефері", "Матчі", "Жовті/матч", "Червоні/матч"], rows);
+}
+
+function renderAnalitikaCustomTable(payload: unknown): string | null {
+  const record = toRecord(payload);
+  if (!record) {
+    return null;
+  }
+  const columns = Array.isArray(record.columns) ? record.columns.map((item) => String(item)) : null;
+  const rows = Array.isArray(record.rows) ? record.rows : null;
+  if (!columns || !rows) {
+    return null;
+  }
+  const normalizedRows = rows.map((row) => (Array.isArray(row) ? row : [row]));
+  return renderAnalitikaTable(columns, normalizedRows);
+}
+
+function renderAnalitikaTable(headers: string[], rows: Array<Array<unknown>>): string {
+  if (!rows.length) {
+    return renderAnalitikaEmpty();
+  }
+  const head = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("");
+  const body = rows
+    .map((row) => {
+      const cells = row
+        .map((cell) => {
+          const value = formatAnalitikaCell(cell);
+          const safe = escapeHtml(value).replace(/\n/g, "<br />");
+          return `<td>${safe}</td>`;
+        })
+        .join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
+  return `
+    <div class="analitika-table-wrap">
+      <table class="analitika-table">
+        <thead><tr>${head}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderAnalitikaEmpty(): string {
+  return `<p class="muted small">Немає даних.</p>`;
+}
+
+function formatAnalitikaDate(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("uk-UA", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function formatAnalitikaCell(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "—";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => formatAnalitikaCell(entry)).join("\n");
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "—";
+    }
+  }
+  return String(value);
+}
+
+function getLatestAnalitikaItem(items: AnalitikaItem[]): AnalitikaItem | null {
+  if (!items.length) {
+    return null;
+  }
+  return items.reduce((latest, item) => {
+    const latestTime = new Date(latest.fetched_at).getTime();
+    const itemTime = new Date(item.fetched_at).getTime();
+    return itemTime > latestTime ? item : latest;
+  }, items[0]);
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function toEntryList(payload: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(payload)) {
+    return payload.filter((entry) => typeof entry === "object" && entry !== null) as Array<Record<string, unknown>>;
+  }
+  const record = toRecord(payload);
+  if (!record) {
+    return [];
+  }
+  const entries = record.entries;
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  return entries.filter((entry) => typeof entry === "object" && entry !== null) as Array<Record<string, unknown>>;
+}
+
+function getEntryName(entry: Record<string, unknown>, key: string): string {
+  const value = entry[key];
+  if (typeof value === "string") {
+    return value;
+  }
+  const altKey = `${key}_name`;
+  const altValue = entry[altKey];
+  if (typeof altValue === "string") {
+    return altValue;
+  }
+  const camelKey = `${key}Name`;
+  const camelValue = entry[camelKey];
+  if (typeof camelValue === "string") {
+    return camelValue;
+  }
+  const record = toRecord(value);
+  const name = record?.name;
+  return typeof name === "string" ? name : "";
+}
+
+function getEntryLabel(entry: Record<string, unknown>, key: string): string {
+  const value = entry[key];
+  return formatAnalitikaCell(value);
+}
+
+function getEntryStat(entry: Record<string, unknown>, key: string): unknown {
+  if (key in entry) {
+    return extractStatValue(entry[key]);
+  }
+  const altKey = `${key}_total`;
+  if (altKey in entry) {
+    return extractStatValue(entry[altKey]);
+  }
+  return null;
+}
+
+function extractStatValue(value: unknown): unknown {
+  const record = toRecord(value);
+  if (record) {
+    if ("total" in record) {
+      return record.total;
+    }
+    if ("value" in record) {
+      return record.value;
+    }
+    if ("avg" in record) {
+      return record.avg;
+    }
+    if ("average" in record) {
+      return record.average;
+    }
+  }
+  return value;
+}
+
+function normalizeNameList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry) => {
+      if (typeof entry === "string") {
+        return entry;
+      }
+      const record = toRecord(entry);
+      if (!record) {
+        return "";
+      }
+      const name = record.name;
+      if (typeof name === "string") {
+        return name;
+      }
+      const player = toRecord(record.player);
+      if (player && typeof player.name === "string") {
+        return player.name;
+      }
+      return "";
+    })
+    .filter(Boolean);
 }
 
 async function loadLeaderboard(): Promise<void> {

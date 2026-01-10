@@ -439,6 +439,44 @@ export default {
       return jsonResponse({ ok: true, users }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/analitika") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const initData = getInitDataFromHeaders(request);
+      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      const teamSlug = normalizeTeamSlug(url.searchParams.get("team"));
+      if (!teamSlug) {
+        return jsonResponse({ ok: false, error: "bad_team" }, 400, corsHeaders());
+      }
+
+      const items = await listAnalitika(supabase, teamSlug);
+      if (!items) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, items }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/matches") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -995,6 +1033,28 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
     return (data as StoredUser[]) ?? [];
   } catch (error) {
     console.error("Failed to fetch users", error);
+    return null;
+  }
+}
+
+async function listAnalitika(
+  supabase: SupabaseClient,
+  teamSlug: string
+): Promise<DbAnalitika[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("analitika")
+      .select("id, cache_key, team_slug, data_type, league_id, season, payload, fetched_at, expires_at")
+      .eq("team_slug", teamSlug)
+      .order("data_type", { ascending: true })
+      .order("fetched_at", { ascending: false });
+    if (error) {
+      console.error("Failed to list analitika", error);
+      return null;
+    }
+    return (data as DbAnalitika[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list analitika", error);
     return null;
   }
 }
@@ -4279,6 +4339,14 @@ interface ProfileStats {
   factions: FactionStat[];
 }
 
+function normalizeTeamSlug(value: string | null): string | null {
+  const trimmed = value?.trim().toLowerCase();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.replace(/\s+/g, "-");
+}
+
 interface CreateMatchPayload {
   initData?: string;
   home_team?: string;
@@ -4335,6 +4403,18 @@ interface DbMatch {
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   has_prediction?: boolean;
+}
+
+interface DbAnalitika {
+  id: number;
+  cache_key: string;
+  team_slug: string;
+  data_type: string;
+  league_id?: string | null;
+  season?: number | null;
+  payload: unknown;
+  fetched_at: string;
+  expires_at?: string | null;
 }
 
 interface DbPrediction {

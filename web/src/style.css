@@ -168,6 +168,10 @@ body.intro-active {
   backdrop-filter: blur(16px);
 }
 
+.tabbar.is-admin {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .tabbar-button {
   border: 1px solid transparent;
   background: transparent;
@@ -1642,6 +1646,107 @@ h1 {
 
 .admin-form.is-open {
   display: grid;
+}
+
+.admin-analytics {
+  gap: 12px;
+}
+
+.analitika-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: 1px solid var(--outline-light);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.chip.is-active {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.4), rgba(255, 154, 31, 0.6));
+  border-color: rgba(255, 154, 31, 0.6);
+  color: #ffffff;
+}
+
+.analitika-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.analitika-card {
+  border-radius: 18px;
+  background: rgba(11, 12, 14, 0.85);
+  border: 1px solid var(--outline-light);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.analitika-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analitika-card-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analitika-meta {
+  display: grid;
+  gap: 2px;
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.analitika-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.analitika-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.analitika-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.analitika-table th,
+.analitika-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--outline-dark);
+  text-align: left;
+  vertical-align: top;
+}
+
+.analitika-table th {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analitika-table td {
+  white-space: pre-line;
 }
 
 .field {
