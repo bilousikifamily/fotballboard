@@ -3648,13 +3648,41 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
   if (!items.length) {
     return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
   }
-  const rows = items.map((item) => [
-    item.match_date ? formatKyivDateTime(item.match_date) : "—",
-    item.opponent_name || "—",
-    item.is_home === null || item.is_home === undefined ? "—" : item.is_home ? "Дома" : "Виїзд",
-    formatTeamMatchScore(item),
-    formatTeamMatchRating(item.avg_rating)
-  ]);
+  const teamLogo = resolveClubLogoByName(teamLabel) ?? resolveTeamLogoBySlug(teamSlug);
+  const chartItems = items
+    .map((item) => {
+      const opponent = item.opponent_name || "—";
+      const opponentLogo = resolveClubLogoByName(opponent);
+      const matchup = resolveMatchupDisplay(item, teamLabel, teamLogo, opponent, opponentLogo);
+      const ratingValue = parseTeamMatchRating(item.avg_rating);
+      const ratingLabel = ratingValue !== null ? ratingValue.toFixed(1) : "—";
+      const barValue = ratingValue ?? 0.4;
+      const barClass = ratingValue === null ? "is-missing" : getTeamMatchOutcomeClass(item);
+      const meta = [
+        item.match_date ? formatKyivDateTime(item.match_date) : null,
+        getHomeAwayLabel(item)
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      return `
+        <div class="analitika-chart-item">
+          <div class="analitika-chart-bar ${barClass}" style="--value:${barValue}">
+            <span class="analitika-chart-value">${escapeHtml(ratingLabel)}</span>
+          </div>
+          <div class="analitika-chart-match">
+            <div class="analitika-chart-logos">
+              ${renderTeamLogo(matchup.homeName, matchup.homeLogo)}
+              <span class="analitika-chart-score">${escapeHtml(matchup.score)}</span>
+              ${renderTeamLogo(matchup.awayName, matchup.awayLogo)}
+            </div>
+            <div class="analitika-chart-opponent">${escapeHtml(opponent)}</div>
+            ${meta ? `<div class="analitika-chart-meta">${escapeHtml(meta)}</div>` : ""}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 
   return `
     <section class="analitika-card">
@@ -3662,7 +3690,11 @@ function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): str
         <h3>${escapeHtml(`${teamLabel} — останні матчі`)}</h3>
       </div>
       <div class="analitika-card-body">
-        ${renderAnalitikaTable(["Дата", "Суперник", "Д/В", "Рахунок", "Рейтинг"], rows)}
+        <div class="analitika-chart">
+          <div class="analitika-chart-grid">
+            ${chartItems}
+          </div>
+        </div>
       </div>
     </section>
   `;
@@ -3672,31 +3704,145 @@ function resolveTeamLabel(teamSlug: string): string {
   return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug)?.label ?? teamSlug;
 }
 
-function formatTeamMatchScore(item: TeamMatchStat): string {
-  if (item.team_goals === null || item.team_goals === undefined) {
-    return "—";
-  }
-  if (item.opponent_goals === null || item.opponent_goals === undefined) {
-    return "—";
-  }
-  const teamGoals = typeof item.team_goals === "number" ? item.team_goals : Number(item.team_goals);
-  const opponentGoals =
-    typeof item.opponent_goals === "number" ? item.opponent_goals : Number(item.opponent_goals);
-  if (!Number.isFinite(teamGoals) || !Number.isFinite(opponentGoals)) {
-    return "—";
-  }
-  return `${teamGoals}:${opponentGoals}`;
+const CLUB_NAME_ALIASES: Record<string, string> = {
+  "newcastle united": "newcastle",
+  "ipswich town": "ipswich",
+  "wolverhampton wanderers": "wolves",
+  "west ham united": "west-ham",
+  "tottenham hotspur": "tottenham",
+  "man city": "manchester-city",
+  "man utd": "manchester-united",
+  "brighton and hove albion": "brighton",
+  "nottingham forest": "nottingham-forest"
+};
+
+let clubNameLookup: Map<string, { leagueId: LeagueId; slug: string }> | null = null;
+
+function resolveTeamLogoBySlug(teamSlug: string): string | null {
+  const league = findClubLeague(teamSlug);
+  return league ? getClubLogoPath(league, teamSlug) : null;
 }
 
-function formatTeamMatchRating(value: number | string | null | undefined): string {
+function resolveClubLogoByName(name: string): string | null {
+  const normalized = normalizeClubName(name);
+  if (!normalized) {
+    return null;
+  }
+  const aliasSlug = CLUB_NAME_ALIASES[normalized];
+  if (aliasSlug) {
+    const league = findClubLeague(aliasSlug);
+    return league ? getClubLogoPath(league, aliasSlug) : null;
+  }
+  const lookup = getClubNameLookup();
+  const entry = lookup.get(normalized);
+  return entry ? getClubLogoPath(entry.leagueId, entry.slug) : null;
+}
+
+function getClubNameLookup(): Map<string, { leagueId: LeagueId; slug: string }> {
+  if (clubNameLookup) {
+    return clubNameLookup;
+  }
+  const map = new Map<string, { leagueId: LeagueId; slug: string }>();
+  const leaguePriority: LeagueId[] = [
+    "english-premier-league",
+    "la-liga",
+    "serie-a",
+    "bundesliga",
+    "ligue-1"
+  ];
+  leaguePriority.forEach((leagueId) => {
+    (EU_CLUBS[leagueId] ?? []).forEach((slug) => {
+      const normalized = normalizeClubName(formatClubName(slug));
+      if (!normalized || map.has(normalized)) {
+        return;
+      }
+      map.set(normalized, { leagueId, slug });
+    });
+  });
+  clubNameLookup = map;
+  return map;
+}
+
+function normalizeClubName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function getHomeAwayLabel(item: TeamMatchStat): string | null {
+  if (item.is_home === true) {
+    return "Дома";
+  }
+  if (item.is_home === false) {
+    return "Виїзд";
+  }
+  return null;
+}
+
+function resolveMatchupDisplay(
+  item: TeamMatchStat,
+  teamLabel: string,
+  teamLogo: string | null,
+  opponentName: string,
+  opponentLogo: string | null
+): { homeName: string; homeLogo: string | null; awayName: string; awayLogo: string | null; score: string } {
+  const teamGoals = parseTeamMatchNumber(item.team_goals);
+  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
+  let homeName = teamLabel;
+  let homeLogo = teamLogo;
+  let awayName = opponentName;
+  let awayLogo = opponentLogo;
+  let homeGoals = teamGoals;
+  let awayGoals = opponentGoals;
+
+  if (item.is_home === false) {
+    homeName = opponentName;
+    homeLogo = opponentLogo;
+    awayName = teamLabel;
+    awayLogo = teamLogo;
+    homeGoals = opponentGoals;
+    awayGoals = teamGoals;
+  }
+
+  const score =
+    homeGoals === null || awayGoals === null ? "—" : `${homeGoals}:${awayGoals}`;
+
+  return { homeName, homeLogo, awayName, awayLogo, score };
+}
+
+function getTeamMatchOutcomeClass(item: TeamMatchStat): string {
+  const teamGoals = parseTeamMatchNumber(item.team_goals);
+  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
+  if (teamGoals === null || opponentGoals === null) {
+    return "is-missing";
+  }
+  if (teamGoals > opponentGoals) {
+    return "is-win";
+  }
+  if (teamGoals < opponentGoals) {
+    return "is-loss";
+  }
+  return "is-draw";
+}
+
+function parseTeamMatchNumber(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") {
-    return "—";
+    return null;
   }
   const numeric = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(numeric)) {
-    return "—";
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseTeamMatchRating(value: number | string | null | undefined): number | null {
+  const numeric = parseTeamMatchNumber(value);
+  if (numeric === null) {
+    return null;
   }
-  return numeric.toFixed(1);
+  const clamped = Math.max(0, Math.min(10, numeric));
+  return Math.round(clamped * 10) / 10;
 }
 
 function buildAnalitikaStatus(items: AnalitikaItem[]): string {

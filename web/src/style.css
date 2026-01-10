@@ -1753,6 +1753,101 @@ h1 {
   gap: 12px;
 }
 
+.analitika-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.analitika-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.analitika-chart-item {
+  display: grid;
+  gap: 10px;
+  align-content: end;
+}
+
+.analitika-chart-bar {
+  position: relative;
+  height: calc(var(--value) * 12px);
+  min-height: 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 154, 31, 0.9), rgba(255, 122, 26, 0.55));
+  border: 1px solid rgba(255, 154, 31, 0.45);
+  box-shadow: 0 10px 20px rgba(255, 122, 26, 0.2);
+}
+
+.analitika-chart-bar.is-win {
+  background: linear-gradient(180deg, rgba(84, 212, 150, 0.9), rgba(36, 148, 98, 0.6));
+  border-color: rgba(84, 212, 150, 0.6);
+  box-shadow: 0 10px 20px rgba(84, 212, 150, 0.2);
+}
+
+.analitika-chart-bar.is-loss {
+  background: linear-gradient(180deg, rgba(240, 96, 96, 0.9), rgba(160, 56, 56, 0.6));
+  border-color: rgba(240, 96, 96, 0.6);
+  box-shadow: 0 10px 20px rgba(240, 96, 96, 0.2);
+}
+
+.analitika-chart-bar.is-draw {
+  background: linear-gradient(180deg, rgba(128, 150, 200, 0.9), rgba(84, 104, 150, 0.6));
+  border-color: rgba(128, 150, 200, 0.6);
+  box-shadow: 0 10px 20px rgba(128, 150, 200, 0.2);
+}
+
+.analitika-chart-bar.is-missing {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.analitika-chart-value {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.analitika-chart-match {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.analitika-chart-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.analitika-chart-logos .match-logo,
+.analitika-chart-logos .match-logo-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.analitika-chart-score {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.analitika-chart-opponent {
+  font-size: 0.78rem;
+}
+
+.analitika-chart-meta {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
 .analitika-card {
   border-radius: 18px;
   background: rgba(11, 12, 14, 0.85);
