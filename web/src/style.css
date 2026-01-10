@@ -1754,20 +1754,22 @@ h1 {
 }
 
 .match-analitika {
-  width: 95vw;
-  margin: 12px calc(50% - 47.5vw) 0;
+  width: calc(100% + 36px);
+  margin: 12px -18px 0;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   justify-items: stretch;
   text-align: left;
 }
 
 .match-analitika-title {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink);
+  text-align: center;
 }
 
 .match-analitika .analitika-filter {
@@ -1909,25 +1911,6 @@ h1 {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.analitika-card.is-graph {
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-}
-
-.analitika-card.is-graph .analitika-card-header {
-  padding: 0 0 8px;
-}
-
-.analitika-card.is-graph .analitika-card-body {
-  padding: 0 0 12px;
-}
-
-.analitika-card.is-graph .analitika-line {
-  width: 100%;
-  margin: 0;
-}
 .analitika-card {
   border-radius: 18px;
   background: rgba(11, 12, 14, 0.85);
@@ -1955,6 +1938,23 @@ h1 {
 .analitika-card-body {
   display: grid;
   gap: 8px;
+}
+
+.analitika-card.is-graph {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.analitika-card.is-graph .analitika-card-body {
+  padding: 0;
+}
+
+.analitika-card.is-graph .analitika-line {
+  width: 100%;
+  margin: 0;
 }
 
 .analitika-table-wrap {
