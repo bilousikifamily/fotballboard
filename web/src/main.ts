@@ -103,6 +103,16 @@ type AnalitikaDebugInfo = {
     head_to_head?: number;
     team_stats?: Record<string, number>;
   };
+  counts?: {
+    standings?: number;
+    top_scorers?: number;
+    top_assists?: number;
+    head_to_head?: number;
+    team_stats?: Record<string, number>;
+  };
+  samples?: {
+    standings_teams?: Array<{ id: number | null; name: string }>;
+  };
 };
 
 type OddsRefreshResponse =
@@ -4074,6 +4084,20 @@ function renderAnalitikaDebugInfo(debug: AnalitikaDebugInfo | null, warnings: st
     team.slug,
     team.team_id ?? "—"
   ]);
+  const countRows = [
+    ["standings", debug.counts?.standings ?? "—"],
+    ["top_scorers", debug.counts?.top_scorers ?? "—"],
+    ["top_assists", debug.counts?.top_assists ?? "—"],
+    ["head_to_head", debug.counts?.head_to_head ?? "—"]
+  ];
+  const teamCounts = debug.counts?.team_stats ?? {};
+  Object.entries(teamCounts).forEach(([slug, count]) => {
+    countRows.push([`team_stats:${slug}`, count]);
+  });
+  const standingsSample = (debug.samples?.standings_teams ?? [])
+    .map((entry) => `${entry.id ?? "—"} ${entry.name}`.trim())
+    .filter(Boolean)
+    .join(", ");
   const statusRows = [
     ["standings", debug.statuses?.standings ?? "—"],
     ["top_scorers", debug.statuses?.top_scorers ?? "—"],
@@ -4106,6 +4130,11 @@ function renderAnalitikaDebugInfo(debug: AnalitikaDebugInfo | null, warnings: st
       <div>
         <div class="analitika-debug-title">Команди (ID)</div>
         ${renderAnalitikaTable(["slug", "team_id"], teamRows)}
+      </div>
+      <div>
+        <div class="analitika-debug-title">Кількість даних</div>
+        ${renderAnalitikaTable(["endpoint", "count"], countRows)}
+        ${standingsSample ? `<p class="muted small">standings sample: ${escapeHtml(standingsSample)}</p>` : ""}
       </div>
       <div>
         <div class="analitika-debug-title">Статуси API</div>

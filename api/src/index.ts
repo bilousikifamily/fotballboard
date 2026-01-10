@@ -1156,7 +1156,9 @@ async function refreshAnalitika(
     season: null,
     timezone: null,
     teams: [],
-    statuses: {}
+    statuses: {},
+    counts: {},
+    samples: {}
   };
   if (!env.API_FOOTBALL_KEY) {
     return { ok: false, error: "missing_api_key", debug };
@@ -1214,18 +1216,37 @@ async function refreshAnalitika(
   debug.statuses.standings = standingsResult.status;
   if (!standingsResult.ok) {
     warnings.push(`standings_status_${standingsResult.status}`);
+  } else {
+    const count = getApiResponseCount(standingsResult.payload);
+    debug.counts.standings = count;
+    debug.samples.standings_teams = extractStandingsTeamSample(standingsResult.payload);
+    if (!count) {
+      warnings.push("standings_empty_response");
+    }
   }
 
   const topScorersResult = await fetchTopPlayers(env, leagueId, season, "scorers");
   debug.statuses.top_scorers = topScorersResult.status;
   if (!topScorersResult.ok) {
     warnings.push(`top_scorers_status_${topScorersResult.status}`);
+  } else {
+    const count = getApiResponseCount(topScorersResult.payload);
+    debug.counts.top_scorers = count;
+    if (!count) {
+      warnings.push("top_scorers_empty_response");
+    }
   }
 
   const topAssistsResult = await fetchTopPlayers(env, leagueId, season, "assists");
   debug.statuses.top_assists = topAssistsResult.status;
   if (!topAssistsResult.ok) {
     warnings.push(`top_assists_status_${topAssistsResult.status}`);
+  } else {
+    const count = getApiResponseCount(topAssistsResult.payload);
+    debug.counts.top_assists = count;
+    if (!count) {
+      warnings.push("top_assists_empty_response");
+    }
   }
 
   let headToHeadPayload: AnalitikaPayload | null = null;
@@ -1240,6 +1261,11 @@ async function refreshAnalitika(
     );
     debug.statuses.head_to_head = h2hResult.status;
     if (h2hResult.ok) {
+      const count = getApiResponseCount(h2hResult.payload);
+      debug.counts.head_to_head = count;
+      if (!count) {
+        warnings.push("head_to_head_empty_response");
+      }
       headToHeadPayload = buildHeadToHeadPayload(h2hResult.payload);
     } else {
       warnings.push(`head_to_head_status_${h2hResult.status}`);
@@ -1254,7 +1280,14 @@ async function refreshAnalitika(
       debug.statuses.team_stats = {};
     }
     debug.statuses.team_stats[team.slug] = teamStatsResult.status;
+    if (!debug.counts.team_stats) {
+      debug.counts.team_stats = {};
+    }
+    debug.counts.team_stats[team.slug] = teamStatsResult.ok ? getApiResponseCount(teamStatsResult.payload) : 0;
     if (teamStatsResult.ok) {
+      if (!debug.counts.team_stats[team.slug]) {
+        warnings.push(`team_stats_empty_response_${team.slug}`);
+      }
       const payload = buildTeamStatsPayload(teamStatsResult.payload);
       updates.push(
         buildAnalitikaUpsert(team.slug, "team_stats", ANALITIKA_LEAGUE_ID, season, payload, nowIso)
@@ -2444,6 +2477,41 @@ function toRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+function getApiResponseCount(payload: unknown): number {
+  const record = toRecord(payload);
+  const response = record?.response;
+  if (Array.isArray(response)) {
+    return response.length;
+  }
+  if (response && typeof response === "object") {
+    return Object.keys(response as Record<string, unknown>).length ? 1 : 0;
+  }
+  const results = record?.results;
+  const parsedResults = typeof results === "number" ? results : Number(results);
+  return Number.isFinite(parsedResults) ? parsedResults : 0;
+}
+
+function extractStandingsTeamSample(payload: unknown, limit = 6): Array<{ id: number | null; name: string }> {
+  const response = toRecord(payload)?.response;
+  if (!Array.isArray(response) || !response.length) {
+    return [];
+  }
+  const league = toRecord(response[0])?.league;
+  const standings = toRecord(league)?.standings;
+  if (!Array.isArray(standings) || !standings.length) {
+    return [];
+  }
+  const rows = Array.isArray(standings[0]) ? standings[0] : [];
+  return rows.slice(0, limit).map((row) => {
+    const team = toRecord(toRecord(row)?.team);
+    const id = typeof team?.id === "number" ? team.id : Number(team?.id);
+    return {
+      id: Number.isFinite(id) ? id : null,
+      name: typeof team?.name === "string" ? team.name : ""
+    };
+  });
 }
 
 type FixturePayload = {
@@ -5136,6 +5204,16 @@ type AnalitikaDebugInfo = {
     top_assists?: number;
     head_to_head?: number;
     team_stats?: Record<string, number>;
+  };
+  counts: {
+    standings?: number;
+    top_scorers?: number;
+    top_assists?: number;
+    head_to_head?: number;
+    team_stats?: Record<string, number>;
+  };
+  samples?: {
+    standings_teams?: Array<{ id: number | null; name: string }>;
   };
 };
 
