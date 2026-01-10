@@ -237,6 +237,29 @@ if (shouldShowIntro) {
   app.classList.add("app-enter");
 }
 
+const ANALITIKA_TEAMS = [
+  { slug: "manchester-city", label: "Manchester City" },
+  { slug: "chelsea", label: "Chelsea" }
+];
+
+const ANALITIKA_TYPE_LABELS: Record<string, string> = {
+  team_stats: "Статистика команди (сезон)",
+  standings: "Позиція в таблиці + форма",
+  standings_home_away: "Домашні / виїзні показники",
+  form_trends: "Тренди результатів",
+  top_scorers: "Топ-бомбардири",
+  top_assists: "Топ-асистенти",
+  player_ratings: "Лідери за рейтингом",
+  player_stats: "Статистика гравців",
+  lineups: "Склади та формації",
+  expected_lineups: "Очікувані склади",
+  injuries: "Травми та доступність",
+  head_to_head: "H2H протистояння",
+  referee_cards: "Рефері та картки"
+};
+
+const ANALITIKA_TYPE_ORDER = Object.keys(ANALITIKA_TYPE_LABELS);
+
 let apiBase = "";
 const STARTING_POINTS = 100;
 let leaderboardLoaded = false;
@@ -293,29 +316,6 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "dfb-pokal", label: "Кубок Німеччини" },
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
-
-const ANALITIKA_TEAMS = [
-  { slug: "manchester-city", label: "Manchester City" },
-  { slug: "chelsea", label: "Chelsea" }
-];
-
-const ANALITIKA_TYPE_LABELS: Record<string, string> = {
-  team_stats: "Статистика команди (сезон)",
-  standings: "Позиція в таблиці + форма",
-  standings_home_away: "Домашні / виїзні показники",
-  form_trends: "Тренди результатів",
-  top_scorers: "Топ-бомбардири",
-  top_assists: "Топ-асистенти",
-  player_ratings: "Лідери за рейтингом",
-  player_stats: "Статистика гравців",
-  lineups: "Склади та формації",
-  expected_lineups: "Очікувані склади",
-  injuries: "Травми та доступність",
-  head_to_head: "H2H протистояння",
-  referee_cards: "Рефері та картки"
-};
-
-const ANALITIKA_TYPE_ORDER = Object.keys(ANALITIKA_TYPE_LABELS);
 
 function isAllLeagueId(value: MatchLeagueId): value is AllLeagueId {
   return (
