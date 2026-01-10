@@ -9,6 +9,7 @@ const MATCHES_ANNOUNCEMENT_MESSAGE = "На тебе вже чекають про
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const ANALITIKA_LEAGUE_ID = "english-premier-league";
 const ANALITIKA_HEAD_TO_HEAD_LIMIT = 10;
+const ANALITIKA_STATIC_TTL_DAYS = 365;
 
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
 const WEATHER_PROVIDER_PRIMARY = "open-meteo";
@@ -59,6 +60,7 @@ interface Env {
   API_FOOTBALL_LEAGUE_MAP?: string;
   API_FOOTBALL_DEBUG?: string;
   API_FOOTBALL_TIMEZONE?: string;
+  ANALITIKA_SEASON?: string;
   WEATHER_CACHE_TTL_MIN?: string;
   WEATHER_STALE_TTL_H?: string;
   WEATHER_RATE_LIMIT_PER_5S?: string;
@@ -1166,16 +1168,38 @@ async function refreshAnalitika(
   }
   debug.api_league_id = leagueId;
 
-  const season = resolveSeasonForDate(new Date(), timezone);
-  debug.season = season;
-  const seasonRange = getSeasonDateRange(season, timezone);
-  const teamsResult = await resolveAnalitikaTeams(env, teamSlugs);
-  if (!teamsResult.ok) {
-    return { ok: false, error: teamsResult.error, detail: teamsResult.detail, debug };
+  const staticKeys = [
+    buildAnalitikaStaticKey("league", ANALITIKA_LEAGUE_ID),
+    ...ANALITIKA_TEAMS.map((team) => buildAnalitikaStaticKey("team", team.slug))
+  ];
+  const staticRows = await getAnalitikaStatic(supabase, staticKeys);
+  const leagueStaticKey = buildAnalitikaStaticKey("league", ANALITIKA_LEAGUE_ID);
+  const leagueStatic = staticRows.get(leagueStaticKey) ?? null;
+  if (!isAnalitikaStaticFresh(leagueStatic)) {
+    await upsertAnalitikaStatic(supabase, [
+      buildAnalitikaStaticRow(
+        leagueStaticKey,
+        { league_slug: ANALITIKA_LEAGUE_ID, api_league_id: leagueId, timezone },
+        ANALITIKA_STATIC_TTL_DAYS
+      )
+    ]);
   }
 
-  const teams = teamsResult.teams;
-  debug.teams = teams.map((team) => ({ slug: team.slug, name: team.name, team_id: team.teamId ?? null }));
+  const seasonOverride = parseEnvNumber(env.ANALITIKA_SEASON, 0);
+  const season = seasonOverride > 0 ? seasonOverride : resolveSeasonForDate(new Date(), timezone);
+  debug.season = season;
+  const seasonRange = getSeasonDateRange(season, timezone);
+  const allTeamsResult = await resolveAnalitikaTeamsWithCache(env, supabase, staticRows);
+  if (!allTeamsResult.ok) {
+    return { ok: false, error: allTeamsResult.error, detail: allTeamsResult.detail, debug };
+  }
+
+  const h2hTeams = allTeamsResult.teams;
+  const teams = filterRequestedTeams(h2hTeams, teamSlugs);
+  if (!teams) {
+    return { ok: false, error: "bad_team", debug };
+  }
+  debug.teams = h2hTeams.map((team) => ({ slug: team.slug, name: team.name, team_id: team.teamId ?? null }));
   const warnings: string[] = [];
   const nowIso = new Date().toISOString();
   const updates: AnalitikaUpsert[] = [];
@@ -1199,11 +1223,11 @@ async function refreshAnalitika(
   }
 
   let headToHeadPayload: AnalitikaPayload | null = null;
-  if (teams.length >= 2) {
+  if (h2hTeams.length >= 2) {
     const h2hResult = await fetchHeadToHeadSeason(
       env,
-      teams[0].teamId,
-      teams[1].teamId,
+      h2hTeams[0].teamId,
+      h2hTeams[1].teamId,
       seasonRange.from,
       seasonRange.to,
       timezone
@@ -1959,6 +1983,10 @@ function buildAnalitikaCacheKey(
   return `team:${teamSlug}:${dataType}:${leagueId}:${season}`;
 }
 
+function buildAnalitikaStaticKey(scope: "team" | "league", slug: string): string {
+  return `${scope}:${slug}`;
+}
+
 function getAnalitikaTtlHours(dataType: AnalitikaDataType): number {
   switch (dataType) {
     case "standings":
@@ -2010,6 +2038,136 @@ async function upsertAnalitika(
     console.error("Failed to upsert analitika", error);
     return false;
   }
+}
+
+function buildAnalitikaStaticRow(
+  key: string,
+  payload: Record<string, unknown>,
+  ttlDays: number
+): AnalitikaStaticRow {
+  const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    key,
+    payload,
+    fetched_at: new Date().toISOString(),
+    expires_at: expiresAt
+  };
+}
+
+function isAnalitikaStaticFresh(row: AnalitikaStaticRow | null): boolean {
+  if (!row) {
+    return false;
+  }
+  if (!row.expires_at) {
+    return true;
+  }
+  const expiresAt = new Date(row.expires_at);
+  if (Number.isNaN(expiresAt.getTime())) {
+    return false;
+  }
+  return Date.now() < expiresAt.getTime();
+}
+
+function extractTeamIdFromStatic(row: AnalitikaStaticRow | null): number | null {
+  if (!row) {
+    return null;
+  }
+  const payload = toRecord(row.payload);
+  const raw = payload?.api_team_id ?? payload?.team_id;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function getAnalitikaStatic(
+  supabase: SupabaseClient,
+  keys: string[]
+): Promise<Map<string, AnalitikaStaticRow>> {
+  const map = new Map<string, AnalitikaStaticRow>();
+  if (!keys.length) {
+    return map;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("analitika_static")
+      .select("key, payload, fetched_at, expires_at")
+      .in("key", keys);
+    if (error) {
+      console.error("Failed to read analitika_static", error);
+      return map;
+    }
+    (data as AnalitikaStaticRow[] | null)?.forEach((row) => {
+      map.set(row.key, row);
+    });
+    return map;
+  } catch (error) {
+    console.error("Failed to read analitika_static", error);
+    return map;
+  }
+}
+
+async function upsertAnalitikaStatic(
+  supabase: SupabaseClient,
+  rows: AnalitikaStaticRow[]
+): Promise<boolean> {
+  if (!rows.length) {
+    return true;
+  }
+  try {
+    const { error } = await supabase.from("analitika_static").upsert(rows, { onConflict: "key" });
+    if (error) {
+      console.error("Failed to upsert analitika_static", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to upsert analitika_static", error);
+    return false;
+  }
+}
+
+async function resolveAnalitikaTeamsWithCache(
+  env: Env,
+  supabase: SupabaseClient,
+  staticRows: Map<string, AnalitikaStaticRow>
+): Promise<{ ok: true; teams: AnalitikaTeam[] } | { ok: false; error: string; detail?: string }> {
+  const targets = ANALITIKA_TEAMS;
+  const updates: AnalitikaStaticRow[] = [];
+  const resolved: AnalitikaTeam[] = [];
+
+  for (const team of targets) {
+    const key = buildAnalitikaStaticKey("team", team.slug);
+    const cached = staticRows.get(key) ?? null;
+    let teamId = isAnalitikaStaticFresh(cached) ? extractTeamIdFromStatic(cached) : null;
+    if (!teamId) {
+      const resolvedTeam = await resolveTeamId(env, team.name);
+      if (!resolvedTeam.id) {
+        return { ok: false, error: "team_not_found", detail: team.slug };
+      }
+      teamId = resolvedTeam.id;
+      updates.push(
+        buildAnalitikaStaticRow(key, { api_team_id: teamId, name: team.name, slug: team.slug }, ANALITIKA_STATIC_TTL_DAYS)
+      );
+    }
+    resolved.push({ slug: team.slug, name: team.name, teamId });
+  }
+
+  if (updates.length) {
+    await upsertAnalitikaStatic(supabase, updates);
+  }
+
+  return { ok: true, teams: resolved };
+}
+
+function filterRequestedTeams(
+  teams: AnalitikaTeam[],
+  requested?: string[]
+): AnalitikaTeam[] | null {
+  if (!requested || !requested.length) {
+    return teams;
+  }
+  const set = new Set(requested);
+  const filtered = teams.filter((team) => set.has(team.slug));
+  return filtered.length === requested.length ? filtered : null;
 }
 
 async function resolveAnalitikaTeams(
@@ -4973,6 +5131,13 @@ type AnalitikaDebugInfo = {
     head_to_head?: number;
     team_stats?: Record<string, number>;
   };
+};
+
+type AnalitikaStaticRow = {
+  key: string;
+  payload: unknown;
+  fetched_at: string;
+  expires_at?: string | null;
 };
 
 interface CreateMatchPayload {

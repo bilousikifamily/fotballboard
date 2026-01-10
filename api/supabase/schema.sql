@@ -62,3 +62,12 @@ create table if not exists analitika (
 create unique index if not exists analitika_cache_key_unique on analitika (cache_key);
 create index if not exists analitika_team_slug_idx on analitika (team_slug);
 create index if not exists analitika_expires_at_idx on analitika (expires_at);
+
+create table if not exists analitika_static (
+  key text primary key,
+  payload jsonb not null,
+  fetched_at timestamptz not null default now(),
+  expires_at timestamptz
+);
+
+create index if not exists analitika_static_expires_at_idx on analitika_static (expires_at);
