@@ -41,6 +41,14 @@ export type OddsDebugInfo = {
   awayTeamId?: number | null;
   homeTeamSource?: "search" | "cache" | "none";
   awayTeamSource?: "search" | "cache" | "none";
+  homeTeamQuery?: string;
+  awayTeamQuery?: string;
+  homeTeamSearchStatus?: number;
+  awayTeamSearchStatus?: number;
+  homeTeamMatchedName?: string | null;
+  awayTeamMatchedName?: string | null;
+  homeTeamCandidates?: Array<{ id?: number; name?: string }>;
+  awayTeamCandidates?: Array<{ id?: number; name?: string }>;
   headtoheadCount?: number;
   headtoheadStatus?: number;
   headtoheadSample?: OddsDebugFixture[];

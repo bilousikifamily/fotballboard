@@ -2257,6 +2257,34 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     const awaySource = debug.awayTeamSource ?? "none";
     parts.push(`team_src=${homeSource}/${awaySource}`);
   }
+  if (debug.homeTeamQuery || debug.awayTeamQuery) {
+    const homeQuery = debug.homeTeamQuery ?? "none";
+    const awayQuery = debug.awayTeamQuery ?? "none";
+    parts.push(`team_query=${homeQuery}/${awayQuery}`);
+  }
+  if (debug.homeTeamSearchStatus !== undefined || debug.awayTeamSearchStatus !== undefined) {
+    const homeStatus = debug.homeTeamSearchStatus ?? "none";
+    const awayStatus = debug.awayTeamSearchStatus ?? "none";
+    parts.push(`team_search=${homeStatus}/${awayStatus}`);
+  }
+  if (debug.homeTeamMatchedName || debug.awayTeamMatchedName) {
+    const homeMatch = debug.homeTeamMatchedName ?? "none";
+    const awayMatch = debug.awayTeamMatchedName ?? "none";
+    parts.push(`team_match=${homeMatch}/${awayMatch}`);
+  }
+  if (debug.homeTeamCandidates?.length || debug.awayTeamCandidates?.length) {
+    const formatCandidates = (items?: Array<{ name?: string }>) =>
+      (items ?? [])
+        .map((item) => item.name)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(" | ");
+    const homeCandidates = formatCandidates(debug.homeTeamCandidates);
+    const awayCandidates = formatCandidates(debug.awayTeamCandidates);
+    const left = homeCandidates || "none";
+    const right = awayCandidates || "none";
+    parts.push(`team_candidates=${left}/${right}`);
+  }
   if (debug.headtoheadCount !== undefined) {
     parts.push(`h2h=${debug.headtoheadCount}`);
   }

@@ -79,6 +79,14 @@ const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const ANALITIKA_LEAGUE_ID = "english-premier-league";
 const ANALITIKA_HEAD_TO_HEAD_LIMIT = 10;
 const ANALITIKA_STATIC_TTL_DAYS = 365;
+const TEAM_SEARCH_ALIASES: Record<string, string> = {
+  inter: "Inter Milan",
+  milan: "AC Milan"
+};
+const TEAM_MATCH_ALIASES: Record<string, string> = {
+  inter: "intermilan",
+  milan: "acmilan"
+};
 
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
 const WEATHER_PROVIDER_PRIMARY = "open-meteo";
@@ -1692,6 +1700,14 @@ async function fetchAndStoreOdds(
     debug.awayTeamId = awayTeamResult.id;
     debug.homeTeamSource = homeTeamResult.source;
     debug.awayTeamSource = awayTeamResult.source;
+    debug.homeTeamQuery = homeTeamResult.query;
+    debug.awayTeamQuery = awayTeamResult.query;
+    debug.homeTeamSearchStatus = homeTeamResult.status;
+    debug.awayTeamSearchStatus = awayTeamResult.status;
+    debug.homeTeamMatchedName = homeTeamResult.matchedName ?? null;
+    debug.awayTeamMatchedName = awayTeamResult.matchedName ?? null;
+    debug.homeTeamCandidates = homeTeamResult.candidates;
+    debug.awayTeamCandidates = awayTeamResult.candidates;
   }
   if (!homeTeamResult.id || !awayTeamResult.id) {
     console.warn("Odds skipped: team id not found", { home: match.home_team, away: match.away_team });
@@ -2382,33 +2398,58 @@ function extractStandingsTeamSample(payload: unknown, limit = 6): Array<{ id: nu
   });
 }
 
-async function resolveTeamId(env: Env, teamName: string): Promise<{ id: number | null; source: "search" | "cache" | "none" }> {
-  const normalized = normalizeTeamName(teamName);
-  const searchResult = await fetchTeamsBySearch(env, teamName);
-  const teamId = findTeamIdInList(teamName, searchResult.teams);
-  if (teamId) {
-    teamIdCache.set(normalized, { id: teamId, name: teamName, updatedAt: Date.now() });
-    return { id: teamId, source: "search" };
+async function resolveTeamId(
+  env: Env,
+  teamName: string
+): Promise<{
+  id: number | null;
+  source: "search" | "cache" | "none";
+  query: string;
+  status: number;
+  candidates: Array<{ id?: number; name?: string }>;
+  matchedName?: string | null;
+}> {
+  const normalized = normalizeTeamKey(teamName);
+  const query = getTeamSearchQuery(teamName);
+  const searchResult = await fetchTeamsBySearch(env, query);
+  const match = findTeamIdInList(teamName, searchResult.teams);
+  const candidates = searchResult.teams.slice(0, 5).map((entry) => ({
+    id: entry.team?.id,
+    name: entry.team?.name
+  }));
+
+  if (match.id) {
+    teamIdCache.set(normalized, { id: match.id, name: match.name ?? teamName, updatedAt: Date.now() });
+    return {
+      id: match.id,
+      source: "search",
+      query,
+      status: searchResult.status,
+      candidates,
+      matchedName: match.name ?? null
+    };
   }
 
   const cached = teamIdCache.get(normalized);
   if (cached && Date.now() - cached.updatedAt < TEAM_ID_CACHE_TTL_MS) {
-    return { id: cached.id, source: "cache" };
+    return { id: cached.id, source: "cache", query, status: searchResult.status, candidates };
   }
 
-  return { id: null, source: "none" };
+  return { id: null, source: "none", query, status: searchResult.status, candidates };
 }
 
-function findTeamIdInList(teamName: string, teams: TeamPayload[]): number | null {
-  const normalizedTarget = normalizeTeamName(teamName);
+function findTeamIdInList(teamName: string, teams: TeamPayload[]): { id: number | null; name: string | null } {
+  const normalizedTarget = normalizeTeamKey(teamName);
   for (const entry of teams) {
     const apiName = entry.team?.name ?? "";
-    const normalizedApi = normalizeTeamName(apiName);
+    const normalizedApi = normalizeTeamKey(apiName);
     if (isTeamMatch(normalizedTarget, normalizedApi)) {
-      return entry.team?.id ?? null;
+      const rawId = entry.team?.id ?? null;
+      const id = typeof rawId === "number" ? rawId : Number(rawId);
+      return { id: Number.isFinite(id) ? id : null, name: apiName || null };
     }
   }
-  return null;
+  return { id: null, name: null };
 }
 
 async function fetchTeamsBySearch(env: Env, teamName: string): Promise<TeamsResult> {
@@ -3787,6 +3828,16 @@ function normalizeTeamName(value: string): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function normalizeTeamKey(value: string): string {
+  const normalized = normalizeTeamName(value);
+  return TEAM_MATCH_ALIASES[normalized] ?? normalized;
+}
+
+function getTeamSearchQuery(teamName: string): string {
+  const normalized = normalizeTeamName(teamName);
+  return TEAM_SEARCH_ALIASES[normalized] ?? teamName;
 }
 
 function isTeamMatch(left: string, right: string): boolean {
