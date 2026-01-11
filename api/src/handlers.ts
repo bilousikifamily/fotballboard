@@ -102,6 +102,7 @@ const ANALITIKA_TEAMS = [
   { slug: "arsenal", name: "Arsenal" },
   { slug: "barcelona", name: "Barcelona" },
   { slug: "chelsea", name: "Chelsea" },
+  { slug: "fiorentina", name: "Fiorentina" },
   { slug: "inter", name: "Inter" },
   { slug: "leeds", name: "Leeds" },
   { slug: "manchester-city", name: "Manchester City" },
