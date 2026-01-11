@@ -2091,12 +2091,13 @@ h1 {
 }
 
 .analitika-line--image .analitika-team-image {
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-width: 100%;
   object-fit: contain;
-  border-radius: 16px;
-  border: 1px solid var(--outline-light);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  border: none;
+  border-radius: 0;
+  filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.35));
 }
 
 .analitika-table-wrap {
