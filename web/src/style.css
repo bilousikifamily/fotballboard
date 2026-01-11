@@ -1908,6 +1908,11 @@ h1 {
   --line-score-gap: 8px;
 }
 
+.analitika-line--image {
+  grid-template-columns: 0 1fr;
+  gap: 0;
+}
+
 .analitika-line-axis {
   display: flex;
   flex-direction: column;
@@ -2082,7 +2087,11 @@ h1 {
 }
 
 .analitika-line--image .analitika-line-axis {
-  opacity: 0;
+  display: none;
+}
+
+.analitika-line--image .analitika-line-plot {
+  inset: 16px 4px 16px;
 }
 
 .analitika-line--image .analitika-line-plot--image {
