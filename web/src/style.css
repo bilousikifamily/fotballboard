@@ -1654,6 +1654,51 @@ h1 {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.admin-users {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-users-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.admin-user-info {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-user-name {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-user-session {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.admin-user-points {
+  font-weight: 600;
+}
+
 .admin-pending-list {
   display: grid;
   gap: 10px;

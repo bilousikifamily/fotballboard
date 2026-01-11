@@ -3,9 +3,11 @@ import { authHeaders, requestJson } from "./client";
 
 export function fetchLeaderboard(
   apiBase: string,
-  initData: string
+  initData: string,
+  limit?: number
 ): Promise<{ response: Response; data: LeaderboardResponse }> {
-  return requestJson<LeaderboardResponse>(`${apiBase}/api/leaderboard`, {
+  const params = typeof limit === "number" ? `?limit=${encodeURIComponent(limit)}` : "";
+  return requestJson<LeaderboardResponse>(`${apiBase}/api/leaderboard${params}`, {
     headers: authHeaders(initData)
   });
 }

@@ -52,6 +52,7 @@ import {
   renderMatchesList,
   renderTeamLogo
 } from "./screens/matches";
+import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
@@ -276,6 +277,7 @@ async function bootstrap(data: string): Promise<void> {
     await loadMatches(currentDate);
     if (isAdmin) {
       await loadPendingMatches();
+      await loadAdminUserSessions();
     }
   } catch {
     renderMessage("Network error", "Check your connection and try again.");
@@ -930,6 +932,11 @@ function renderUser(
           <p class="muted small">Матчі на підтвердження</p>
           <div class="admin-pending-list" data-admin-pending-list></div>
           <p class="muted small" data-admin-pending-status></p>
+        </div>
+        <div class="admin-users">
+          <p class="muted small">Аналітика користувачів</p>
+          <div data-admin-users-list></div>
+          <p class="muted small" data-admin-users-status></p>
         </div>
         <div class="admin-debug" data-admin-debug>
           <p class="muted small">Чернетка для тестів (не зберігається).</p>
@@ -1673,6 +1680,50 @@ async function loadPendingMatches(): Promise<void> {
   } catch {
     if (status) {
       status.textContent = "Не вдалося завантажити матчі.";
+    }
+  }
+}
+
+async function loadAdminUserSessions(): Promise<void> {
+  if (!apiBase || !isAdmin) {
+    return;
+  }
+
+  const list = app.querySelector<HTMLElement>("[data-admin-users-list]");
+  const status = app.querySelector<HTMLElement>("[data-admin-users-status]");
+  if (!list) {
+    return;
+  }
+
+  list.innerHTML = "";
+  if (status) {
+    status.textContent = "Завантаження...";
+  }
+
+  try {
+    const { response, data } = await fetchLeaderboard(apiBase, initData, 200);
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося завантажити користувачів.";
+      }
+      return;
+    }
+
+    const users = data.users
+      .slice()
+      .sort((left, right) => {
+        const leftTime = left.updated_at ? Date.parse(left.updated_at) : 0;
+        const rightTime = right.updated_at ? Date.parse(right.updated_at) : 0;
+        return rightTime - leftTime;
+      });
+
+    list.innerHTML = renderAdminUserSessions(users, STARTING_POINTS);
+    if (status) {
+      status.textContent = "";
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося завантажити користувачів.";
     }
   }
 }
