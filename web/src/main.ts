@@ -30,6 +30,7 @@ import {
 import { postPrediction, fetchPredictions } from "./api/predictions";
 import { postAvatarChoice, postLogoOrder, postNickname, postOnboarding } from "./api/profile";
 import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
+import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 import {
   findEuropeanClubLeague,
   formatClubName,
@@ -1848,7 +1849,8 @@ async function loadMatchAnalitika(
     return;
   }
 
-  if (!ANALITIKA_TEAM_SLUGS.has(teamSlug)) {
+  const resolvedSlug = TEAM_SLUG_ALIASES[teamSlug] ?? teamSlug;
+  if (!ANALITIKA_TEAM_SLUGS.has(resolvedSlug)) {
     if (options.allowFallback) {
       const fallbackSlug = getAlternateAnalitikaTeam(panel, teamSlug);
       if (fallbackSlug) {
@@ -1868,13 +1870,13 @@ async function loadMatchAnalitika(
   panel.dataset.loading = teamSlug;
   container.innerHTML = "";
 
-  if (teamSlug === "fiorentina") {
-    container.innerHTML = renderTeamMatchStatsList([], teamSlug);
+  if (resolvedSlug === "fiorentina") {
+    container.innerHTML = renderTeamMatchStatsList([], resolvedSlug);
     panel.dataset.loading = "";
     return;
   }
 
-  const items = await fetchAnalitikaTeam(teamSlug);
+  const items = await fetchAnalitikaTeam(resolvedSlug);
   if (!items) {
     container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
     panel.dataset.loading = "";
