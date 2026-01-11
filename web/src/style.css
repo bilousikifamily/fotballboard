@@ -2081,6 +2081,22 @@ h1 {
   margin: 0;
 }
 
+.analitika-line-image {
+  display: grid;
+  place-items: center;
+  padding: 16px 0;
+  min-height: 320px;
+}
+
+.analitika-team-image {
+  max-width: 100%;
+  max-height: 320px;
+  height: auto;
+  border-radius: 16px;
+  border: 1px solid var(--outline-light);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
 .analitika-table-wrap {
   width: 100%;
   overflow-x: auto;

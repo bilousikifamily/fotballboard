@@ -99,6 +99,18 @@ export function buildTeamMatchStatsStatus(items: TeamMatchStat[]): string {
 
 export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): string {
   const teamLabel = resolveTeamLabel(teamSlug);
+  if (isFiorentinaTeam(teamSlug, teamLabel, items)) {
+    const alt = escapeAttribute(teamLabel || "Fiorentina");
+    return `
+      <section class="analitika-card is-graph" aria-label="${escapeAttribute(`${teamLabel} — останні матчі`)}">
+        <div class="analitika-card-body">
+          <div class="analitika-line-image">
+            <img class="analitika-team-image" src="/images/de%20hea.png" alt="${alt}" loading="lazy" />
+          </div>
+        </div>
+      </section>
+    `;
+  }
   if (!items.length) {
     return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
   }
@@ -197,6 +209,17 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
 
 export function resolveTeamLabel(teamSlug: string): string {
   return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug)?.label ?? teamSlug;
+}
+
+function isFiorentinaTeam(teamSlug: string, teamLabel: string, items: TeamMatchStat[]): boolean {
+  if (teamSlug === "fiorentina") {
+    return true;
+  }
+  if (normalizeTeamSlugValue(teamLabel) === "fiorentina") {
+    return true;
+  }
+  const fallbackName = items[0]?.team_name ?? "";
+  return normalizeTeamSlugValue(fallbackName) === "fiorentina";
 }
 
 function renderTeamLogo(name: string, logo: string | null): string {
