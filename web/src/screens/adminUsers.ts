@@ -1,5 +1,5 @@
 import type { LeaderboardUser } from "../types";
-import { formatKyivDateTime } from "../formatters/dates";
+import { formatKyivDateShort, formatKyivTime } from "../formatters/dates";
 import { formatUserName } from "../formatters/names";
 import { getAvatarLogoPath } from "../features/clubs";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
@@ -12,7 +12,9 @@ export function renderAdminUserSessions(users: LeaderboardUser[]): string {
   const rows = users
     .map((user) => {
       const name = formatUserName(user);
-      const lastSeen = user.last_seen_at ? formatKyivDateTime(user.last_seen_at) : "—";
+      const lastSeen = user.last_seen_at
+        ? `${formatKyivDateShort(user.last_seen_at)} · ${formatKyivTime(user.last_seen_at)}`
+        : "—";
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
       const avatar = avatarLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`

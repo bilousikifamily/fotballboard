@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${SKIP_SUPABASE_BACKUP:-}" == "1" ]]; then
+  exit 0
+fi
+
+ROOT_DIR=$(git rev-parse --show-toplevel)
+"$ROOT_DIR/scripts/backup_supabase_csv.sh"
