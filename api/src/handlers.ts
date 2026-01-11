@@ -1706,6 +1706,12 @@ async function fetchAndStoreOdds(
     debug.awayTeamSearchStatus = awayTeamResult.status;
     debug.homeTeamMatchedName = homeTeamResult.matchedName ?? null;
     debug.awayTeamMatchedName = awayTeamResult.matchedName ?? null;
+    debug.homeTeamMatchScore = homeTeamResult.matchScore ?? null;
+    debug.awayTeamMatchScore = awayTeamResult.matchScore ?? null;
+    debug.homeTeamQueryAttempts = homeTeamResult.queryAttempts;
+    debug.awayTeamQueryAttempts = awayTeamResult.queryAttempts;
+    debug.homeTeamSearchAttempts = homeTeamResult.searchAttempts;
+    debug.awayTeamSearchAttempts = awayTeamResult.searchAttempts;
     debug.homeTeamCandidates = homeTeamResult.candidates;
     debug.awayTeamCandidates = awayTeamResult.candidates;
   }
@@ -2408,48 +2414,107 @@ async function resolveTeamId(
   status: number;
   candidates: Array<{ id?: number; name?: string }>;
   matchedName?: string | null;
+  matchScore?: number | null;
+  queryAttempts?: string[];
+  searchAttempts?: number[];
 }> {
   const normalized = normalizeTeamKey(teamName);
-  const query = getTeamSearchQuery(teamName);
-  const searchResult = await fetchTeamsBySearch(env, query);
-  const match = findTeamIdInList(teamName, searchResult.teams);
-  const candidates = searchResult.teams.slice(0, 5).map((entry) => ({
-    id: entry.team?.id,
-    name: entry.team?.name
-  }));
+  const queries = getTeamSearchQueries(teamName);
+  const queryAttempts: string[] = [];
+  const searchAttempts: number[] = [];
+  let lastCandidates: Array<{ id?: number; name?: string }> = [];
+  let lastQuery = queries[0] ?? teamName;
+  let lastStatus = 0;
+  let lastMatchName: string | null = null;
+  let lastMatchScore: number | null = null;
 
-  if (match.id) {
-    teamIdCache.set(normalized, { id: match.id, name: match.name ?? teamName, updatedAt: Date.now() });
-    return {
-      id: match.id,
-      source: "search",
-      query,
-      status: searchResult.status,
-      candidates,
-      matchedName: match.name ?? null
-    };
+  for (const query of queries) {
+    const searchResult = await fetchTeamsBySearch(env, query);
+    const match = findTeamIdInList(teamName, searchResult.teams);
+    const candidates = searchResult.teams.slice(0, 5).map((entry) => ({
+      id: entry.team?.id,
+      name: entry.team?.name
+    }));
+    queryAttempts.push(query);
+    searchAttempts.push(searchResult.status);
+    lastCandidates = candidates;
+    lastQuery = query;
+    lastStatus = searchResult.status;
+    lastMatchName = match.name ?? null;
+    lastMatchScore = match.score ?? null;
+
+    if (match.id) {
+      teamIdCache.set(normalized, { id: match.id, name: match.name ?? teamName, updatedAt: Date.now() });
+      return {
+        id: match.id,
+        source: "search",
+        query,
+        status: searchResult.status,
+        candidates,
+        matchedName: match.name ?? null,
+        matchScore: match.score ?? null,
+        queryAttempts,
+        searchAttempts
+      };
+    }
   }
 
   const cached = teamIdCache.get(normalized);
   if (cached && Date.now() - cached.updatedAt < TEAM_ID_CACHE_TTL_MS) {
-    return { id: cached.id, source: "cache", query, status: searchResult.status, candidates };
+    return {
+      id: cached.id,
+      source: "cache",
+      query: lastQuery,
+      status: lastStatus,
+      candidates: lastCandidates,
+      matchedName: lastMatchName,
+      matchScore: lastMatchScore,
+      queryAttempts,
+      searchAttempts
+    };
   }
 
-  return { id: null, source: "none", query, status: searchResult.status, candidates };
+  return {
+    id: null,
+    source: "none",
+    query: lastQuery,
+    status: lastStatus,
+    candidates: lastCandidates,
+    matchedName: lastMatchName,
+    matchScore: lastMatchScore,
+    queryAttempts,
+    searchAttempts
+  };
 }
 
-function findTeamIdInList(teamName: string, teams: TeamPayload[]): { id: number | null; name: string | null } {
+function findTeamIdInList(
+  teamName: string,
+  teams: TeamPayload[]
+): { id: number | null; name: string | null; score: number | null } {
   const normalizedTarget = normalizeTeamKey(teamName);
+  let bestScore = -Infinity;
+  let bestId: number | null = null;
+  let bestName: string | null = null;
+
   for (const entry of teams) {
     const apiName = entry.team?.name ?? "";
     const normalizedApi = normalizeTeamKey(apiName);
-    if (isTeamMatch(normalizedTarget, normalizedApi)) {
-      const rawId = entry.team?.id ?? null;
-      const id = typeof rawId === "number" ? rawId : Number(rawId);
-      return { id: Number.isFinite(id) ? id : null, name: apiName || null };
+    const score = getTeamMatchScore(normalizedTarget, normalizedApi, teamName, apiName);
+    if (score <= bestScore) {
+      continue;
     }
+    const rawId = entry.team?.id ?? null;
+    const id = typeof rawId === "number" ? rawId : Number(rawId);
+    bestId = Number.isFinite(id) ? id : null;
+    bestName = apiName || null;
+    bestScore = score;
   }
-  return { id: null, name: null };
+
+  if (!Number.isFinite(bestScore) || bestScore <= 0) {
+    return { id: null, name: bestName, score: Number.isFinite(bestScore) ? bestScore : null };
+  }
+
+  return { id: bestId, name: bestName, score: bestScore };
 }
 
 async function fetchTeamsBySearch(env: Env, teamName: string): Promise<TeamsResult> {
@@ -3840,14 +3905,50 @@ function getTeamSearchQuery(teamName: string): string {
   return TEAM_SEARCH_ALIASES[normalized] ?? teamName;
 }
 
-function isTeamMatch(left: string, right: string): boolean {
-  if (!left || !right) {
-    return false;
+function getTeamSearchQueries(teamName: string): string[] {
+  const alias = getTeamSearchQuery(teamName);
+  const queries = [alias, teamName].filter(Boolean);
+  return Array.from(new Set(queries));
+}
+
+function isWomenTeamName(value: string): boolean {
+  const lower = value.toLowerCase().trim();
+  return (
+    /(^|\s)(w|women|ladies|femenino|femminile)($|\s)/.test(lower)
+    || lower.endsWith(" w")
+  );
+}
+
+function isYouthTeamName(value: string): boolean {
+  const lower = value.toLowerCase().trim();
+  return /(^|\s)u\d{2}($|\s)/.test(lower) || /(^|\s)primavera($|\s)/.test(lower);
+}
+
+function getTeamMatchScore(target: string, candidate: string, targetRaw: string, candidateRaw: string): number {
+  if (!target || !candidate) {
+    return 0;
   }
-  if (left === right) {
-    return true;
+  let score = 0;
+  if (candidate === target) {
+    score += 6;
   }
-  return left.includes(right) || right.includes(left);
+  if (candidate.startsWith(target) || target.startsWith(candidate)) {
+    score += 3;
+  }
+  if (candidate.includes(target) || target.includes(candidate)) {
+    score += 1;
+  }
+  const targetWomen = isWomenTeamName(targetRaw);
+  const candidateWomen = isWomenTeamName(candidateRaw);
+  if (!targetWomen && candidateWomen) {
+    score -= 5;
+  }
+  const targetYouth = isYouthTeamName(targetRaw);
+  const candidateYouth = isYouthTeamName(candidateRaw);
+  if (!targetYouth && candidateYouth) {
+    score -= 3;
+  }
+  return score;
 }
 
 async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbMatch[] | null> {

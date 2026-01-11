@@ -2267,10 +2267,25 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     const awayStatus = debug.awayTeamSearchStatus ?? "none";
     parts.push(`team_search=${homeStatus}/${awayStatus}`);
   }
+  if (debug.homeTeamSearchAttempts?.length || debug.awayTeamSearchAttempts?.length) {
+    const homeAttempts = debug.homeTeamSearchAttempts?.join("->") ?? "none";
+    const awayAttempts = debug.awayTeamSearchAttempts?.join("->") ?? "none";
+    parts.push(`team_search_attempts=${homeAttempts}/${awayAttempts}`);
+  }
   if (debug.homeTeamMatchedName || debug.awayTeamMatchedName) {
     const homeMatch = debug.homeTeamMatchedName ?? "none";
     const awayMatch = debug.awayTeamMatchedName ?? "none";
     parts.push(`team_match=${homeMatch}/${awayMatch}`);
+  }
+  if (debug.homeTeamMatchScore !== undefined || debug.awayTeamMatchScore !== undefined) {
+    const homeScore = debug.homeTeamMatchScore ?? "none";
+    const awayScore = debug.awayTeamMatchScore ?? "none";
+    parts.push(`team_score=${homeScore}/${awayScore}`);
+  }
+  if (debug.homeTeamQueryAttempts?.length || debug.awayTeamQueryAttempts?.length) {
+    const homeAttempts = debug.homeTeamQueryAttempts?.join("->") ?? "none";
+    const awayAttempts = debug.awayTeamQueryAttempts?.join("->") ?? "none";
+    parts.push(`team_query_attempts=${homeAttempts}/${awayAttempts}`);
   }
   if (debug.homeTeamCandidates?.length || debug.awayTeamCandidates?.length) {
     const formatCandidates = (items?: Array<{ name?: string }>) =>

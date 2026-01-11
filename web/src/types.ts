@@ -155,6 +155,12 @@ export type OddsRefreshDebug = {
   awayTeamSearchStatus?: number;
   homeTeamMatchedName?: string | null;
   awayTeamMatchedName?: string | null;
+  homeTeamMatchScore?: number | null;
+  awayTeamMatchScore?: number | null;
+  homeTeamQueryAttempts?: string[];
+  awayTeamQueryAttempts?: string[];
+  homeTeamSearchAttempts?: number[];
+  awayTeamSearchAttempts?: number[];
   homeTeamCandidates?: Array<{ id?: number; name?: string }>;
   awayTeamCandidates?: Array<{ id?: number; name?: string }>;
   headtoheadCount?: number;
