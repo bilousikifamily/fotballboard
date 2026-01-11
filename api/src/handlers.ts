@@ -69,6 +69,7 @@ import {
   logFixturesSearch
 } from "./services/apiFootball";
 import { handleUpdate, sendMessage } from "./services/telegram";
+import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 
 const STARTING_POINTS = 100;
 const PREDICTION_CUTOFF_MS = 0;
@@ -5137,7 +5138,8 @@ function normalizeTeamSlug(value: string | null): string | null {
   if (!trimmed) {
     return null;
   }
-  return trimmed.replace(/\s+/g, "-");
+  const normalized = trimmed.replace(/\s+/g, "-");
+  return TEAM_SLUG_ALIASES[normalized] ?? normalized;
 }
 
 function resolveTeamMatchStatsTeam(teamSlug: string | null): { slug: string; name: string } | null {

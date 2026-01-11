@@ -1,4 +1,5 @@
 import { CLUB_REGISTRY, type AllLeagueId } from "../data/clubs";
+import { TEAM_SLUG_ALIASES } from "../../../shared/teamSlugAliases";
 import type { AnalitikaDebugInfo, AnalitikaItem, AnalitikaRefreshResponse, TeamMatchStat } from "../types";
 import { formatKyivDateShort, formatKyivDateTime } from "../formatters/dates";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
@@ -82,11 +83,12 @@ export function resolveDefaultAnalitikaTeam(homeSlug: string, awaySlug: string):
 }
 
 export function normalizeTeamSlugValue(value: string): string {
-  return value
+  const normalized = value
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  return TEAM_SLUG_ALIASES[normalized] ?? normalized;
 }
 
 export function buildTeamMatchStatsStatus(items: TeamMatchStat[]): string {
