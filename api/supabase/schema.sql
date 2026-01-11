@@ -7,7 +7,8 @@ create table if not exists users (
   admin boolean not null default false,
   points_total int not null default 100,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  last_seen_at timestamptz
 );
 
 create table if not exists matches (

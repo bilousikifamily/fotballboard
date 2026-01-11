@@ -1670,7 +1670,7 @@ h1 {
 
 .admin-user-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 8px;
   background: var(--surface);
@@ -1693,10 +1693,6 @@ h1 {
 .admin-user-session {
   font-size: 0.75rem;
   color: var(--muted);
-}
-
-.admin-user-points {
-  font-weight: 600;
 }
 
 .admin-pending-list {

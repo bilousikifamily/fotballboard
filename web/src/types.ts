@@ -185,6 +185,7 @@ export type LeaderboardUser = {
   avatar_choice?: string | null;
   points_total?: number | null;
   updated_at?: string | null;
+  last_seen_at?: string | null;
 };
 
 export type Match = {

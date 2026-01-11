@@ -4,7 +4,7 @@ import { formatUserName } from "../formatters/names";
 import { getAvatarLogoPath } from "../features/clubs";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
 
-export function renderAdminUserSessions(users: LeaderboardUser[], startingPoints: number): string {
+export function renderAdminUserSessions(users: LeaderboardUser[]): string {
   if (!users.length) {
     return `<p class="muted small">Поки що немає користувачів.</p>`;
   }
@@ -12,8 +12,8 @@ export function renderAdminUserSessions(users: LeaderboardUser[], startingPoints
   const rows = users
     .map((user) => {
       const name = formatUserName(user);
-      const points = typeof user.points_total === "number" ? user.points_total : startingPoints;
-      const lastSeen = user.updated_at ? formatKyivDateTime(user.updated_at) : "—";
+      const lastSeenRaw = user.last_seen_at ?? user.updated_at ?? null;
+      const lastSeen = lastSeenRaw ? formatKyivDateTime(lastSeenRaw) : "—";
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
       const avatar = avatarLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
@@ -27,7 +27,6 @@ export function renderAdminUserSessions(users: LeaderboardUser[], startingPoints
             <span class="admin-user-name">${escapeHtml(name)}</span>
             <span class="admin-user-session">${escapeHtml(lastSeen)}</span>
           </div>
-          <span class="admin-user-points">${points}</span>
         </div>
       `;
     })

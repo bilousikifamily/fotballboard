@@ -228,6 +228,7 @@ export interface StoredUser {
   admin?: boolean | null;
   points_total?: number | null;
   updated_at?: string | null;
+  last_seen_at?: string | null;
   classico_choice?: string | null;
   ua_club_id?: string | null;
   eu_club_id?: string | null;

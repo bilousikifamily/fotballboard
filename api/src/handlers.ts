@@ -184,7 +184,7 @@ export default {
       let profileStats: ProfileStats | null = null;
       let onboarding: UserOnboarding | null = null;
       if (valid.user) {
-        await storeUser(supabase, valid.user);
+        await storeUser(supabase, valid.user, { markLastSeen: true });
         if (supabase) {
           isAdmin = await checkAdmin(supabase, valid.user.id);
           stats = await getUserStats(supabase, valid.user.id);
@@ -1008,19 +1008,25 @@ function createSupabaseClient(env: Env): SupabaseClient | null {
   });
 }
 
-async function storeUser(supabase: SupabaseClient | null, user: TelegramUser): Promise<void> {
+async function storeUser(
+  supabase: SupabaseClient | null,
+  user: TelegramUser,
+  options: { markLastSeen?: boolean } = {}
+): Promise<void> {
   if (!supabase) {
     return;
   }
 
   try {
+    const now = new Date().toISOString();
     const payload = {
       id: user.id,
       username: user.username ?? null,
       first_name: user.first_name ?? null,
       last_name: user.last_name ?? null,
       photo_url: user.photo_url ?? null,
-      updated_at: new Date().toISOString()
+      updated_at: now,
+      ...(options.markLastSeen ? { last_seen_at: now } : {})
     };
 
     const { error } = await supabase.from("users").upsert(payload, { onConflict: "id" });
@@ -1036,7 +1042,9 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
   try {
     let query = supabase
       .from("users")
-      .select("id, username, first_name, last_name, photo_url, points_total, updated_at, nickname, avatar_choice")
+      .select(
+        "id, username, first_name, last_name, photo_url, points_total, updated_at, last_seen_at, nickname, avatar_choice"
+      )
       .order("points_total", { ascending: false })
       .order("updated_at", { ascending: false });
     if (typeof limit === "number") {

@@ -1712,12 +1712,14 @@ async function loadAdminUserSessions(): Promise<void> {
     const users = data.users
       .slice()
       .sort((left, right) => {
-        const leftTime = left.updated_at ? Date.parse(left.updated_at) : 0;
-        const rightTime = right.updated_at ? Date.parse(right.updated_at) : 0;
-        return rightTime - leftTime;
+        const leftTime = left.last_seen_at ?? left.updated_at ?? "";
+        const rightTime = right.last_seen_at ?? right.updated_at ?? "";
+        const leftStamp = leftTime ? Date.parse(leftTime) : 0;
+        const rightStamp = rightTime ? Date.parse(rightTime) : 0;
+        return rightStamp - leftStamp;
       });
 
-    list.innerHTML = renderAdminUserSessions(users, STARTING_POINTS);
+    list.innerHTML = renderAdminUserSessions(users);
     if (status) {
       status.textContent = "";
     }
