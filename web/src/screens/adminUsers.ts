@@ -12,8 +12,7 @@ export function renderAdminUserSessions(users: LeaderboardUser[]): string {
   const rows = users
     .map((user) => {
       const name = formatUserName(user);
-      const lastSeenRaw = user.last_seen_at ?? user.updated_at ?? null;
-      const lastSeen = lastSeenRaw ? formatKyivDateTime(lastSeenRaw) : "—";
+      const lastSeen = user.last_seen_at ? formatKyivDateTime(user.last_seen_at) : "—";
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
       const avatar = avatarLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
@@ -25,8 +24,8 @@ export function renderAdminUserSessions(users: LeaderboardUser[]): string {
           ${avatar}
           <div class="admin-user-info">
             <span class="admin-user-name">${escapeHtml(name)}</span>
-            <span class="admin-user-session">${escapeHtml(lastSeen)}</span>
           </div>
+          <span class="admin-user-session">${escapeHtml(lastSeen)}</span>
         </div>
       `;
     })

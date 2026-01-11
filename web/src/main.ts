@@ -1712,10 +1712,8 @@ async function loadAdminUserSessions(): Promise<void> {
     const users = data.users
       .slice()
       .sort((left, right) => {
-        const leftTime = left.last_seen_at ?? left.updated_at ?? "";
-        const rightTime = right.last_seen_at ?? right.updated_at ?? "";
-        const leftStamp = leftTime ? Date.parse(leftTime) : 0;
-        const rightStamp = rightTime ? Date.parse(rightTime) : 0;
+        const leftStamp = left.last_seen_at ? Date.parse(left.last_seen_at) : 0;
+        const rightStamp = right.last_seen_at ? Date.parse(right.last_seen_at) : 0;
         return rightStamp - leftStamp;
       });
 

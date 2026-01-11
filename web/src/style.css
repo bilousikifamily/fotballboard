@@ -1670,7 +1670,7 @@ h1 {
 
 .admin-user-row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 8px;
   background: var(--surface);
@@ -1680,8 +1680,8 @@ h1 {
 }
 
 .admin-user-info {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
 }
 
 .admin-user-name {
