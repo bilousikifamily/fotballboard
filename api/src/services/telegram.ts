@@ -69,7 +69,8 @@ export async function sendMessage(
   env: Env,
   chatId: number,
   text: string,
-  replyMarkup?: TelegramInlineKeyboardMarkup
+  replyMarkup?: TelegramInlineKeyboardMarkup,
+  parseMode?: "HTML" | "MarkdownV2"
 ): Promise<void> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
   const payload: Record<string, unknown> = {
@@ -78,6 +79,9 @@ export async function sendMessage(
   };
   if (replyMarkup) {
     payload.reply_markup = replyMarkup;
+  }
+  if (parseMode) {
+    payload.parse_mode = parseMode;
   }
 
   await fetch(url, {

@@ -59,6 +59,7 @@ import type {
 } from "./types";
 import { authenticateInitData, getInitDataFromHeaders, validateInitData } from "./auth";
 import { corsHeaders, corsResponse, jsonResponse, readJson } from "./http";
+import { UKRAINIAN_CLUB_NAMES } from "./data/clubNamesUk";
 import {
   buildApiPath,
   fetchApiFootball,
@@ -4646,6 +4647,8 @@ const CLUB_NAME_OVERRIDES: Record<string, string> = {
   "como-1907": "Como 1907"
 };
 
+let ukrainianClubLookup: Map<string, string> | null = null;
+
 function normalizeLeagueId(value: unknown): string | null {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -4670,6 +4673,53 @@ function formatClubLabel(slug: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function normalizeClubKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getUkrainianClubLookup(): Map<string, string> {
+  if (ukrainianClubLookup) {
+    return ukrainianClubLookup;
+  }
+  const map = new Map<string, string>();
+  Object.entries(UKRAINIAN_CLUB_NAMES).forEach(([slug, name]) => {
+    const normalizedSlug = normalizeClubKey(slug);
+    if (normalizedSlug && !map.has(normalizedSlug)) {
+      map.set(normalizedSlug, name);
+    }
+    const label = formatClubLabel(slug);
+    const normalizedLabel = normalizeClubKey(label);
+    if (normalizedLabel && !map.has(normalizedLabel)) {
+      map.set(normalizedLabel, name);
+    }
+  });
+  ukrainianClubLookup = map;
+  return map;
+}
+
+function resolveUkrainianClubName(label: string, slug?: string | null): string {
+  if (slug) {
+    const mapped = UKRAINIAN_CLUB_NAMES[slug];
+    if (mapped) {
+      return mapped.toUpperCase();
+    }
+  }
+  const normalized = normalizeClubKey(label);
+  const mapped = getUkrainianClubLookup().get(normalized);
+  if (mapped) {
+    return mapped.toUpperCase();
+  }
+  return label.toUpperCase();
+}
+
+function escapeTelegramHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 const AVATAR_LEAGUES = new Set([
@@ -4895,7 +4945,7 @@ async function handlePredictionReminders(env: Env): Promise<void> {
     if (users.length > 0) {
       const message = formatPredictionReminderMessage(match);
       for (const user of users) {
-        await sendMessage(env, user.id, message);
+        await sendMessage(env, user.id, message, undefined, "HTML");
       }
     }
 
@@ -4951,7 +5001,7 @@ async function listMatchesForPredictionReminders(
   try {
     const { data, error } = await supabase
       .from("matches")
-      .select("id, home_team, away_team, kickoff_at")
+      .select("id, home_team, away_team, home_club_id, away_club_id, kickoff_at")
       .eq("status", "scheduled")
       .is("reminder_sent_at", null)
       .gte("kickoff_at", start.toISOString())
@@ -5050,7 +5100,11 @@ async function listAllUserIds(
 }
 
 function formatPredictionReminderMessage(match: PredictionReminderMatch): string {
-  return `До закриття прийому прогнозів на матч:\n${match.home_team} — ${match.away_team}\nзалишилась 1 година...`;
+  const home = resolveUkrainianClubName(match.home_team, match.home_club_id ?? null);
+  const away = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
+  const homeLabel = escapeTelegramHtml(home);
+  const awayLabel = escapeTelegramHtml(away);
+  return `До закриття прийому прогнозів на матч:\n<b>${homeLabel}</b> — <b>${awayLabel}</b>\nзалишилась 1 година...`;
 }
 
 function formatMatchResultMessage(notification: MatchResultNotification): string {

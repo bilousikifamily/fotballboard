@@ -520,6 +520,8 @@ export interface PredictionReminderMatch {
   id: number;
   home_team: string;
   away_team: string;
+  home_club_id?: string | null;
+  away_club_id?: string | null;
   kickoff_at: string;
 }
 
