@@ -23,6 +23,7 @@ import type {
   MatchResultNotification,
   MatchResultOutcome,
   MatchResultPayload,
+  MatchConfirmPayload,
   NicknamePayload,
   OddsDebugInfo,
   OddsDebugFixture,
@@ -89,8 +90,15 @@ const WEATHER_DB_LOOKAHEAD_HOURS = 24;
 const WEATHER_DB_REFRESH_LIMIT = 24;
 
 const ANALITIKA_TEAMS = [
+  { slug: "arsenal", name: "Arsenal" },
+  { slug: "barcelona", name: "Barcelona" },
+  { slug: "chelsea", name: "Chelsea" },
+  { slug: "inter", name: "Inter" },
   { slug: "manchester-city", name: "Manchester City" },
-  { slug: "chelsea", name: "Chelsea" }
+  { slug: "manchester-united", name: "Manchester United" },
+  { slug: "milan", name: "Milan" },
+  { slug: "napoli", name: "Napoli" },
+  { slug: "real-madrid", name: "Real Madrid" }
 ];
 
 const weatherCache = new Map<string, WeatherCacheEntry>();
@@ -563,11 +571,107 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      if (env.API_FOOTBALL_KEY) {
+      if (env.API_FOOTBALL_KEY && match.status === "scheduled") {
         ctx.waitUntil(fetchAndStoreOdds(env, supabase, match));
       }
 
       return jsonResponse({ ok: true, match }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/matches/pending") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const initData = getInitDataFromHeaders(request);
+      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      const matches = await listPendingMatches(supabase);
+      if (!matches) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, matches }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/matches/confirm") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<MatchConfirmPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      const matchId = parseInteger(body.match_id);
+      if (matchId === null) {
+        return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+      }
+
+      const match = await getMatch(supabase, matchId);
+      if (!match) {
+        return jsonResponse({ ok: false, error: "match_not_found" }, 404, corsHeaders());
+      }
+
+      if (match.status !== "pending") {
+        return jsonResponse({ ok: false, error: "match_not_pending" }, 409, corsHeaders());
+      }
+
+      const { data, error } = await supabase
+        .from("matches")
+        .update({ status: "scheduled" })
+        .eq("id", matchId)
+        .select(
+          "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+        )
+        .single();
+      if (error || !data) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      const confirmedMatch = data as DbMatch;
+      if (env.API_FOOTBALL_KEY) {
+        ctx.waitUntil(fetchAndStoreOdds(env, supabase, confirmedMatch));
+      }
+
+      return jsonResponse({ ok: true, match: confirmedMatch }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/matches/odds") {
@@ -747,6 +851,9 @@ export default {
 
       if (match.status === "finished") {
         return jsonResponse({ ok: false, error: "match_finished" }, 400, corsHeaders());
+      }
+      if (match.status !== "scheduled") {
+        return jsonResponse({ ok: false, error: "match_not_ready" }, 400, corsHeaders());
       }
 
       if (!canPredict(match.kickoff_at)) {
@@ -1518,7 +1625,7 @@ async function createMatch(
         home_club_id: homeClubId ?? null,
         away_club_id: awayClubId ?? null,
         kickoff_at: kickoffAt,
-        status: "scheduled",
+        status: "pending",
         created_by: userId
       })
       .select(
@@ -3698,6 +3805,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
       .select(
         "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
       )
+      .in("status", ["scheduled", "finished"])
       .order("kickoff_at", { ascending: true });
 
     if (date) {
@@ -3716,6 +3824,28 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     return (data as DbMatch[]) ?? [];
   } catch (error) {
     console.error("Failed to list matches", error);
+    return null;
+  }
+}
+
+async function listPendingMatches(supabase: SupabaseClient): Promise<DbMatch[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("matches")
+      .select(
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+      )
+      .eq("status", "pending")
+      .order("kickoff_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to list pending matches", error);
+      return null;
+    }
+
+    return (data as DbMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list pending matches", error);
     return null;
   }
 }

@@ -20,6 +20,8 @@ import { fetchLeaderboard } from "./api/leaderboard";
 import {
   fetchMatchWeather,
   fetchMatches,
+  fetchPendingMatches,
+  postConfirmMatch,
   postMatch,
   postMatchesAnnouncement,
   postOddsRefresh,
@@ -46,6 +48,7 @@ import {
   formatTimeInZone,
   getWeatherIcon,
   normalizeRainProbability,
+  renderPendingMatchesList,
   renderMatchesList,
   renderTeamLogo
 } from "./screens/matches";
@@ -271,6 +274,9 @@ async function bootstrap(data: string): Promise<void> {
 
     renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
     await loadMatches(currentDate);
+    if (isAdmin) {
+      await loadPendingMatches();
+    }
   } catch {
     renderMessage("Network error", "Check your connection and try again.");
   }
@@ -920,6 +926,11 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
         </div>
         <p class="muted small" data-admin-announce-status></p>
+        <div class="admin-pending" data-admin-pending>
+          <p class="muted small">Матчі на підтвердження</p>
+          <div class="admin-pending-list" data-admin-pending-list></div>
+          <p class="muted small" data-admin-pending-status></p>
+        </div>
         <div class="admin-debug" data-admin-debug>
           <p class="muted small">Чернетка для тестів (не зберігається).</p>
           <textarea class="admin-debug-input" rows="4" placeholder="Тут можна занотувати тести або гіпотези."></textarea>
@@ -1151,6 +1162,8 @@ function renderUser(
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
+    const pendingList = app.querySelector<HTMLElement>("[data-admin-pending-list]");
+    const pendingStatus = app.querySelector<HTMLElement>("[data-admin-pending-status]");
     const form = app.querySelector<HTMLFormElement>("[data-admin-form]");
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
@@ -1196,6 +1209,21 @@ function renderUser(
     if (announceButton) {
       announceButton.addEventListener("click", () => {
         void publishMatchesAnnouncement();
+      });
+    }
+
+    if (pendingList) {
+      pendingList.addEventListener("click", (event) => {
+        const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-confirm-match]");
+        if (!target) {
+          return;
+        }
+        const matchIdRaw = target.dataset.adminConfirmMatch || "";
+        const matchId = Number.parseInt(matchIdRaw, 10);
+        if (!Number.isFinite(matchId)) {
+          return;
+        }
+        void confirmPendingMatch(matchId, target, pendingStatus);
       });
     }
 
@@ -1582,6 +1610,42 @@ async function loadMatches(date: string): Promise<void> {
   }
 }
 
+async function loadPendingMatches(): Promise<void> {
+  if (!apiBase || !isAdmin) {
+    return;
+  }
+
+  const list = app.querySelector<HTMLElement>("[data-admin-pending-list]");
+  const status = app.querySelector<HTMLElement>("[data-admin-pending-status]");
+  if (!list) {
+    return;
+  }
+
+  list.innerHTML = "";
+  if (status) {
+    status.textContent = "Завантаження...";
+  }
+
+  try {
+    const { response, data } = await fetchPendingMatches(apiBase, initData);
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося завантажити матчі.";
+      }
+      return;
+    }
+
+    list.innerHTML = renderPendingMatchesList(data.matches);
+    if (status) {
+      status.textContent = "";
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося завантажити матчі.";
+    }
+  }
+}
+
 async function loadMatchWeather(matches: Match[]): Promise<void> {
   if (!apiBase) {
     return;
@@ -1859,12 +1923,58 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
     form.reset();
     form.classList.remove("is-open");
     if (status) {
-      status.textContent = "Матч додано ✅";
+      status.textContent = "Матч додано. Очікує підтвердження ✅";
     }
-    await loadMatches(currentDate || getKyivDateString());
+    await loadPendingMatches();
   } catch {
     if (status) {
       status.textContent = "Не вдалося створити матч.";
+    }
+  }
+}
+
+async function confirmPendingMatch(
+  matchId: number,
+  button?: HTMLButtonElement | null,
+  statusEl?: HTMLElement | null
+): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "ПІДТВЕРДЖУЮ...";
+  }
+  if (statusEl) {
+    statusEl.textContent = "";
+  }
+
+  try {
+    const { response, data } = await postConfirmMatch(apiBase, {
+      initData,
+      match_id: matchId
+    });
+    if (!response.ok || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = getConfirmMatchError(data.ok ? undefined : data.error);
+      }
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.textContent = "Матч підтверджено ✅";
+    }
+    await loadPendingMatches();
+    await loadMatches(currentDate || getKyivDateString());
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося підтвердити матч.";
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "ПІДТВЕРДИТИ";
     }
   }
 }
@@ -2563,12 +2673,29 @@ function getPredictionError(error: string | undefined): string {
       return "Прийом прогнозів закрито.";
     case "match_finished":
       return "Матч завершено.";
+    case "match_not_ready":
+      return "Матч ще не підтверджено.";
     case "match_not_found":
       return "Матч не знайдено.";
     case "already_predicted":
       return "Ви вже зробили прогноз.";
     default:
       return "Не вдалося зберегти прогноз.";
+  }
+}
+
+function getConfirmMatchError(error: string | undefined): string {
+  switch (error) {
+    case "match_not_pending":
+      return "Матч вже підтверджено.";
+    case "match_not_found":
+      return "Матч не знайдено.";
+    case "bad_match_id":
+      return "Невірний матч.";
+    case "forbidden":
+      return "Недостатньо прав.";
+    default:
+      return "Не вдалося підтвердити матч.";
   }
 }
 

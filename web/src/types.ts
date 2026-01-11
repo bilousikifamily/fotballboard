@@ -18,6 +18,10 @@ export type MatchesResponse =
   | { ok: true; matches: Match[] }
   | { ok: false; error: string };
 
+export type PendingMatchesResponse =
+  | { ok: true; matches: Match[] }
+  | { ok: false; error: string };
+
 export type PredictionResponse =
   | { ok: true; prediction: unknown }
   | { ok: false; error: string };
@@ -55,6 +59,10 @@ export type ProfileStatsPayload = {
 };
 
 export type CreateMatchResponse =
+  | { ok: true; match: Match }
+  | { ok: false; error: string };
+
+export type ConfirmMatchResponse =
   | { ok: true; match: Match }
   | { ok: false; error: string };
 

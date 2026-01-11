@@ -1,5 +1,6 @@
 import type { Match } from "../types";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
+import { formatKyivDateTime } from "../formatters/dates";
 import { getMatchPredictionCloseAtMs } from "../features/predictionTime";
 import { renderMatchAnalitika } from "../features/analitika";
 import { getMatchTeamInfo } from "../features/clubs";
@@ -196,6 +197,28 @@ export function renderMatchesList(matches: Match[]): string {
           ${matchAnalitika}
           ${countdown}
         </div>
+      `;
+    })
+    .join("");
+}
+
+export function renderPendingMatchesList(matches: Match[]): string {
+  if (!matches.length) {
+    return `<p class="muted small">Немає матчів для підтвердження.</p>`;
+  }
+
+  return matches
+    .map((match) => {
+      const { homeName, awayName } = getMatchTeamInfo(match);
+      const kickoff = formatKyivDateTime(match.kickoff_at);
+      return `
+        <article class="admin-pending-card" data-admin-pending-card data-match-id="${match.id}">
+          <div class="admin-pending-info">
+            <p class="admin-pending-title">${escapeHtml(homeName)} — ${escapeHtml(awayName)}</p>
+            <p class="muted small">${escapeHtml(kickoff)}</p>
+          </div>
+          <button class="button small-button" type="button" data-admin-confirm-match="${match.id}">ПІДТВЕРДИТИ</button>
+        </article>
       `;
     })
     .join("");

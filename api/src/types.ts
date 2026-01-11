@@ -333,6 +333,11 @@ export interface MatchResultPayload {
   away_score: number | string;
 }
 
+export interface MatchConfirmPayload {
+  initData?: string;
+  match_id: number | string;
+}
+
 export interface AnnouncementPayload {
   initData?: string;
 }

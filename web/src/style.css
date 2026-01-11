@@ -1645,6 +1645,39 @@ h1 {
   letter-spacing: 0.06em;
 }
 
+.admin-pending {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-pending-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-pending-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.admin-pending-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.admin-pending-info {
+  display: grid;
+  gap: 4px;
+}
+
 .admin-form {
   display: none;
   gap: 10px;

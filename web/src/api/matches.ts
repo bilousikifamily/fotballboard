@@ -1,9 +1,11 @@
 import type {
   AnnouncementResponse,
+  ConfirmMatchResponse,
   CreateMatchResponse,
   MatchWeatherResponse,
   MatchesResponse,
   OddsRefreshResponse,
+  PendingMatchesResponse,
   ResultResponse
 } from "../types";
 import { authHeaders, requestJson } from "./client";
@@ -14,6 +16,15 @@ export function fetchMatches(
   date: string
 ): Promise<{ response: Response; data: MatchesResponse }> {
   return requestJson<MatchesResponse>(`${apiBase}/api/matches?date=${encodeURIComponent(date)}`, {
+    headers: authHeaders(initData)
+  });
+}
+
+export function fetchPendingMatches(
+  apiBase: string,
+  initData: string
+): Promise<{ response: Response; data: PendingMatchesResponse }> {
+  return requestJson<PendingMatchesResponse>(`${apiBase}/api/matches/pending`, {
     headers: authHeaders(initData)
   });
 }
@@ -41,6 +52,17 @@ export function postMatch(
   }
 ): Promise<{ response: Response; data: CreateMatchResponse }> {
   return requestJson<CreateMatchResponse>(`${apiBase}/api/matches`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export function postConfirmMatch(
+  apiBase: string,
+  payload: { initData: string; match_id: number }
+): Promise<{ response: Response; data: ConfirmMatchResponse }> {
+  return requestJson<ConfirmMatchResponse>(`${apiBase}/api/matches/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)

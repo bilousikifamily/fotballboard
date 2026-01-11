@@ -5,8 +5,15 @@ import { escapeAttribute, escapeHtml } from "../utils/escape";
 import { findClubLeague, formatClubName, getClubLogoPath } from "./clubs";
 
 export const ANALITIKA_TEAMS = [
+  { slug: "arsenal", label: "Arsenal" },
+  { slug: "barcelona", label: "Barcelona" },
   { slug: "chelsea", label: "Chelsea" },
-  { slug: "manchester-city", label: "Manchester City" }
+  { slug: "inter", label: "Inter" },
+  { slug: "manchester-city", label: "Manchester City" },
+  { slug: "manchester-united", label: "Manchester United" },
+  { slug: "milan", label: "Milan" },
+  { slug: "napoli", label: "Napoli" },
+  { slug: "real-madrid", label: "Real Madrid" }
 ];
 
 export const ANALITIKA_TEAM_SLUGS = new Set(ANALITIKA_TEAMS.map((team) => team.slug));
