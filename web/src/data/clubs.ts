@@ -104,6 +104,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "napoli",
     "parma",
     "roma",
+    "sassuolo",
     "torino",
     "udinese",
     "venezia",
