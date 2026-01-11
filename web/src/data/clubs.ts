@@ -63,12 +63,14 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "wolves"
   ],
   "la-liga": [
+    "alaves",
     "athletic-club",
     "atletico-madrid",
     "barcelona",
     "celta",
     "deportivo",
     "espanyol",
+    "guadalajara",
     "getafe",
     "girona",
     "las-palmas",
@@ -80,6 +82,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "real-madrid",
     "real-sociedad",
     "sevilla",
+    "talavera",
     "valencia",
     "valladolid",
     "villarreal"

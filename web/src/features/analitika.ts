@@ -207,9 +207,18 @@ function renderTeamLogo(name: string, logo: string | null): string {
 }
 
 const CLUB_NAME_ALIASES: Record<string, string> = {
+  "athletic": "athletic-club",
+  "athletic bilbao": "athletic-club",
   "newcastle united": "newcastle",
   "ipswich town": "ipswich",
   "leeds": "leeds-united",
+  "alaves": "alaves",
+  "deportivo alaves": "alaves",
+  "atletico": "atletico-madrid",
+  "atletico madrid": "atletico-madrid",
+  "atletico de madrid": "atletico-madrid",
+  "betis": "real-betis",
+  "real betis": "real-betis",
   "wolverhampton wanderers": "wolves",
   "west ham united": "west-ham",
   "tottenham hotspur": "tottenham",
