@@ -1,8 +1,8 @@
-import { EU_CLUBS, type LeagueId } from "../data/clubs";
+import { CLUB_REGISTRY, type AllLeagueId } from "../data/clubs";
 import type { AnalitikaDebugInfo, AnalitikaItem, AnalitikaRefreshResponse, TeamMatchStat } from "../types";
 import { formatKyivDateShort, formatKyivDateTime } from "../formatters/dates";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
-import { findClubLeague, formatClubName, getClubLogoPath } from "./clubs";
+import { formatClubName, getClubLogoPath } from "./clubs";
 
 export const ANALITIKA_TEAMS = [
   { slug: "arsenal", label: "Arsenal" },
@@ -248,10 +248,13 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "man city": "manchester-city",
   "man utd": "manchester-united",
   "brighton and hove albion": "brighton",
-  "nottingham forest": "nottingham-forest"
+  "nottingham forest": "nottingham-forest",
+  "portsmouth": "portsmouth"
 };
 
-let clubNameLookup: Map<string, { leagueId: LeagueId; slug: string }> | null = null;
+type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
+
+let clubNameLookup: Map<string, ClubLogoEntry> | null = null;
 
 export function resolveClubLogoByName(name: string): string | null {
   const normalized = normalizeClubName(name);
@@ -260,34 +263,45 @@ export function resolveClubLogoByName(name: string): string | null {
   }
   const aliasSlug = CLUB_NAME_ALIASES[normalized];
   if (aliasSlug) {
-    const league = findClubLeague(aliasSlug);
-    return league ? getClubLogoPath(league, aliasSlug) : null;
+    const entry = CLUB_REGISTRY[aliasSlug];
+    return entry ? getClubLogoPath(entry.logoLeagueId, aliasSlug) : null;
   }
   const lookup = getClubNameLookup();
   const entry = lookup.get(normalized);
-  return entry ? getClubLogoPath(entry.leagueId, entry.slug) : null;
+  return entry ? getClubLogoPath(entry.logoLeagueId, entry.slug) : null;
 }
 
-function getClubNameLookup(): Map<string, { leagueId: LeagueId; slug: string }> {
+function getClubNameLookup(): Map<string, ClubLogoEntry> {
   if (clubNameLookup) {
     return clubNameLookup;
   }
-  const map = new Map<string, { leagueId: LeagueId; slug: string }>();
-  const leaguePriority: LeagueId[] = [
+  const map = new Map<string, ClubLogoEntry>();
+  const leaguePriority: AllLeagueId[] = [
     "english-premier-league",
     "la-liga",
     "serie-a",
     "bundesliga",
-    "ligue-1"
+    "ligue-1",
+    "ukrainian-premier-league"
   ];
   leaguePriority.forEach((leagueId) => {
-    (EU_CLUBS[leagueId] ?? []).forEach((slug) => {
-      const normalized = normalizeClubName(formatClubName(slug));
+    Object.values(CLUB_REGISTRY).forEach((entry) => {
+      if (entry.leagueId !== leagueId) {
+        return;
+      }
+      const normalized = normalizeClubName(formatClubName(entry.slug));
       if (!normalized || map.has(normalized)) {
         return;
       }
-      map.set(normalized, { leagueId, slug });
+      map.set(normalized, { slug: entry.slug, logoLeagueId: entry.logoLeagueId });
     });
+  });
+  Object.values(CLUB_REGISTRY).forEach((entry) => {
+    const normalized = normalizeClubName(formatClubName(entry.slug));
+    if (!normalized || map.has(normalized)) {
+      return;
+    }
+    map.set(normalized, { slug: entry.slug, logoLeagueId: entry.logoLeagueId });
   });
   clubNameLookup = map;
   return map;

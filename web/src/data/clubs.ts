@@ -168,3 +168,32 @@ export const ALL_CLUBS: Record<MatchLeagueId, string[]> = {
   "dfb-pokal": EU_CLUBS["bundesliga"],
   "coupe-de-france": EU_CLUBS["ligue-1"]
 };
+
+export type ClubRegistryEntry = {
+  slug: string;
+  leagueId: AllLeagueId;
+  logoLeagueId: AllLeagueId;
+};
+
+export const CLUB_REGISTRY: Record<string, ClubRegistryEntry> = {};
+
+function registerClub(slug: string, leagueId: AllLeagueId, logoLeagueId?: AllLeagueId): void {
+  if (CLUB_REGISTRY[slug]) {
+    return;
+  }
+  CLUB_REGISTRY[slug] = {
+    slug,
+    leagueId,
+    logoLeagueId: logoLeagueId ?? leagueId
+  };
+}
+
+const CLUB_REGISTRY_EXTRAS: Array<{ slug: string; leagueId: AllLeagueId }> = [
+  { slug: "portsmouth", leagueId: "english-premier-league" }
+];
+
+UA_CLUBS.forEach((slug) => registerClub(slug, "ukrainian-premier-league"));
+(Object.entries(EU_CLUBS) as Array<[LeagueId, string[]]>).forEach(([leagueId, clubs]) => {
+  clubs.forEach((slug) => registerClub(slug, leagueId));
+});
+CLUB_REGISTRY_EXTRAS.forEach((entry) => registerClub(entry.slug, entry.leagueId));

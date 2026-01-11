@@ -1,4 +1,4 @@
-import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "../data/clubs";
+import { CLUB_REGISTRY, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "../data/clubs";
 import type { Match } from "../types";
 
 const CLUB_NAME_OVERRIDES: Record<string, string> = {
@@ -104,13 +104,7 @@ export function findEuropeanClubLeague(clubId: string): LeagueId | null {
 }
 
 export function findClubLeague(clubId: string): AllLeagueId | null {
-  const entries = Object.entries(ALL_CLUBS) as Array<[AllLeagueId, string[]]>;
-  for (const [leagueId, clubs] of entries) {
-    if (clubs.includes(clubId)) {
-      return leagueId;
-    }
-  }
-  return null;
+  return CLUB_REGISTRY[clubId]?.leagueId ?? null;
 }
 
 export function getMatchTeamInfo(match: Match): {
