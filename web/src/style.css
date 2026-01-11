@@ -1660,12 +1660,25 @@ h1 {
 }
 
 .admin-pending-card {
+  --match-card-width: 100%;
   display: grid;
   gap: 8px;
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--surface-strong);
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.admin-pending-card .match-item {
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+
+.admin-pending-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .admin-pending-title {
@@ -1676,6 +1689,10 @@ h1 {
 .admin-pending-info {
   display: grid;
   gap: 4px;
+}
+
+.status-pending {
+  color: var(--muted);
 }
 
 .admin-form {

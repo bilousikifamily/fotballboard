@@ -1214,16 +1214,33 @@ function renderUser(
 
     if (pendingList) {
       pendingList.addEventListener("click", (event) => {
-        const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-confirm-match]");
-        if (!target) {
+        const oddsButton = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-fetch-odds]");
+        if (oddsButton) {
+          const matchIdRaw = oddsButton.dataset.adminFetchOdds || "";
+          const matchId = Number.parseInt(matchIdRaw, 10);
+          if (!Number.isFinite(matchId)) {
+            return;
+          }
+          const statusEl = pendingList.querySelector<HTMLElement>(
+            `[data-admin-pending-status][data-match-id="${matchId}"]`
+          );
+          void refreshPendingMatchOdds(matchId, oddsButton, statusEl);
           return;
         }
-        const matchIdRaw = target.dataset.adminConfirmMatch || "";
+
+        const confirmButton = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-confirm-match]");
+        if (!confirmButton) {
+          return;
+        }
+        const matchIdRaw = confirmButton.dataset.adminConfirmMatch || "";
         const matchId = Number.parseInt(matchIdRaw, 10);
         if (!Number.isFinite(matchId)) {
           return;
         }
-        void confirmPendingMatch(matchId, target, pendingStatus);
+        const statusEl = pendingList.querySelector<HTMLElement>(
+          `[data-admin-pending-status][data-match-id="${matchId}"]`
+        );
+        void confirmPendingMatch(matchId, confirmButton, statusEl ?? pendingStatus);
       });
     }
 
@@ -1635,7 +1652,13 @@ async function loadPendingMatches(): Promise<void> {
       return;
     }
 
+    data.matches.forEach((match) => {
+      matchesById.set(match.id, match);
+    });
     list.innerHTML = renderPendingMatchesList(data.matches);
+    bindMatchActions(list);
+    setupMatchAnalitikaFilters(list);
+    void loadMatchWeather(data.matches);
     if (status) {
       status.textContent = "";
     }
@@ -1704,8 +1727,8 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
   await Promise.all(tasks);
 }
 
-function setupMatchAnalitikaFilters(): void {
-  const panels = app.querySelectorAll<HTMLElement>("[data-match-analitika]");
+function setupMatchAnalitikaFilters(root: ParentNode = app): void {
+  const panels = root.querySelectorAll<HTMLElement>("[data-match-analitika]");
   if (!panels.length) {
     return;
   }
@@ -1979,6 +2002,52 @@ async function confirmPendingMatch(
   }
 }
 
+async function refreshPendingMatchOdds(
+  matchId: number,
+  button?: HTMLButtonElement | null,
+  statusEl?: HTMLElement | null
+): Promise<void> {
+  if (!apiBase) {
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "ОНОВЛЕННЯ...";
+  }
+  if (statusEl) {
+    statusEl.textContent = "Запит...";
+  }
+
+  try {
+    const { response, data } = await postOddsRefresh(apiBase, {
+      initData,
+      match_id: matchId,
+      debug: true
+    });
+    if (!response.ok || !data || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = formatOddsRefreshError(data);
+      }
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.textContent = "Коефіцієнти оновлено ✅";
+    }
+    await loadPendingMatches();
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося підтягнути коефіцієнти.";
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "КОЕФІЦІЄНТИ";
+    }
+  }
+}
+
 async function submitResult(form: HTMLFormElement): Promise<void> {
   if (!apiBase) {
     return;
@@ -2235,9 +2304,13 @@ async function publishMatchesAnnouncement(): Promise<void> {
   }
 }
 
-function bindMatchActions(): void {
-  const forms = app.querySelectorAll<HTMLFormElement>("[data-prediction-form]");
+function bindMatchActions(root: ParentNode = app): void {
+  const forms = root.querySelectorAll<HTMLFormElement>("[data-prediction-form]");
   forms.forEach((form) => {
+    if (form.dataset.bound === "true") {
+      return;
+    }
+    form.dataset.bound = "true";
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       await submitPrediction(form);
@@ -2245,8 +2318,12 @@ function bindMatchActions(): void {
     setupScoreControls(form);
   });
 
-  const toggles = app.querySelectorAll<HTMLButtonElement>("[data-predictions-toggle]");
+  const toggles = root.querySelectorAll<HTMLButtonElement>("[data-predictions-toggle]");
   toggles.forEach((toggle) => {
+    if (toggle.dataset.bound === "true") {
+      return;
+    }
+    toggle.dataset.bound = "true";
     toggle.addEventListener("click", () => {
       const matchIdRaw = toggle.dataset.matchId || "";
       const matchId = Number.parseInt(matchIdRaw, 10);
@@ -2262,8 +2339,12 @@ function bindMatchActions(): void {
     });
   });
 
-  const autoContainers = app.querySelectorAll<HTMLElement>("[data-predictions][data-auto-open='true']");
+  const autoContainers = root.querySelectorAll<HTMLElement>("[data-predictions][data-auto-open='true']");
   autoContainers.forEach((container) => {
+    if (container.dataset.bound === "true") {
+      return;
+    }
+    container.dataset.bound = "true";
     const matchIdRaw = container.dataset.matchId || "";
     const matchId = Number.parseInt(matchIdRaw, 10);
     if (!Number.isFinite(matchId)) {
@@ -2442,6 +2523,14 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
   const homeInput = form.querySelector<HTMLInputElement>("input[name=home_pred]");
   const awayInput = form.querySelector<HTMLInputElement>("input[name=away_pred]");
   const status = form.querySelector<HTMLElement>("[data-prediction-status]");
+  const isPreview = form.dataset.predictionPreview === "true";
+
+  if (isPreview) {
+    if (status) {
+      status.textContent = "Перегляд в адмінці.";
+    }
+    return;
+  }
 
   const home = parseScore(homeInput?.value);
   const away = parseScore(awayInput?.value);
