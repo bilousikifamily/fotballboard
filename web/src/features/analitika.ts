@@ -209,6 +209,7 @@ function renderTeamLogo(name: string, logo: string | null): string {
 const CLUB_NAME_ALIASES: Record<string, string> = {
   "newcastle united": "newcastle",
   "ipswich town": "ipswich",
+  "leeds": "leeds-united",
   "wolverhampton wanderers": "wolves",
   "west ham united": "west-ham",
   "tottenham hotspur": "tottenham",
