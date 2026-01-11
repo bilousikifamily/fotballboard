@@ -105,8 +105,13 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
     return `
       <section class="analitika-card is-graph" aria-label="${escapeAttribute(`${teamLabel} — останні матчі`)}">
         <div class="analitika-card-body">
-          <div class="analitika-line-image">
-            <img class="analitika-team-image" src="/images/de%20hea.png" alt="${alt}" loading="lazy" />
+          <div class="analitika-line analitika-line--image">
+            <div class="analitika-line-axis" aria-hidden="true"></div>
+            <div class="analitika-line-canvas">
+              <div class="analitika-line-plot analitika-line-plot--image">
+                <img class="analitika-team-image" src="/images/dehea.png" alt="${alt}" loading="lazy" />
+              </div>
+            </div>
           </div>
         </div>
       </section>
