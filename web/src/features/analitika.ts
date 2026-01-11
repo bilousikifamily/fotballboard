@@ -9,6 +9,7 @@ export const ANALITIKA_TEAMS = [
   { slug: "barcelona", label: "Barcelona" },
   { slug: "chelsea", label: "Chelsea" },
   { slug: "inter", label: "Inter" },
+  { slug: "leeds", label: "Leeds" },
   { slug: "manchester-city", label: "Manchester City" },
   { slug: "manchester-united", label: "Manchester United" },
   { slug: "milan", label: "Milan" },
