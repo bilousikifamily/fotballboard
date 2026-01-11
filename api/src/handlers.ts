@@ -490,8 +490,7 @@ export default {
         return jsonResponse({ ok: false, error: "bad_team" }, 400, corsHeaders());
       }
 
-      const limitParam = parseLimit(url.searchParams.get("limit"), 20, 200);
-      const limit = typeof limitParam === "number" ? limitParam : 20;
+      const limit = 5;
       const items = await listTeamMatchStats(supabase, team.name, limit);
       if (!items) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
@@ -914,11 +913,16 @@ export default {
       const matchId = parseInteger(body.match_id);
       const homeScore = parseInteger(body.home_score);
       const awayScore = parseInteger(body.away_score);
+      const homeRating = parseRating(body.home_avg_rating);
+      const awayRating = parseRating(body.away_avg_rating);
       if (matchId === null || homeScore === null || awayScore === null) {
         return jsonResponse({ ok: false, error: "bad_score" }, 400, corsHeaders());
       }
+      if (homeRating === null || awayRating === null) {
+        return jsonResponse({ ok: false, error: "bad_rating" }, 400, corsHeaders());
+      }
 
-      const result = await applyMatchResult(supabase, matchId, homeScore, awayScore);
+      const result = await applyMatchResult(supabase, matchId, homeScore, awayScore, homeRating, awayRating);
       if (!result.ok) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -4138,7 +4142,9 @@ async function applyMatchResult(
   supabase: SupabaseClient,
   matchId: number,
   homeScore: number,
-  awayScore: number
+  awayScore: number,
+  homeRating: number,
+  awayRating: number
 ): Promise<MatchResultOutcome> {
   const match = await getMatch(supabase, matchId);
   if (!match) {
@@ -4156,6 +4162,18 @@ async function applyMatchResult(
 
   if (updateError) {
     console.error("Failed to update match", updateError);
+    return { ok: false, notifications: [] };
+  }
+
+  const statsOk = await upsertTeamMatchStats(
+    supabase,
+    match,
+    homeScore,
+    awayScore,
+    homeRating,
+    awayRating
+  );
+  if (!statsOk) {
     return { ok: false, notifications: [] };
   }
 
@@ -4246,6 +4264,89 @@ async function applyMatchResult(
   notifications.push(...penaltyNotifications);
 
   return { ok: true, notifications };
+}
+
+async function upsertTeamMatchStats(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  homeScore: number,
+  awayScore: number,
+  homeRating: number,
+  awayRating: number
+): Promise<boolean> {
+  try {
+    const matchDate = match.kickoff_at;
+    const rows = [
+      {
+        team_name: match.home_team,
+        opponent_name: match.away_team,
+        is_home: true,
+        team_goals: homeScore,
+        opponent_goals: awayScore,
+        avg_rating: homeRating
+      },
+      {
+        team_name: match.away_team,
+        opponent_name: match.home_team,
+        is_home: false,
+        team_goals: awayScore,
+        opponent_goals: homeScore,
+        avg_rating: awayRating
+      }
+    ];
+
+    for (const row of rows) {
+      const { data, error } = await supabase
+        .from("team_match_stats")
+        .select("id")
+        .eq("team_name", row.team_name)
+        .eq("opponent_name", row.opponent_name)
+        .eq("match_date", matchDate)
+        .eq("is_home", row.is_home)
+        .limit(1);
+      if (error) {
+        console.error("Failed to check team_match_stats", error);
+        return false;
+      }
+      const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
+      if (existingId) {
+        const { error: updateError } = await supabase
+          .from("team_match_stats")
+          .update({
+            team_goals: row.team_goals,
+            opponent_goals: row.opponent_goals,
+            avg_rating: row.avg_rating
+          })
+          .eq("id", existingId);
+        if (updateError) {
+          console.error("Failed to update team_match_stats", updateError);
+          return false;
+        }
+        continue;
+      }
+      const { error: insertError } = await supabase
+        .from("team_match_stats")
+        .insert({
+          id: crypto.randomUUID(),
+          match_date: matchDate,
+          team_name: row.team_name,
+          opponent_name: row.opponent_name,
+          is_home: row.is_home,
+          team_goals: row.team_goals,
+          opponent_goals: row.opponent_goals,
+          avg_rating: row.avg_rating
+        });
+      if (insertError) {
+        console.error("Failed to insert team_match_stats", insertError);
+        return false;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Failed to save team_match_stats", error);
+    return false;
+  }
 }
 
 async function applyMissingPredictionPenalties(
@@ -4452,6 +4553,27 @@ function parseInteger(value: unknown): number | null {
     if (Number.isInteger(parsed)) {
       return parsed;
     }
+  }
+  return null;
+}
+
+function parseRating(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value >= 0 && value <= 10 ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed.replace(",", "."));
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return parsed >= 0 && parsed <= 10 ? parsed : null;
   }
   return null;
 }

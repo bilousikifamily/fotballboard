@@ -962,6 +962,14 @@ function renderUser(
             <span>Матч</span>
             <select name="match_id" data-admin-match></select>
           </label>
+          <label class="field">
+            <span>Avg rating</span>
+            <div class="score-inputs">
+              <input type="number" min="0" max="10" step="0.1" name="home_avg_rating" placeholder="7.0" required />
+              <span>:</span>
+              <input type="number" min="0" max="10" step="0.1" name="away_avg_rating" placeholder="7.0" required />
+            </div>
+          </label>
           <div class="score-inputs">
             <input type="number" min="0" name="home_score" placeholder="0" />
             <span>:</span>
@@ -2091,8 +2099,10 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
   const matchId = parseScore(matchIdRaw);
   const homeScore = parseScore(form.querySelector<HTMLInputElement>("input[name=home_score]")?.value);
   const awayScore = parseScore(form.querySelector<HTMLInputElement>("input[name=away_score]")?.value);
+  const homeRating = parseRating(form.querySelector<HTMLInputElement>("input[name=home_avg_rating]")?.value);
+  const awayRating = parseRating(form.querySelector<HTMLInputElement>("input[name=away_avg_rating]")?.value);
 
-  if (matchId === null || homeScore === null || awayScore === null) {
+  if (matchId === null || homeScore === null || awayScore === null || homeRating === null || awayRating === null) {
     if (status) {
       status.textContent = "Заповніть всі поля.";
     }
@@ -2108,7 +2118,9 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
       initData,
       match_id: matchId,
       home_score: homeScore,
-      away_score: awayScore
+      away_score: awayScore,
+      home_avg_rating: homeRating,
+      away_avg_rating: awayRating
     });
     if (!response.ok || !data.ok) {
       if (status) {
@@ -2981,6 +2993,21 @@ function parseScore(value?: string): number | null {
   }
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function parseRating(value?: string): number | null {
+  if (!value) {
+    return null;
+  }
+  const sanitized = value.replace(",", ".");
+  const parsed = Number(sanitized);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  if (parsed < 0 || parsed > 10) {
+    return null;
+  }
+  return parsed;
 }
 
 async function loadLeaderboard(): Promise<void> {

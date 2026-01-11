@@ -71,7 +71,14 @@ export function postConfirmMatch(
 
 export function postResult(
   apiBase: string,
-  payload: { initData: string; match_id: number; home_score: number; away_score: number }
+  payload: {
+    initData: string;
+    match_id: number;
+    home_score: number;
+    away_score: number;
+    home_avg_rating: number;
+    away_avg_rating: number;
+  }
 ): Promise<{ response: Response; data: ResultResponse }> {
   return requestJson<ResultResponse>(`${apiBase}/api/matches/result`, {
     method: "POST",

@@ -345,6 +345,8 @@ export interface MatchResultPayload {
   match_id: number | string;
   home_score: number | string;
   away_score: number | string;
+  home_avg_rating?: number | string;
+  away_avg_rating?: number | string;
 }
 
 export interface MatchConfirmPayload {

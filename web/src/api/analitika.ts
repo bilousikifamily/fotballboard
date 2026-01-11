@@ -6,7 +6,8 @@ export function fetchAnalitikaTeam(
   initData: string,
   teamSlug: string
 ): Promise<{ response: Response; data: TeamMatchStatsResponse }> {
-  return requestJson<TeamMatchStatsResponse>(`${apiBase}/api/analitika?team=${encodeURIComponent(teamSlug)}`, {
+  const params = new URLSearchParams({ team: teamSlug, limit: "5" });
+  return requestJson<TeamMatchStatsResponse>(`${apiBase}/api/analitika?${params.toString()}`, {
     headers: authHeaders(initData)
   });
 }
