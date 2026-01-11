@@ -1868,6 +1868,12 @@ async function loadMatchAnalitika(
   panel.dataset.loading = teamSlug;
   container.innerHTML = "";
 
+  if (teamSlug === "fiorentina") {
+    container.innerHTML = renderTeamMatchStatsList([], teamSlug);
+    panel.dataset.loading = "";
+    return;
+  }
+
   const items = await fetchAnalitikaTeam(teamSlug);
   if (!items) {
     container.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
