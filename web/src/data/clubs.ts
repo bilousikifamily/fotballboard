@@ -92,6 +92,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "bologna",
     "cagliari",
     "como-1907",
+    "cremonese",
     "empoli",
     "fiorentina",
     "genoa",

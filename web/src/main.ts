@@ -1741,40 +1741,64 @@ function setupMatchAnalitikaFilters(root: ParentNode = app): void {
     const defaultSlug =
       panel.dataset.defaultTeam || buttons[0]?.dataset.matchAnalitikaTeam || "";
 
-    const setActive = (teamSlug: string): void => {
-      panel.dataset.activeTeam = teamSlug;
-      buttons.forEach((button) => {
-        const isActive = button.dataset.matchAnalitikaTeam === teamSlug;
-        button.classList.toggle("is-active", isActive);
-        button.setAttribute("aria-pressed", isActive ? "true" : "false");
-      });
-    };
-
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
         const teamSlug = button.dataset.matchAnalitikaTeam || "";
         if (!teamSlug || panel.dataset.activeTeam === teamSlug) {
           return;
         }
-        setActive(teamSlug);
+        setMatchAnalitikaActive(panel, teamSlug);
         void loadMatchAnalitika(panel, teamSlug);
       });
     });
 
     if (defaultSlug) {
-      setActive(defaultSlug);
-      void loadMatchAnalitika(panel, defaultSlug);
+      setMatchAnalitikaActive(panel, defaultSlug);
+      void loadMatchAnalitika(panel, defaultSlug, { allowFallback: true });
     }
   });
 }
 
-async function loadMatchAnalitika(panel: HTMLElement, teamSlug: string): Promise<void> {
+function setMatchAnalitikaActive(panel: HTMLElement, teamSlug: string): void {
+  panel.dataset.activeTeam = teamSlug;
+  panel.querySelectorAll<HTMLButtonElement>("[data-match-analitika-team]").forEach((button) => {
+    const isActive = button.dataset.matchAnalitikaTeam === teamSlug;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
+function getAlternateAnalitikaTeam(panel: HTMLElement, teamSlug: string): string | null {
+  const buttons = panel.querySelectorAll<HTMLButtonElement>("[data-match-analitika-team]");
+  for (const button of buttons) {
+    const slug = button.dataset.matchAnalitikaTeam || "";
+    if (slug && slug !== teamSlug) {
+      return slug;
+    }
+  }
+  return null;
+}
+
+async function loadMatchAnalitika(
+  panel: HTMLElement,
+  teamSlug: string,
+  options: { allowFallback?: boolean } = {}
+): Promise<void> {
   const container = panel.querySelector<HTMLElement>("[data-match-analitika-content]");
   if (!container) {
     return;
   }
 
   if (!ANALITIKA_TEAM_SLUGS.has(teamSlug)) {
+    if (options.allowFallback) {
+      const fallbackSlug = getAlternateAnalitikaTeam(panel, teamSlug);
+      if (fallbackSlug) {
+        panel.dataset.loading = "";
+        setMatchAnalitikaActive(panel, fallbackSlug);
+        await loadMatchAnalitika(panel, fallbackSlug);
+        return;
+      }
+    }
     container.innerHTML = "";
     return;
   }
@@ -1793,6 +1817,15 @@ async function loadMatchAnalitika(panel: HTMLElement, teamSlug: string): Promise
   }
 
   if (!items.length) {
+    if (options.allowFallback) {
+      const fallbackSlug = getAlternateAnalitikaTeam(panel, teamSlug);
+      if (fallbackSlug) {
+        panel.dataset.loading = "";
+        setMatchAnalitikaActive(panel, fallbackSlug);
+        await loadMatchAnalitika(panel, fallbackSlug);
+        return;
+      }
+    }
     container.innerHTML = "";
   } else {
     container.innerHTML = renderTeamMatchStatsList(items, teamSlug);
