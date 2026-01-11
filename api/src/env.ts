@@ -1,0 +1,24 @@
+export interface Env {
+  BOT_TOKEN: string;
+  WEBAPP_URL: string;
+  SUPABASE_URL?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  API_FOOTBALL_KEY?: string;
+  API_FOOTBALL_BASE?: string;
+  API_FOOTBALL_LEAGUE_MAP?: string;
+  API_FOOTBALL_DEBUG?: string;
+  API_FOOTBALL_TIMEZONE?: string;
+  ANALITIKA_SEASON?: string;
+  WEATHER_CACHE_TTL_MIN?: string;
+  WEATHER_STALE_TTL_H?: string;
+  WEATHER_RATE_LIMIT_PER_5S?: string;
+  WEATHER_RATE_LIMIT_PER_MIN?: string;
+  WEATHER_RETRY_MAX_ATTEMPTS?: string;
+  WEATHER_RETRY_BASE_DELAY_MS?: string;
+  WEATHER_RETRY_DELAY_CAP_MS?: string;
+  WEATHER_DB_REFRESH_MIN?: string;
+  WEATHER_DB_LOOKAHEAD_H?: string;
+  WEATHER_DB_REFRESH_LIMIT?: string;
+  WEATHERAPI_KEY?: string;
+  WEATHERAPI_BASE?: string;
+}

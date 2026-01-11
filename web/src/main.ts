@@ -1,235 +1,57 @@
 import "./style.css";
 import { ALL_CLUBS, EU_CLUBS, UA_CLUBS, type LeagueId, type MatchLeagueId } from "./data/clubs";
-
-type AuthResponse =
-  | {
-      ok: true;
-      user?: TelegramWebAppUser;
-      admin?: boolean;
-      points_total?: number;
-      rank?: number | null;
-      profile?: ProfileStatsPayload | null;
-      onboarding?: OnboardingInfo | null;
-    }
-  | { ok: false; error: string };
-
-type LeaderboardResponse =
-  | { ok: true; users: LeaderboardUser[] }
-  | { ok: false; error: string };
-
-type MatchesResponse =
-  | { ok: true; matches: Match[] }
-  | { ok: false; error: string };
-
-type PredictionResponse =
-  | { ok: true; prediction: unknown }
-  | { ok: false; error: string };
-
-type PredictionsResponse =
-  | { ok: true; predictions: PredictionView[] }
-  | { ok: false; error: string };
-
-type MatchWeatherResponse =
-  | {
-      ok: true;
-      rain_probability: number | null;
-      weather_condition?: string | null;
-      weather_temp_c?: number | null;
-      weather_timezone?: string | null;
-    }
-  | { ok: false; error: string };
-
-
-type FactionEntry = {
-  key: "classico_choice" | "eu_club_id" | "ua_club_id";
-  value: string;
-  members: number;
-  rank: number | null;
-};
-
-type ProfileStatsPayload = {
-  prediction: {
-    total: number;
-    hits: number;
-    accuracy_pct: number;
-    streak: number;
-    last_results: Array<{ hit: boolean; points: number }>;
-  };
-  factions: FactionEntry[];
-};
-
-type CreateMatchResponse =
-  | { ok: true; match: Match }
-  | { ok: false; error: string };
-
-type ResultResponse =
-  | { ok: true }
-  | { ok: false; error: string };
-
-type AnnouncementResponse =
-  | { ok: true }
-  | { ok: false; error: string };
-
-type AnalitikaItem = {
-  id: number;
-  cache_key: string;
-  team_slug: string;
-  data_type: string;
-  league_id?: string | null;
-  season?: number | null;
-  payload: unknown;
-  fetched_at: string;
-  expires_at?: string | null;
-};
-
-type AnalitikaResponse =
-  | { ok: true; items: AnalitikaItem[] }
-  | { ok: false; error: string };
-
-type AnalitikaRefreshResponse =
-  | { ok: true; updated: number; warnings?: string[]; debug?: AnalitikaDebugInfo }
-  | { ok: false; error: string; detail?: string; debug?: AnalitikaDebugInfo };
-
-type AnalitikaDebugInfo = {
-  league_slug?: string;
-  api_league_id?: number | null;
-  season?: number | null;
-  timezone?: string | null;
-  teams?: Array<{ slug: string; name: string; team_id?: number | null }>;
-  statuses?: {
-    standings?: number;
-    top_scorers?: number;
-    top_assists?: number;
-    head_to_head?: number;
-    team_stats?: Record<string, number>;
-  };
-  counts?: {
-    standings?: number;
-    top_scorers?: number;
-    top_assists?: number;
-    head_to_head?: number;
-    team_stats?: Record<string, number>;
-  };
-  samples?: {
-    standings_teams?: Array<{ id: number | null; name: string }>;
-  };
-};
-
-type TeamMatchStat = {
-  id: string;
-  team_name: string;
-  opponent_name: string;
-  match_date: string;
-  is_home?: boolean | null;
-  team_goals?: number | string | null;
-  opponent_goals?: number | string | null;
-  avg_rating?: number | string | null;
-};
-
-type TeamMatchStatsResponse =
-  | { ok: true; items: TeamMatchStat[] }
-  | { ok: false; error: string };
-
-type OddsRefreshResponse =
-  | { ok: true; debug?: OddsRefreshDebug }
-  | { ok: false; error: string; detail?: string; debug?: OddsRefreshDebug };
-
-type OddsRefreshDebug = {
-  leagueId?: string | null;
-  apiLeagueId?: number | null;
-  kickoffAt?: string | null;
-  season?: number;
-  date?: string;
-  timezone?: string;
-  homeTeamId?: number | null;
-  awayTeamId?: number | null;
-  homeTeamSource?: "search" | "cache" | "none";
-  awayTeamSource?: "search" | "cache" | "none";
-  headtoheadCount?: number;
-  headtoheadStatus?: number;
-  headtoheadSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
-  leagueFixturesCount?: number;
-  leagueFixturesSource?: "date" | "range" | "none" | "headtohead";
-  leagueFixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
-  leagueDateStatus?: number;
-  leagueRangeStatus?: number;
-  fixtureId?: number | null;
-  fallbackReason?: string;
-};
-
-type LeaderboardUser = {
-  id: number;
-  username?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  photo_url?: string | null;
-  nickname?: string | null;
-  avatar_choice?: string | null;
-  points_total?: number | null;
-  updated_at?: string | null;
-};
-
-type Match = {
-  id: number;
-  home_team: string;
-  away_team: string;
-  league_id?: string | null;
-  home_club_id?: string | null;
-  away_club_id?: string | null;
-  kickoff_at: string;
-  status: string;
-  home_score?: number | null;
-  away_score?: number | null;
-  venue_name?: string | null;
-  venue_city?: string | null;
-  venue_lat?: number | null;
-  venue_lon?: number | null;
-  tournament_name?: string | null;
-  tournament_stage?: string | null;
-  rain_probability?: number | null;
-  weather_fetched_at?: string | null;
-  weather_condition?: string | null;
-  weather_temp_c?: number | null;
-  weather_timezone?: string | null;
-  odds_json?: unknown | null;
-  odds_fetched_at?: string | null;
-  has_prediction?: boolean;
-  prediction_closes_at?: string | null;
-};
-
-type PredictionUser = {
-  id: number;
-  username?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  photo_url?: string | null;
-  nickname?: string | null;
-  points_total?: number | null;
-};
-
-type PredictionView = {
-  id: number;
-  user_id: number;
-  home_pred: number;
-  away_pred: number;
-  points: number;
-  user: PredictionUser | null;
-};
-
-type UserStats = {
-  rank: number | null;
-  points: number;
-};
-
-type OnboardingInfo = {
-  classico_choice?: string | null;
-  ua_club_id?: string | null;
-  eu_club_id?: string | null;
-  nickname?: string | null;
-  avatar_choice?: string | null;
-  logo_order?: string[] | null;
-  completed?: boolean;
-};
+import type {
+  AvatarOption,
+  FactionEntry,
+  LogoPosition,
+  Match,
+  OddsRefreshDebug,
+  OddsRefreshResponse,
+  OnboardingInfo,
+  PredictionUser,
+  PredictionView,
+  ProfileStatsPayload,
+  TeamMatchStat,
+  UserStats
+} from "./types";
+import { fetchAuth } from "./api/auth";
+import { fetchAnalitikaTeam as fetchAnalitikaTeamApi } from "./api/analitika";
+import { fetchLeaderboard } from "./api/leaderboard";
+import {
+  fetchMatchWeather,
+  fetchMatches,
+  postMatch,
+  postMatchesAnnouncement,
+  postOddsRefresh,
+  postResult
+} from "./api/matches";
+import { postPrediction, fetchPredictions } from "./api/predictions";
+import { postAvatarChoice, postLogoOrder, postNickname, postOnboarding } from "./api/profile";
+import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
+import {
+  findEuropeanClubLeague,
+  formatClubName,
+  getAvatarLogoPath,
+  getClassicoLogoSlug,
+  getClubLogoPath,
+  getMatchTeamInfo
+} from "./features/clubs";
+import { extractCorrectScoreProbability, formatProbability } from "./features/odds";
+import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
+import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
+import { formatPredictionName, formatTelegramName } from "./formatters/names";
+import {
+  formatRainProbability,
+  formatTemperature,
+  formatTimeInZone,
+  getWeatherIcon,
+  normalizeRainProbability,
+  renderMatchesList,
+  renderTeamLogo
+} from "./screens/matches";
+import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
+import { escapeAttribute, escapeHtml } from "./utils/escape";
+import { toKyivISOString } from "./utils/time";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
@@ -251,29 +73,6 @@ if (shouldShowIntro) {
   app.classList.add("app-enter");
 }
 
-const ANALITIKA_TEAMS = [
-  { slug: "chelsea", label: "Chelsea" },
-  { slug: "manchester-city", label: "Manchester City" }
-];
-
-const ANALITIKA_TYPE_LABELS: Record<string, string> = {
-  team_stats: "Статистика команди (сезон)",
-  standings: "Позиція в таблиці + форма",
-  standings_home_away: "Домашні / виїзні показники",
-  form_trends: "Тренди результатів",
-  top_scorers: "Топ-бомбардири",
-  top_assists: "Топ-асистенти",
-  player_ratings: "Лідери за рейтингом",
-  player_stats: "Статистика гравців",
-  lineups: "Склади та формації",
-  expected_lineups: "Очікувані склади",
-  injuries: "Травми та доступність",
-  head_to_head: "H2H протистояння",
-  referee_cards: "Рефері та картки"
-};
-
-const ANALITIKA_TYPE_ORDER = Object.keys(ANALITIKA_TYPE_LABELS);
-
 let apiBase = "";
 const STARTING_POINTS = 100;
 let leaderboardLoaded = false;
@@ -288,7 +87,6 @@ let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
-const ANALITIKA_TEAM_SLUGS = new Set(ANALITIKA_TEAMS.map((team) => team.slug));
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
 const analitikaTeamInFlight = new Map<string, Promise<TeamMatchStat[] | null>>();
 const predictionsLoaded = new Set<number>();
@@ -300,7 +98,6 @@ const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
-type LogoPosition = typeof LOGO_POSITIONS[number];
 const LOGO_POSITION_LABELS: Record<LogoPosition, string> = {
   center: "1",
   left: "2",
@@ -331,43 +128,6 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "dfb-pokal", label: "Кубок Німеччини" },
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
-
-function isAllLeagueId(value: MatchLeagueId): value is AllLeagueId {
-  return (
-    value === "ukrainian-premier-league" ||
-    value === "english-premier-league" ||
-    value === "la-liga" ||
-    value === "serie-a" ||
-    value === "bundesliga" ||
-    value === "ligue-1"
-  );
-}
-
-function resolveLogoLeagueId(leagueId: MatchLeagueId | null): AllLeagueId | null {
-  if (!leagueId) {
-    return null;
-  }
-  if (isAllLeagueId(leagueId)) {
-    return leagueId;
-  }
-  switch (leagueId) {
-    case "fa-cup":
-      return "english-premier-league";
-    case "copa-del-rey":
-      return "la-liga";
-    case "coppa-italia":
-      return "serie-a";
-    case "dfb-pokal":
-      return "bundesliga";
-    case "coupe-de-france":
-      return "ligue-1";
-    case "uefa-champions-league":
-    case "uefa-europa-league":
-    case "uefa-europa-conference-league":
-      return null;
-  }
-  return null;
-}
 
 const NOTICE_RULES = [
   "Вгаданий результат +1 бал",
@@ -482,13 +242,7 @@ async function bootstrap(data: string): Promise<void> {
   apiBase = import.meta.env.VITE_API_BASE || "";
 
   try {
-    const response = await fetch(`${apiBase}/api/auth`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: data })
-    });
-
-    const payload = (await response.json()) as AuthResponse;
+    const { response, data: payload } = await fetchAuth(apiBase, data);
     if (!response.ok || !payload.ok) {
       renderMessage("Auth failed", "Please reopen the WebApp.");
       return;
@@ -830,20 +584,15 @@ async function submitOnboarding(
       avatar_choice: avatarChoice,
       completed: true
     });
-    const response = await fetch(`${apiBase}/api/onboarding`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        classico_choice: state.classicoChoice,
-        ua_club_id: state.uaClubId,
-        eu_club_id: state.euClubId,
-        nickname,
-        avatar_choice: avatarChoice,
-        logo_order: logoOrder
-      })
+    const { response, data } = await postOnboarding(apiBase, {
+      initData,
+      classico_choice: state.classicoChoice,
+      ua_club_id: state.uaClubId,
+      eu_club_id: state.euClubId,
+      nickname,
+      avatar_choice: avatarChoice,
+      logo_order: logoOrder
     });
-    const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося зберегти налаштування.";
@@ -894,15 +643,10 @@ async function submitAvatarChoice(choice: string): Promise<void> {
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/avatar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        avatar_choice: choice
-      })
+    const { response, data } = await postAvatarChoice(apiBase, {
+      initData,
+      avatar_choice: choice
     });
-    const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося зберегти аватар.";
@@ -959,82 +703,6 @@ function renderClubChoice(options: {
       <img class="logo-img" src="${safeLogo}" alt="${safeName}" />
     </button>
   `;
-}
-
-function getClubLogoPath(leagueId: string, clubId: string): string {
-  return `/logos/football-logos/${leagueId}/${clubId}.png`;
-}
-
-type AvatarOption = {
-  choice: string;
-  name: string;
-  logo: string;
-};
-
-function getClassicoLogoSlug(choice: "real_madrid" | "barcelona" | null): string | null {
-  if (choice === "real_madrid") {
-    return "real-madrid";
-  }
-  if (choice === "barcelona") {
-    return "barcelona";
-  }
-  return null;
-}
-
-function getAvatarLogoPath(choice: string | null | undefined): string | null {
-  if (!choice) {
-    return null;
-  }
-  const match = /^([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(choice.trim());
-  if (!match) {
-    return null;
-  }
-  return getClubLogoPath(match[1], match[2]);
-}
-
-function findEuropeanClubLeague(clubId: string): LeagueId | null {
-  const entries = Object.entries(EU_CLUBS) as Array<[LeagueId, string[]]>;
-  for (const [leagueId, clubs] of entries) {
-    if (clubs.includes(clubId)) {
-      return leagueId;
-    }
-  }
-  return null;
-}
-
-function findClubLeague(clubId: string): AllLeagueId | null {
-  const entries = Object.entries(ALL_CLUBS) as Array<[AllLeagueId, string[]]>;
-  for (const [leagueId, clubs] of entries) {
-    if (clubs.includes(clubId)) {
-      return leagueId;
-    }
-  }
-  return null;
-}
-
-function getMatchTeamInfo(match: Match): {
-  homeName: string;
-  awayName: string;
-  homeLogo: string | null;
-  awayLogo: string | null;
-} {
-  const homeClubId = match.home_club_id ?? null;
-  const awayClubId = match.away_club_id ?? null;
-  const matchLeagueId = (match.league_id as MatchLeagueId | null) ?? null;
-  const resolvedLeague =
-    resolveLogoLeagueId(matchLeagueId) ||
-    (homeClubId ? findClubLeague(homeClubId) : null) ||
-    (awayClubId ? findClubLeague(awayClubId) : null);
-
-  const homeName = homeClubId ? formatClubName(homeClubId) : match.home_team;
-  const awayName = awayClubId ? formatClubName(awayClubId) : match.away_team;
-
-  const homeLogo =
-    homeClubId && resolvedLeague ? getClubLogoPath(resolvedLeague, homeClubId) : null;
-  const awayLogo =
-    awayClubId && resolvedLeague ? getClubLogoPath(resolvedLeague, awayClubId) : null;
-
-  return { homeName, awayName, homeLogo, awayLogo };
 }
 
 function buildAvatarOptions(onboarding: OnboardingInfo | null): AvatarOption[] {
@@ -1117,36 +785,6 @@ function renderAvatarContent(
     return `<img class="avatar" src="${escapeAttribute(user.photo_url)}" alt="Avatar" />`;
   }
   return `<div class="avatar placeholder"></div>`;
-}
-
-const CLUB_NAME_OVERRIDES: Record<string, string> = {
-  "as-monaco": "AS Monaco",
-  "as-saint-etienne": "AS Saint-Etienne",
-  "fc-heidenheim": "FC Heidenheim",
-  "le-havre-ac": "Le Havre AC",
-  "mainz-05": "Mainz 05",
-  "paris-saint-germain": "Paris Saint-Germain",
-  "rc-lens": "RC Lens",
-  "rc-strasbourg-alsace": "RC Strasbourg Alsace",
-  "rb-leipzig": "RB Leipzig",
-  "st-pauli": "St. Pauli",
-  "vfb-stuttgart": "VfB Stuttgart",
-  "vfl-bochum": "VfL Bochum",
-  "lnz-cherkasy": "LNZ Cherkasy",
-  "west-ham": "West Ham",
-  "nottingham-forest": "Nottingham Forest"
-};
-
-function formatClubName(slug: string): string {
-  const override = CLUB_NAME_OVERRIDES[slug];
-  if (override) {
-    return override;
-  }
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
@@ -1821,15 +1459,10 @@ async function submitLogoOrder(
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/logo-order`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        logo_order: logoOrder
-      })
+    const { response, data } = await postLogoOrder(apiBase, {
+      initData,
+      logo_order: logoOrder
     });
-    const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
       if (statusEl) {
         statusEl.textContent = "Не вдалося зберегти порядок.";
@@ -1868,15 +1501,10 @@ async function submitNickname(
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/nickname`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        nickname
-      })
+    const { response, data } = await postNickname(apiBase, {
+      initData,
+      nickname
     });
-    const data = (await response.json()) as { ok: boolean; error?: string };
     if (!response.ok || !data.ok) {
       if (statusEl) {
         statusEl.textContent = "Не вдалося зберегти нікнейм.";
@@ -1932,14 +1560,7 @@ async function loadMatches(date: string): Promise<void> {
   container.innerHTML = `<p class="muted">Завантаження...</p>`;
 
   try {
-    const response = await fetch(`${apiBase}/api/matches?date=${encodeURIComponent(date)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Telegram-InitData": initData
-      }
-    });
-    const data = (await response.json()) as MatchesResponse;
+    const { response, data } = await fetchMatches(apiBase, initData, date);
     if (!response.ok || !data.ok) {
       container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
       return;
@@ -1989,14 +1610,7 @@ async function loadMatchWeather(matches: Match[]): Promise<void> {
       return;
     }
     try {
-      const response = await fetch(`${apiBase}/api/matches/weather?match_id=${match.id}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Telegram-InitData": initData
-        }
-      });
-      const data = (await response.json()) as MatchWeatherResponse;
+      const { response, data } = await fetchMatchWeather(apiBase, initData, match.id);
       if (!response.ok || !data.ok) {
         updateMatchWeather(match.id, null, null, null, null);
         return;
@@ -2113,14 +1727,7 @@ async function fetchAnalitikaTeam(teamSlug: string): Promise<TeamMatchStat[] | n
   }
   const promise = (async () => {
     try {
-      const response = await fetch(`${apiBase}/api/analitika?team=${encodeURIComponent(teamSlug)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Telegram-InitData": initData
-        }
-      });
-      const data = (await response.json()) as TeamMatchStatsResponse;
+      const { response, data } = await fetchAnalitikaTeamApi(apiBase, initData, teamSlug);
       if (!response.ok || !data.ok) {
         return null;
       }
@@ -2197,49 +1804,6 @@ function updateMatchWeather(
   }
 }
 
-function normalizeRainProbability(value: number | null): number | null {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return null;
-  }
-  return Math.min(100, Math.max(0, Math.round(value)));
-}
-
-function formatRainProbability(value: number | null): string {
-  if (value === null) {
-    return "—";
-  }
-  return `${value}%`;
-}
-
-function formatTemperature(value: number | null): string {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "—°C";
-  }
-  return `${Math.round(value)}°C`;
-}
-
-function formatTimeInZone(value: string, timeZone: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-function getWeatherIcon(condition: string | null): string {
-  if (condition === "thunderstorm") {
-    return "⛈️";
-  }
-  if (condition === "snow") {
-    return "🌨️";
-  }
-  return "🌧️";
-}
-
 async function submitMatch(form: HTMLFormElement): Promise<void> {
   if (!apiBase) {
     return;
@@ -2276,20 +1840,15 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/matches`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        home_team: home,
-        away_team: away,
-        league_id: leagueId,
-        home_club_id: homeClubId,
-        away_club_id: awayClubId,
-        kickoff_at: kickoff
-      })
+    const { response, data } = await postMatch(apiBase, {
+      initData,
+      home_team: home,
+      away_team: away,
+      league_id: leagueId,
+      home_club_id: homeClubId,
+      away_club_id: awayClubId,
+      kickoff_at: kickoff
     });
-    const data = (await response.json()) as CreateMatchResponse;
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося створити матч.";
@@ -2333,17 +1892,12 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/matches/result`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        match_id: matchId,
-        home_score: homeScore,
-        away_score: awayScore
-      })
+    const { response, data } = await postResult(apiBase, {
+      initData,
+      match_id: matchId,
+      home_score: homeScore,
+      away_score: awayScore
     });
-    const data = (await response.json()) as ResultResponse;
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося зберегти результат.";
@@ -2385,16 +1939,11 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/matches/odds`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        match_id: matchId,
-        debug: true
-      })
+    const { response, data } = await postOddsRefresh(apiBase, {
+      initData,
+      match_id: matchId,
+      debug: true
     });
-    const data = (await response.json().catch(() => null)) as OddsRefreshResponse | null;
     if (!response.ok || !data || !data.ok) {
       if (status) {
         status.textContent = formatOddsRefreshError(data);
@@ -2554,12 +2103,7 @@ async function publishMatchesAnnouncement(): Promise<void> {
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/matches/announcement`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData })
-    });
-    const data = (await response.json()) as AnnouncementResponse;
+    const { response, data } = await postMatchesAnnouncement(apiBase, initData);
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося надіслати повідомлення.";
@@ -2803,17 +2347,12 @@ async function submitPrediction(form: HTMLFormElement): Promise<void> {
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/predictions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        initData,
-        match_id: matchId,
-        home_pred: home,
-        away_pred: away
-      })
+    const { response, data } = await postPrediction(apiBase, {
+      initData,
+      match_id: matchId,
+      home_pred: home,
+      away_pred: away
     });
-    const data = (await response.json()) as PredictionResponse;
     if (!response.ok || !data.ok) {
       if (data.error === "already_predicted") {
         form.classList.add("is-hidden");
@@ -2870,14 +2409,7 @@ async function togglePredictions(
   container.classList.add("is-open");
 
   try {
-    const response = await fetch(`${apiBase}/api/predictions?match_id=${matchId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Telegram-InitData": initData
-      }
-    });
-    const data = (await response.json()) as PredictionsResponse;
+    const { response, data } = await fetchPredictions(apiBase, initData, matchId);
     if (!response.ok || !data.ok) {
       container.innerHTML = `<p class="muted small">Не вдалося завантажити прогнози.</p>`;
       return;
@@ -3040,303 +2572,6 @@ function getPredictionError(error: string | undefined): string {
   }
 }
 
-function renderTeamLogo(name: string, logo: string | null): string {
-  const alt = escapeAttribute(name);
-  return logo
-    ? `<img class="match-logo" src="${escapeAttribute(logo)}" alt="${alt}" />`
-    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${alt}"></div>`;
-}
-
-function renderMatchOdds(match: Match, homeName: string, awayName: string): string {
-  const probabilities = extractOddsProbabilities(match.odds_json, homeName, awayName);
-  if (!probabilities) {
-    return "";
-  }
-  const hasCompetition = Boolean(match.tournament_name || match.tournament_stage);
-  const competitionClass = hasCompetition ? " has-competition" : "";
-  return `
-    <div class="match-odds-values${competitionClass}" data-match-odds data-match-id="${match.id}">
-      <span class="match-odds-value" data-odds-choice="home">
-        <span class="match-odds-key">1</span>
-        <span class="match-odds-num">${formatProbability(probabilities.home)}</span>
-      </span>
-      <span class="match-odds-value" data-odds-choice="draw">
-        <span class="match-odds-key">X</span>
-        <span class="match-odds-num">${formatProbability(probabilities.draw)}</span>
-      </span>
-      <span class="match-odds-value" data-odds-choice="away">
-        <span class="match-odds-key">2</span>
-        <span class="match-odds-num">${formatProbability(probabilities.away)}</span>
-      </span>
-    </div>
-  `;
-}
-
-function extractOddsProbabilities(
-  oddsJson: unknown,
-  homeName: string,
-  awayName: string
-): { home: number; draw: number; away: number } | null {
-  if (!Array.isArray(oddsJson) || !oddsJson.length) {
-    return null;
-  }
-  const homeNormalized = normalizeOddsLabel(homeName);
-  const awayNormalized = normalizeOddsLabel(awayName);
-
-  for (const entry of oddsJson) {
-    const bookmakers = (entry as { bookmakers?: unknown }).bookmakers;
-    if (!Array.isArray(bookmakers)) {
-      continue;
-    }
-    for (const bookmaker of bookmakers) {
-      const bets = (bookmaker as { bets?: unknown }).bets;
-      if (!Array.isArray(bets) || !bets.length) {
-        continue;
-      }
-      const preferred = bets.filter((bet) => isMatchWinnerBet(bet as { id?: number; name?: string }));
-      const candidates = preferred.length ? preferred : bets;
-      for (const bet of candidates) {
-        const values = (bet as { values?: unknown }).values;
-        if (!Array.isArray(values)) {
-          continue;
-        }
-        const odds = resolveThreeWayOdds(values, homeNormalized, awayNormalized);
-        if (odds) {
-          const probabilities = toProbability(odds.home, odds.draw, odds.away);
-          if (probabilities) {
-            return probabilities;
-          }
-        }
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractCorrectScoreProbability(
-  oddsJson: unknown,
-  homeScore: number,
-  awayScore: number
-): number | null {
-  const odd = extractCorrectScoreOdd(oddsJson, homeScore, awayScore);
-  if (!odd) {
-    return null;
-  }
-  return (1 / odd) * 100;
-}
-
-function extractCorrectScoreOdd(oddsJson: unknown, homeScore: number, awayScore: number): number | null {
-  if (!Array.isArray(oddsJson) || !oddsJson.length) {
-    return null;
-  }
-
-  for (const entry of oddsJson) {
-    const bookmakers = (entry as { bookmakers?: unknown }).bookmakers;
-    if (!Array.isArray(bookmakers)) {
-      continue;
-    }
-    for (const bookmaker of bookmakers) {
-      const bets = (bookmaker as { bets?: unknown }).bets;
-      if (!Array.isArray(bets) || !bets.length) {
-        continue;
-      }
-      for (const bet of bets) {
-        if (!isCorrectScoreBet(bet as { id?: number; name?: string })) {
-          continue;
-        }
-        const values = (bet as { values?: unknown }).values;
-        if (!Array.isArray(values)) {
-          continue;
-        }
-        for (const value of values) {
-          const labelRaw = typeof value.value === "string" ? value.value.trim() : "";
-          if (!labelRaw) {
-            continue;
-          }
-          const score = parseScoreLabel(labelRaw);
-          if (!score) {
-            continue;
-          }
-          if (score.home === homeScore && score.away === awayScore) {
-            const oddValue = parseOddNumber(value.odd);
-            if (oddValue) {
-              return oddValue;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return null;
-}
-
-function isCorrectScoreBet(bet: { id?: number; name?: string }): boolean {
-  const name = bet.name?.toLowerCase() ?? "";
-  return name.includes("correct score") || name.includes("exact score");
-}
-
-function parseScoreLabel(value: string): { home: number; away: number } | null {
-  const match = /(\d+)\s*[:\-]\s*(\d+)/.exec(value);
-  if (!match) {
-    return null;
-  }
-  const home = Number.parseInt(match[1], 10);
-  const away = Number.parseInt(match[2], 10);
-  if (!Number.isFinite(home) || !Number.isFinite(away)) {
-    return null;
-  }
-  return { home, away };
-}
-
-function resolveThreeWayOdds(
-  values: Array<{ value?: string; odd?: string | number }>,
-  homeNormalized: string,
-  awayNormalized: string
-): { home: number; draw: number; away: number } | null {
-  let home: number | null = null;
-  let draw: number | null = null;
-  let away: number | null = null;
-
-  for (const entry of values) {
-    const labelRaw = typeof entry.value === "string" ? entry.value.trim() : "";
-    if (!labelRaw) {
-      continue;
-    }
-    const labelLower = labelRaw.toLowerCase();
-    const labelNormalized = normalizeOddsLabel(labelRaw);
-    const oddValue = parseOddNumber(entry.odd);
-    if (!oddValue) {
-      continue;
-    }
-
-    if (labelLower === "home" || labelLower === "1") {
-      home = oddValue;
-      continue;
-    }
-    if (labelLower === "draw" || labelLower === "x") {
-      draw = oddValue;
-      continue;
-    }
-    if (labelLower === "away" || labelLower === "2") {
-      away = oddValue;
-      continue;
-    }
-
-    if (labelNormalized && isOddsLabelMatch(labelNormalized, homeNormalized)) {
-      home = oddValue;
-      continue;
-    }
-    if (labelNormalized && isOddsLabelMatch(labelNormalized, awayNormalized)) {
-      away = oddValue;
-      continue;
-    }
-  }
-
-  if (!home || !draw || !away) {
-    return null;
-  }
-
-  return { home, draw, away };
-}
-
-function isOddsLabelMatch(left: string, right: string): boolean {
-  if (!left || !right) {
-    return false;
-  }
-  return left === right || left.includes(right) || right.includes(left);
-}
-
-function isMatchWinnerBet(bet: { id?: number; name?: string }): boolean {
-  if (bet.id === 1) {
-    return true;
-  }
-  const name = bet.name?.toLowerCase() ?? "";
-  return name.includes("match winner") || name.includes("match result") || name.includes("fulltime result");
-}
-
-function normalizeOddsLabel(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\p{L}\p{N}]+/gu, "");
-}
-
-function parseOddNumber(value: unknown): number | null {
-  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function toProbability(homeOdd: number, drawOdd: number, awayOdd: number): { home: number; draw: number; away: number } | null {
-  const homeInv = 1 / homeOdd;
-  const drawInv = 1 / drawOdd;
-  const awayInv = 1 / awayOdd;
-  const total = homeInv + drawInv + awayInv;
-  if (!Number.isFinite(total) || total <= 0) {
-    return null;
-  }
-  return {
-    home: (homeInv / total) * 100,
-    draw: (drawInv / total) * 100,
-    away: (awayInv / total) * 100
-  };
-}
-
-function formatProbability(value: number): string {
-  return `${Math.round(value)}%`;
-}
-
-function formatTournamentStage(stage: string): string {
-  const trimmed = stage.trim();
-  if (!trimmed) {
-    return "";
-  }
-  const lower = trimmed.toLowerCase();
-  if (lower.includes("quarter-final")) {
-    return "ЧВЕРТЬФІНАЛ";
-  }
-  if (lower.includes("semi-final")) {
-    return "ПІВФІНАЛ";
-  }
-  if (lower.includes("final")) {
-    return "ФІНАЛ";
-  }
-  if (lower.includes("1/8")) {
-    return "1/8 ФІНАЛУ";
-  }
-  if (lower.includes("1/4")) {
-    return "1/4 ФІНАЛУ";
-  }
-  if (lower.includes("1/2")) {
-    return "1/2 ФІНАЛУ";
-  }
-  const roundOfMatch = lower.match(/round\s+of\s+(\d+)/);
-  if (roundOfMatch) {
-    const roundNumber = Number.parseInt(roundOfMatch[1], 10);
-    if (roundNumber === 16) {
-      return "1/8 ФІНАЛУ";
-    }
-    if (roundNumber === 8) {
-      return "1/4 ФІНАЛУ";
-    }
-    if (roundNumber === 4) {
-      return "ПІВФІНАЛ";
-    }
-    if (roundNumber === 2) {
-      return "ФІНАЛ";
-    }
-    if (roundNumber === 32) {
-      return "1/16 ФІНАЛУ";
-    }
-  }
-  const regularMatch = lower.match(/regular\s+season\s*-\s*(\d+)/);
-  if (regularMatch) {
-    return `${regularMatch[1]} РАУНД`;
-  }
-  return trimmed;
-}
-
 function updateScoreOddsIndicator(form: HTMLFormElement): void {
   const label = form.querySelector<HTMLElement>("[data-match-odds-score]");
   if (!label) {
@@ -3388,232 +2623,6 @@ function updateOddsHighlight(matchId: number, homeScore: number, awayScore: numb
   odds.querySelectorAll<HTMLElement>("[data-odds-choice]").forEach((el) => {
     el.classList.toggle("is-highlighted", el.dataset.oddsChoice === choice);
   });
-}
-
-function renderMatchesList(matches: Match[]): string {
-  if (!matches.length) {
-    return `
-      <article class="match match-empty">
-        <p class="muted">Немає матчів на цю дату.</p>
-      </article>
-    `;
-  }
-
-  return matches
-    .map((match) => {
-      const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
-      const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
-      const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
-      const city = match.venue_city ?? match.venue_name ?? "";
-      const cityLabel = city ? city.toUpperCase() : "";
-      const kyivTime = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
-      const localTime = formatTimeInZone(match.kickoff_at, match.weather_timezone ?? "Europe/Kyiv");
-      const tempValue = formatTemperature(match.weather_temp_c ?? null);
-      const cityMarkup = city
-        ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(cityLabel)}</span>`
-        : "";
-      const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
-      const rainValue = formatRainProbability(rainPercent);
-      const rainIcon = getWeatherIcon(match.weather_condition ?? null);
-      const rainBarWidth = rainPercent ?? 0;
-      const rainMarkup = `
-        <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
-          <span class="match-weather-icon" data-match-rain-icon aria-hidden="true">${rainIcon}</span>
-          <span class="match-weather-bar" aria-hidden="true">
-            <span class="match-weather-bar-fill" data-match-rain-fill style="width: ${rainBarWidth}%"></span>
-          </span>
-          <span class="match-weather-value" data-match-rain-value>${rainValue}</span>
-        </div>
-      `;
-      const tournamentName = match.tournament_name?.trim() ?? "";
-      const tournamentStage = match.tournament_stage ? formatTournamentStage(match.tournament_stage) : "";
-      const oddsMarkup = renderMatchOdds(match, homeName, awayName);
-      const hasCompetition = Boolean(tournamentName || tournamentStage);
-      const hasOdds = Boolean(oddsMarkup.trim());
-      const competitionClass = hasOdds ? "" : " is-solo";
-      const competitionMarkup = hasCompetition
-        ? `
-          <div class="match-competition${competitionClass}">
-            ${tournamentName ? `<span class="match-competition-name">${escapeHtml(tournamentName)}</span>` : ""}
-            ${tournamentStage ? `<span class="match-competition-stage">${escapeHtml(tournamentStage)}</span>` : ""}
-          </div>
-        `
-        : "";
-      const oddsBlock = hasCompetition || hasOdds
-        ? `
-          <div class="match-odds${hasCompetition ? " has-competition" : ""}">
-            ${competitionMarkup}
-            ${oddsMarkup}
-          </div>
-        `
-        : "";
-      const matchAnalitika = renderMatchAnalitika(match.id, homeName, awayName);
-      const finished = match.status === "finished";
-      const closeAtMs = getMatchPredictionCloseAtMs(match);
-      const closed = finished || (closeAtMs !== null && Date.now() > closeAtMs);
-      const predicted = Boolean(match.has_prediction);
-      const result =
-        finished && match.home_score !== null && match.away_score !== null
-          ? `
-            <div class="match-scoreline">
-              ${homeLogoMarkup}
-              <div class="match-result">${match.home_score}:${match.away_score}</div>
-              ${awayLogoMarkup}
-            </div>
-          `
-          : "";
-      const statusLine = finished
-        ? `<p class="muted small">Матч завершено.</p>`
-        : closed
-          ? `<p class="muted small status-closed">Прогнози закрито.</p>`
-          : "";
-      const form = closed || predicted
-        ? ""
-        : `
-          <form class="prediction-form" data-prediction-form data-match-id="${match.id}">
-            <div class="score-row">
-              ${homeLogoMarkup}
-              <div class="score-controls">
-                <div class="score-control" data-score-control>
-                  <button class="score-btn" type="button" data-score-inc>+</button>
-                  <div class="score-value" data-score-value>0</div>
-                  <button class="score-btn" type="button" data-score-dec>-</button>
-                  <input type="hidden" name="home_pred" value="0" />
-                </div>
-                <span class="score-separator">:</span>
-                <div class="score-control" data-score-control>
-                  <button class="score-btn" type="button" data-score-inc>+</button>
-                  <div class="score-value" data-score-value>0</div>
-                  <button class="score-btn" type="button" data-score-dec>-</button>
-                  <input type="hidden" name="away_pred" value="0" />
-                </div>
-              </div>
-              ${awayLogoMarkup}
-            </div>
-            <p class="match-odds-score muted small is-hidden" data-match-odds-score></p>
-            <p class="muted small" data-prediction-status></p>
-            <button class="button small-button prediction-submit" type="submit">ПРОГОЛОСУВАТИ</button>
-          </form>
-        `;
-      const countdown = closed || predicted
-        ? ""
-        : `<p class="prediction-countdown muted small" data-prediction-countdown data-match-id="${match.id}"></p>`;
-
-      return `
-        <div class="match-item ${predicted ? "has-prediction" : ""}">
-          <div class="match-time">
-            <div class="match-time-row">
-              <span class="match-time-value" data-match-kyiv-time data-match-id="${match.id}">${escapeHtml(
-                kyivTime
-              )}</span>
-              ${cityMarkup}
-              <span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(
-                localTime
-              )})</span>
-              <span class="match-meta-sep">·</span>
-              <span class="match-temp" data-match-temp data-match-id="${match.id}">${escapeHtml(tempValue)}</span>
-            </div>
-            ${rainMarkup}
-          </div>
-          <article class="match">
-            ${oddsBlock}
-            <div class="match-header">
-              ${result}
-            </div>
-            <div class="match-average" data-match-average data-match-id="${match.id}"></div>
-            ${closed ? "" : statusLine}
-            ${form}
-            <div class="predictions" data-predictions data-match-id="${match.id}" ${
-              predicted ? "data-auto-open='true'" : ""
-            }></div>
-            ${closed ? statusLine : ""}
-          </article>
-          ${matchAnalitika}
-          ${countdown}
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function renderMatchAnalitika(matchId: number, homeName: string, awayName: string): string {
-  const homeSlug = normalizeTeamSlugValue(homeName);
-  const awaySlug = normalizeTeamSlugValue(awayName);
-  const defaultSlug = resolveDefaultAnalitikaTeam(homeSlug, awaySlug);
-  const buttons = [
-    { slug: homeSlug, label: homeName },
-    { slug: awaySlug, label: awayName }
-  ]
-    .map((team, index) => {
-      const isActive = team.slug === defaultSlug || (!defaultSlug && index === 0);
-      return `
-        <button
-          class="chip${isActive ? " is-active" : ""}"
-          type="button"
-          data-match-analitika-team="${escapeAttribute(team.slug)}"
-          aria-pressed="${isActive ? "true" : "false"}"
-        >
-          ${escapeHtml(team.label)}
-        </button>
-      `;
-    })
-    .join("");
-
-  return `
-    <div class="match-analitika" data-match-analitika data-match-id="${matchId}" data-default-team="${escapeAttribute(
-      defaultSlug
-    )}">
-      <p class="match-analitika-title">ОСТАННІ 5 МАТЧІВ</p>
-      <div class="analitika-filter match-analitika-filter">
-        ${buttons}
-      </div>
-      <div class="analitika-grid" data-match-analitika-content></div>
-    </div>
-  `;
-}
-
-function resolveDefaultAnalitikaTeam(homeSlug: string, awaySlug: string): string {
-  if (homeSlug === "chelsea" || awaySlug === "chelsea") {
-    return "chelsea";
-  }
-  return homeSlug || awaySlug;
-}
-
-function normalizeTeamSlugValue(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function getPredictionCloseAtMs(kickoffAt: string): number | null {
-  const kickoff = new Date(kickoffAt);
-  if (Number.isNaN(kickoff.getTime())) {
-    return null;
-  }
-  return kickoff.getTime();
-}
-
-function getMatchPredictionCloseAtMs(match: Match): number | null {
-  if (match.prediction_closes_at) {
-    const parsed = new Date(match.prediction_closes_at).getTime();
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-  return getPredictionCloseAtMs(match.kickoff_at);
-}
-
-function formatCountdown(msRemaining: number): string {
-  const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const hh = String(hours).padStart(2, "0");
-  const mm = String(minutes).padStart(2, "0");
-  const ss = String(seconds).padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
 }
 
 function updatePredictionCountdowns(): void {
@@ -3682,780 +2691,6 @@ function parseScore(value?: string): number | null {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function buildTeamMatchStatsStatus(items: TeamMatchStat[]): string {
-  if (!items.length) {
-    return "Немає даних.";
-  }
-  const latest = items[0];
-  const latestDate = latest.match_date ? formatKyivDateTime(latest.match_date) : "—";
-  return `Останній матч: ${latestDate} · Всього: ${items.length}`;
-}
-
-function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): string {
-  const teamLabel = resolveTeamLabel(teamSlug);
-  if (!items.length) {
-    return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
-  }
-  const orderedItems = items.slice().reverse();
-  const ratingValues = orderedItems
-    .map((item) => parseTeamMatchRating(item.avg_rating))
-    .filter((value): value is number => value !== null);
-  const minRating = ratingValues.length ? Math.min(...ratingValues) : 6.0;
-  const maxRating = ratingValues.length ? Math.max(...ratingValues) : 7.5;
-  const hasSpan = maxRating > minRating;
-  const ratingSpan = hasSpan ? maxRating - minRating : 1;
-  const pointsCount = orderedItems.length;
-  const edgePad = pointsCount > 1 ? 8 : 0;
-  const xSpan = 100 - edgePad * 2;
-  const points = orderedItems.map((item, index) => {
-    const ratingValue = parseTeamMatchRating(item.avg_rating);
-    const clamped = ratingValue === null ? null : Math.min(maxRating, Math.max(minRating, ratingValue));
-    const y = clamped === null ? 100 : hasSpan ? ((maxRating - clamped) / ratingSpan) * 100 : 50;
-    const x = pointsCount > 1 ? edgePad + (index / (pointsCount - 1)) * xSpan : 50;
-    const opponent = item.opponent_name || "—";
-    const opponentLogo = resolveClubLogoByName(opponent);
-    const scoreLabel = formatTeamMatchScoreLabel(item);
-    const dateLabel = item.match_date ? formatKyivDateShort(item.match_date) : "";
-    const homeAway = getHomeAwayLabel(item) ?? "";
-    const outcomeClass = getTeamMatchOutcomeClass(item);
-
-    return {
-      x,
-      y,
-      opponent,
-      opponentLogo,
-      scoreLabel,
-      dateLabel,
-      homeAway,
-      outcomeClass
-    };
-  });
-  const polyline = points
-    .map((point) => `${point.x},${point.y}`)
-    .join(" ");
-  const gridLines = points
-    .map((point) => {
-      const dateMeta = `
-        <span class="analitika-line-date">
-          ${point.dateLabel ? `<span>${escapeHtml(point.dateLabel)}</span>` : ""}
-          ${point.homeAway ? `<span class="analitika-line-homeaway">${escapeHtml(point.homeAway)}</span>` : ""}
-        </span>
-      `;
-      return `
-        <span class="analitika-line-gridline" style="--x:${point.x}%">
-          ${point.dateLabel || point.homeAway ? dateMeta : ""}
-        </span>
-      `;
-    })
-    .join("");
-  const pointMarkup = points
-    .map((point) => {
-      const score = `<span class="analitika-line-score ${escapeAttribute(point.outcomeClass)}">${escapeHtml(
-        point.scoreLabel
-      )}</span>`;
-      return `
-        <div class="analitika-line-point" style="--x:${point.x}%; --y:${point.y}%;">
-          <div class="analitika-line-logo">
-            ${renderTeamLogo(point.opponent, point.opponentLogo)}
-          </div>
-          ${score}
-        </div>
-      `;
-    })
-    .join("");
-  const midRating = (maxRating + minRating) / 2;
-  const axisLabels = [maxRating, midRating, minRating]
-    .map((value) => `<span>${value.toFixed(1)}</span>`)
-    .join("");
-
-  return `
-    <section class="analitika-card is-graph" aria-label="${escapeAttribute(`${teamLabel} — останні матчі`)}">
-      <div class="analitika-card-body">
-        <div class="analitika-line">
-          <div class="analitika-line-axis">
-            ${axisLabels}
-          </div>
-          <div class="analitika-line-canvas">
-            <div class="analitika-line-plot">
-              <div class="analitika-line-grid">${gridLines}</div>
-              <svg class="analitika-line-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <polyline points="${polyline}"></polyline>
-              </svg>
-              ${pointMarkup}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  `;
-}
-
-function resolveTeamLabel(teamSlug: string): string {
-  return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug)?.label ?? teamSlug;
-}
-
-const CLUB_NAME_ALIASES: Record<string, string> = {
-  "newcastle united": "newcastle",
-  "ipswich town": "ipswich",
-  "wolverhampton wanderers": "wolves",
-  "west ham united": "west-ham",
-  "tottenham hotspur": "tottenham",
-  "man city": "manchester-city",
-  "man utd": "manchester-united",
-  "brighton and hove albion": "brighton",
-  "nottingham forest": "nottingham-forest"
-};
-
-let clubNameLookup: Map<string, { leagueId: LeagueId; slug: string }> | null = null;
-
-function resolveClubLogoByName(name: string): string | null {
-  const normalized = normalizeClubName(name);
-  if (!normalized) {
-    return null;
-  }
-  const aliasSlug = CLUB_NAME_ALIASES[normalized];
-  if (aliasSlug) {
-    const league = findClubLeague(aliasSlug);
-    return league ? getClubLogoPath(league, aliasSlug) : null;
-  }
-  const lookup = getClubNameLookup();
-  const entry = lookup.get(normalized);
-  return entry ? getClubLogoPath(entry.leagueId, entry.slug) : null;
-}
-
-function getClubNameLookup(): Map<string, { leagueId: LeagueId; slug: string }> {
-  if (clubNameLookup) {
-    return clubNameLookup;
-  }
-  const map = new Map<string, { leagueId: LeagueId; slug: string }>();
-  const leaguePriority: LeagueId[] = [
-    "english-premier-league",
-    "la-liga",
-    "serie-a",
-    "bundesliga",
-    "ligue-1"
-  ];
-  leaguePriority.forEach((leagueId) => {
-    (EU_CLUBS[leagueId] ?? []).forEach((slug) => {
-      const normalized = normalizeClubName(formatClubName(slug));
-      if (!normalized || map.has(normalized)) {
-        return;
-      }
-      map.set(normalized, { leagueId, slug });
-    });
-  });
-  clubNameLookup = map;
-  return map;
-}
-
-function normalizeClubName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function getHomeAwayLabel(item: TeamMatchStat): string | null {
-  if (item.is_home === true) {
-    return "ВДОМА";
-  }
-  if (item.is_home === false) {
-    return "ВИЇЗД";
-  }
-  return null;
-}
-
-function parseTeamMatchNumber(value: number | string | null | undefined): number | null {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function parseTeamMatchRating(value: number | string | null | undefined): number | null {
-  const numeric = parseTeamMatchNumber(value);
-  if (numeric === null) {
-    return null;
-  }
-  const clamped = Math.max(0, Math.min(10, numeric));
-  return Math.round(clamped * 10) / 10;
-}
-
-function formatTeamMatchScoreLabel(item: TeamMatchStat): string {
-  const teamGoals = parseTeamMatchNumber(item.team_goals);
-  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
-  if (teamGoals === null || opponentGoals === null) {
-    return "—";
-  }
-  if (item.is_home === false) {
-    return `${opponentGoals}:${teamGoals}`;
-  }
-  return `${teamGoals}:${opponentGoals}`;
-}
-
-function getTeamMatchOutcomeClass(item: TeamMatchStat): string {
-  const teamGoals = parseTeamMatchNumber(item.team_goals);
-  const opponentGoals = parseTeamMatchNumber(item.opponent_goals);
-  if (teamGoals === null || opponentGoals === null) {
-    return "is-missing";
-  }
-  if (teamGoals > opponentGoals) {
-    return "is-win";
-  }
-  if (teamGoals < opponentGoals) {
-    return "is-loss";
-  }
-  return "is-draw";
-}
-
-function buildAnalitikaStatus(items: AnalitikaItem[]): string {
-  const latest = getLatestAnalitikaItem(items);
-  if (!latest) {
-    return "";
-  }
-  const updated = formatAnalitikaDate(latest.fetched_at);
-  const expires = latest.expires_at ? formatAnalitikaDate(latest.expires_at) : "";
-  if (expires) {
-    return `Оновлено: ${updated} · TTL до ${expires}`;
-  }
-  return `Оновлено: ${updated}`;
-}
-
-function renderAnalitikaList(items: AnalitikaItem[]): string {
-  const grouped = new Map<string, AnalitikaItem[]>();
-  items.forEach((item) => {
-    const group = grouped.get(item.data_type) ?? [];
-    group.push(item);
-    grouped.set(item.data_type, group);
-  });
-
-  return Array.from(grouped.entries())
-    .sort((a, b) => {
-      const indexA = ANALITIKA_TYPE_ORDER.indexOf(a[0]);
-      const indexB = ANALITIKA_TYPE_ORDER.indexOf(b[0]);
-      const safeA = indexA === -1 ? Number.MAX_SAFE_INTEGER : indexA;
-      const safeB = indexB === -1 ? Number.MAX_SAFE_INTEGER : indexB;
-      return safeA - safeB;
-    })
-    .map(([dataType, group]) => renderAnalitikaSection(dataType, group))
-    .join("");
-}
-
-function renderAnalitikaSection(dataType: string, items: AnalitikaItem[]): string {
-  const title = ANALITIKA_TYPE_LABELS[dataType] ?? dataType;
-  const body = renderAnalitikaBody(dataType, items);
-
-  return `
-    <section class="analitika-card" data-analitika-type="${escapeAttribute(dataType)}">
-      <div class="analitika-card-header">
-        <h3>${escapeHtml(title)}</h3>
-      </div>
-      <div class="analitika-card-body">
-        ${body}
-      </div>
-    </section>
-  `;
-}
-
-function renderAnalitikaBody(dataType: string, items: AnalitikaItem[]): string {
-  if (!items.length) {
-    return renderAnalitikaEmpty();
-  }
-
-  const payload = items[0]?.payload;
-
-  switch (dataType) {
-    case "team_stats":
-      return renderAnalitikaKeyValueTable(payload, [
-        { key: "gf", label: "Голи забито" },
-        { key: "ga", label: "Голи пропущено" },
-        { key: "xg", label: "xG" },
-        { key: "ppda", label: "PPDA" },
-        { key: "shots", label: "Удари за матч" },
-        { key: "shots_on_target", label: "Удари в площину" },
-        { key: "possession", label: "Володіння (%)" },
-        { key: "clean_sheets", label: "Сухі матчі" }
-      ]);
-    case "standings":
-      return renderAnalitikaKeyValueTable(payload, [
-        { key: "rank", label: "Позиція" },
-        { key: "points", label: "Очки" },
-        { key: "played", label: "Матчі" },
-        { key: "wins", label: "Перемоги" },
-        { key: "draws", label: "Нічиї" },
-        { key: "losses", label: "Поразки" },
-        { key: "gf", label: "Забито" },
-        { key: "ga", label: "Пропущено" },
-        { key: "gd", label: "Різниця" },
-        { key: "form", label: "Форма" }
-      ]);
-    case "standings_home_away":
-      return renderAnalitikaHomeAway(payload);
-    case "form_trends":
-      return renderAnalitikaKeyValueTable(payload, [
-        { key: "streak_type", label: "Тип серії" },
-        { key: "streak_len", label: "Довжина серії" },
-        { key: "form", label: "Форма" },
-        { key: "last_results", label: "Останні результати" }
-      ]);
-    case "top_scorers":
-      return renderAnalitikaRankingTable(payload, "Голи", "goals");
-    case "top_assists":
-      return renderAnalitikaRankingTable(payload, "Асисти", "assists");
-    case "player_ratings":
-      return renderAnalitikaRankingTable(payload, "Рейтинг", "rating");
-    case "player_stats":
-      return renderAnalitikaPlayerStats(payload);
-    case "lineups":
-      return renderAnalitikaLineups(payload);
-    case "expected_lineups":
-      return renderAnalitikaLineups(payload);
-    case "injuries":
-      return renderAnalitikaInjuries(payload);
-    case "head_to_head":
-      return renderAnalitikaHeadToHead(payload);
-    case "referee_cards":
-      return renderAnalitikaReferees(payload);
-    default:
-      return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-}
-
-function renderAnalitikaKeyValueTable(
-  payload: unknown,
-  fields: Array<{ key: string; label: string }>
-): string {
-  const record = toRecord(payload);
-  if (!record) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const rows = fields
-    .map((field) => ({
-      label: field.label,
-      value: record[field.key]
-    }))
-    .filter((row) => row.value !== null && row.value !== undefined && row.value !== "");
-  if (!rows.length) {
-    return renderAnalitikaEmpty();
-  }
-  return renderAnalitikaTable(
-    ["Показник", "Значення"],
-    rows.map((row) => [row.label, row.value])
-  );
-}
-
-function renderAnalitikaHomeAway(payload: unknown): string {
-  const record = toRecord(payload);
-  if (!record) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const home = toRecord(record.home);
-  const away = toRecord(record.away);
-  if (!home && !away) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-
-  const fields = [
-    { key: "played", label: "Матчі" },
-    { key: "wins", label: "Перемоги" },
-    { key: "draws", label: "Нічиї" },
-    { key: "losses", label: "Поразки" },
-    { key: "gf", label: "Забито" },
-    { key: "ga", label: "Пропущено" },
-    { key: "points", label: "Очки" },
-    { key: "form", label: "Форма" }
-  ];
-  const rows = fields.map((field) => [
-    field.label,
-    home?.[field.key] ?? null,
-    away?.[field.key] ?? null
-  ]);
-
-  return renderAnalitikaTable(["Показник", "Домашні", "Виїзні"], rows);
-}
-
-function renderAnalitikaRankingTable(payload: unknown, valueLabel: string, valueKey: string): string {
-  const entries = toEntryList(payload);
-  if (!entries.length) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const rows = entries.map((entry) => [
-    getEntryName(entry, "player"),
-    getEntryName(entry, "team"),
-    getEntryStat(entry, valueKey)
-  ]);
-  return renderAnalitikaTable(["Гравець", "Команда", valueLabel], rows);
-}
-
-function renderAnalitikaPlayerStats(payload: unknown): string {
-  const entries = toEntryList(payload);
-  if (!entries.length) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const rows = entries.map((entry) => [
-    getEntryName(entry, "player"),
-    getEntryName(entry, "team"),
-    getEntryStat(entry, "goals"),
-    getEntryStat(entry, "assists"),
-    getEntryStat(entry, "rating"),
-    getEntryStat(entry, "minutes")
-  ]);
-  return renderAnalitikaTable(["Гравець", "Команда", "Голи", "Асисти", "Рейтинг", "Хвилини"], rows);
-}
-
-function renderAnalitikaLineups(payload: unknown): string {
-  const entries = toEntryList(payload);
-  if (!entries.length) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const rows = entries.map((entry) => [
-    getEntryLabel(entry, "fixture"),
-    getEntryLabel(entry, "formation"),
-    normalizeNameList(entry.start_xi ?? entry.starting ?? entry.startXI),
-    normalizeNameList(entry.subs ?? entry.substitutes ?? entry.bench)
-  ]);
-  return renderAnalitikaTable(["Матч", "Схема", "Старт", "Запас"], rows);
-}
-
-function renderAnalitikaInjuries(payload: unknown): string {
-  const entries = toEntryList(payload);
-  if (!entries.length) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const rows = entries.map((entry) => [
-    getEntryName(entry, "player"),
-    getEntryLabel(entry, "status"),
-    getEntryLabel(entry, "reason"),
-    getEntryLabel(entry, "since"),
-    getEntryLabel(entry, "until")
-  ]);
-  return renderAnalitikaTable(["Гравець", "Статус", "Причина", "З", "По"], rows);
-}
-
-function renderAnalitikaHeadToHead(payload: unknown): string {
-  const entries = toEntryList(payload);
-  if (!entries.length) {
-    return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-  }
-  const rows = entries.map((entry) => [
-    getEntryLabel(entry, "date"),
-    getEntryLabel(entry, "home"),
-    getEntryLabel(entry, "away"),
-    getEntryLabel(entry, "score"),
-    getEntryLabel(entry, "league")
-  ]);
-  return renderAnalitikaTable(["Дата", "Господарі", "Гості", "Рахунок", "Ліга"], rows);
-}
-
-function renderAnalitikaReferees(payload: unknown): string {
-  const entries = toEntryList(payload);
-  if (!entries.length) {
-    const record = toRecord(payload);
-    if (!record) {
-      return renderAnalitikaCustomTable(payload) ?? renderAnalitikaEmpty();
-    }
-    const rows = [
-      ["Рефері", record.referee ?? record.name],
-      ["Матчів", record.matches],
-      ["Жовті / матч", record.yellow_avg],
-      ["Червоні / матч", record.red_avg]
-    ];
-    return renderAnalitikaTable(["Показник", "Значення"], rows);
-  }
-  const rows = entries.map((entry) => [
-    getEntryName(entry, "referee"),
-    getEntryStat(entry, "matches"),
-    getEntryStat(entry, "yellow_avg"),
-    getEntryStat(entry, "red_avg")
-  ]);
-  return renderAnalitikaTable(["Рефері", "Матчі", "Жовті/матч", "Червоні/матч"], rows);
-}
-
-function renderAnalitikaCustomTable(payload: unknown): string | null {
-  const record = toRecord(payload);
-  if (!record) {
-    return null;
-  }
-  const columns = Array.isArray(record.columns) ? record.columns.map((item) => String(item)) : null;
-  const rows = Array.isArray(record.rows) ? record.rows : null;
-  if (!columns || !rows) {
-    return null;
-  }
-  const normalizedRows = rows.map((row) => (Array.isArray(row) ? row : [row]));
-  return renderAnalitikaTable(columns, normalizedRows);
-}
-
-function renderAnalitikaTable(headers: string[], rows: Array<Array<unknown>>): string {
-  if (!rows.length) {
-    return renderAnalitikaEmpty();
-  }
-  const head = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("");
-  const body = rows
-    .map((row) => {
-      const cells = row
-        .map((cell) => {
-          const value = formatAnalitikaCell(cell);
-          const safe = escapeHtml(value).replace(/\n/g, "<br />");
-          return `<td>${safe}</td>`;
-        })
-        .join("");
-      return `<tr>${cells}</tr>`;
-    })
-    .join("");
-  return `
-    <div class="analitika-table-wrap">
-      <table class="analitika-table">
-        <thead><tr>${head}</tr></thead>
-        <tbody>${body}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-function renderAnalitikaEmpty(): string {
-  return `<p class="muted small">Немає даних.</p>`;
-}
-
-function formatAnalitikaDate(value: string | null | undefined): string {
-  if (!value) {
-    return "—";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("uk-UA", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-function formatAnalitikaCell(value: unknown): string {
-  if (value === null || value === undefined || value === "") {
-    return "—";
-  }
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? String(value) : "—";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((entry) => formatAnalitikaCell(entry)).join("\n");
-  }
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return "—";
-    }
-  }
-  return String(value);
-}
-
-function renderAnalitikaDebugInfo(debug: AnalitikaDebugInfo | null, warnings: string[]): string {
-  if (!debug) {
-    return `<p class="muted small">Немає діагностичних даних.</p>`;
-  }
-  const teamRows = (debug.teams ?? []).map((team) => [
-    team.slug,
-    team.team_id ?? "—"
-  ]);
-  const countRows = [
-    ["standings", debug.counts?.standings ?? "—"],
-    ["top_scorers", debug.counts?.top_scorers ?? "—"],
-    ["top_assists", debug.counts?.top_assists ?? "—"],
-    ["head_to_head", debug.counts?.head_to_head ?? "—"]
-  ];
-  const teamCounts = debug.counts?.team_stats ?? {};
-  Object.entries(teamCounts).forEach(([slug, count]) => {
-    countRows.push([`team_stats:${slug}`, count]);
-  });
-  const standingsSample = (debug.samples?.standings_teams ?? [])
-    .map((entry) => `${entry.id ?? "—"} ${entry.name}`.trim())
-    .filter(Boolean)
-    .join(", ");
-  const statusRows = [
-    ["standings", debug.statuses?.standings ?? "—"],
-    ["top_scorers", debug.statuses?.top_scorers ?? "—"],
-    ["top_assists", debug.statuses?.top_assists ?? "—"],
-    ["head_to_head", debug.statuses?.head_to_head ?? "—"]
-  ];
-  const teamStats = debug.statuses?.team_stats ?? {};
-  Object.entries(teamStats).forEach(([slug, status]) => {
-    statusRows.push([`team_stats:${slug}`, status]);
-  });
-
-  const warningsMarkup = warnings.length
-    ? `<p class="muted small">Попередження: ${escapeHtml(warnings.join(", "))}</p>`
-    : "";
-
-  return `
-    <div class="analitika-debug-grid">
-      <div>
-        <div class="analitika-debug-title">Конфіг</div>
-        ${renderAnalitikaTable(
-          ["Поле", "Значення"],
-          [
-            ["league", debug.league_slug ?? "—"],
-            ["api_league_id", debug.api_league_id ?? "—"],
-            ["season", debug.season ?? "—"],
-            ["timezone", debug.timezone ?? "—"]
-          ]
-        )}
-      </div>
-      <div>
-        <div class="analitika-debug-title">Команди (ID)</div>
-        ${renderAnalitikaTable(["slug", "team_id"], teamRows)}
-      </div>
-      <div>
-        <div class="analitika-debug-title">Кількість даних</div>
-        ${renderAnalitikaTable(["endpoint", "count"], countRows)}
-        ${standingsSample ? `<p class="muted small">standings sample: ${escapeHtml(standingsSample)}</p>` : ""}
-      </div>
-      <div>
-        <div class="analitika-debug-title">Статуси API</div>
-        ${renderAnalitikaTable(["endpoint", "status"], statusRows)}
-      </div>
-    </div>
-    ${warningsMarkup}
-  `;
-}
-
-function renderAnalitikaDebugError(response: AnalitikaRefreshResponse): string {
-  if (!response || response.ok) {
-    return `<p class="muted small">Немає даних про помилку.</p>`;
-  }
-  const detail = response.detail ? ` (${escapeHtml(response.detail)})` : "";
-  const error = escapeHtml(response.error ?? "unknown");
-  const debug = response.debug ? renderAnalitikaDebugInfo(response.debug, []) : "";
-  return `
-    <div class="analitika-debug-error">
-      <p class="muted small">Помилка: ${error}${detail}</p>
-      ${debug}
-    </div>
-  `;
-}
-
-function getLatestAnalitikaItem(items: AnalitikaItem[]): AnalitikaItem | null {
-  if (!items.length) {
-    return null;
-  }
-  return items.reduce((latest, item) => {
-    const latestTime = new Date(latest.fetched_at).getTime();
-    const itemTime = new Date(item.fetched_at).getTime();
-    return itemTime > latestTime ? item : latest;
-  }, items[0]);
-}
-
-function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  return value as Record<string, unknown>;
-}
-
-function toEntryList(payload: unknown): Array<Record<string, unknown>> {
-  if (Array.isArray(payload)) {
-    return payload.filter((entry) => typeof entry === "object" && entry !== null) as Array<Record<string, unknown>>;
-  }
-  const record = toRecord(payload);
-  if (!record) {
-    return [];
-  }
-  const entries = record.entries;
-  if (!Array.isArray(entries)) {
-    return [];
-  }
-  return entries.filter((entry) => typeof entry === "object" && entry !== null) as Array<Record<string, unknown>>;
-}
-
-function getEntryName(entry: Record<string, unknown>, key: string): string {
-  const value = entry[key];
-  if (typeof value === "string") {
-    return value;
-  }
-  const altKey = `${key}_name`;
-  const altValue = entry[altKey];
-  if (typeof altValue === "string") {
-    return altValue;
-  }
-  const camelKey = `${key}Name`;
-  const camelValue = entry[camelKey];
-  if (typeof camelValue === "string") {
-    return camelValue;
-  }
-  const record = toRecord(value);
-  const name = record?.name;
-  return typeof name === "string" ? name : "";
-}
-
-function getEntryLabel(entry: Record<string, unknown>, key: string): string {
-  const value = entry[key];
-  return formatAnalitikaCell(value);
-}
-
-function getEntryStat(entry: Record<string, unknown>, key: string): unknown {
-  if (key in entry) {
-    return extractStatValue(entry[key]);
-  }
-  const altKey = `${key}_total`;
-  if (altKey in entry) {
-    return extractStatValue(entry[altKey]);
-  }
-  return null;
-}
-
-function extractStatValue(value: unknown): unknown {
-  const record = toRecord(value);
-  if (record) {
-    if ("total" in record) {
-      return record.total;
-    }
-    if ("value" in record) {
-      return record.value;
-    }
-    if ("avg" in record) {
-      return record.avg;
-    }
-    if ("average" in record) {
-      return record.average;
-    }
-  }
-  return value;
-}
-
-function normalizeNameList(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .map((entry) => {
-      if (typeof entry === "string") {
-        return entry;
-      }
-      const record = toRecord(entry);
-      if (!record) {
-        return "";
-      }
-      const name = record.name;
-      if (typeof name === "string") {
-        return name;
-      }
-      const player = toRecord(record.player);
-      if (player && typeof player.name === "string") {
-        return player.name;
-      }
-      return "";
-    })
-    .filter(Boolean);
-}
-
 async function loadLeaderboard(): Promise<void> {
   if (!apiBase) {
     return;
@@ -4475,253 +2710,18 @@ async function loadLeaderboard(): Promise<void> {
   container.classList.add("is-open");
 
   try {
-    const response = await fetch(`${apiBase}/api/leaderboard`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Telegram-InitData": initData
-      }
-    });
-    const data = (await response.json()) as LeaderboardResponse;
+    const { response, data } = await fetchLeaderboard(apiBase, initData);
     if (!response.ok || !data.ok) {
       renderUsersError(container);
       return;
     }
 
-    container.innerHTML = renderLeaderboardList(data.users);
+    container.innerHTML = renderLeaderboardList(data.users, {
+      currentUserId,
+      startingPoints: STARTING_POINTS
+    });
     leaderboardLoaded = true;
   } catch {
     renderUsersError(container);
   }
-}
-
-function renderUsersError(container: HTMLElement): void {
-  container.innerHTML = `<p class="muted small">Не вдалося завантажити таблицю.</p>`;
-}
-
-function renderLeaderboardList(users: LeaderboardUser[]): string {
-  if (!users.length) {
-    return `<p class="muted small">Поки що немає користувачів.</p>`;
-  }
-
-  let lastPoints: number | null = null;
-  let currentRank = 0;
-  const rows = users
-    .map((user, index) => {
-      const name = formatUserName(user);
-      const points = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
-      if (lastPoints === null || points !== lastPoints) {
-        currentRank += 1;
-        lastPoints = points;
-      }
-      const avatarLogo = getAvatarLogoPath(user.avatar_choice);
-      const avatar = avatarLogo
-        ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
-        : user.photo_url
-        ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
-        : `<div class="table-avatar placeholder"></div>`;
-      const isSelf = currentUserId === user.id;
-      return `
-        <div class="leaderboard-row ${isSelf ? "is-self" : ""}">
-          <span class="leaderboard-rank">${currentRank}</span>
-          <div class="leaderboard-identity">
-            ${avatar}
-            <span class="leaderboard-name">${escapeHtml(name)}</span>
-          </div>
-          <span class="leaderboard-points">${points}</span>
-        </div>
-      `;
-    })
-    .join("");
-
-  return `<div class="leaderboard-rows">${rows}</div>`;
-}
-
-function formatTelegramName(user?: TelegramWebAppUser): string {
-  if (!user) {
-    return "";
-  }
-
-  const first = user.first_name?.trim() ?? "";
-  const last = user.last_name?.trim() ?? "";
-  const full = [first, last].filter(Boolean).join(" ").trim();
-  if (full) {
-    return full;
-  }
-  if (user.username) {
-    return `@${user.username}`;
-  }
-  return "";
-}
-
-function formatUserName(user: LeaderboardUser): string {
-  if (user.nickname) {
-    return user.nickname;
-  }
-  const first = user.first_name?.trim() ?? "";
-  const last = user.last_name?.trim() ?? "";
-  const full = [first, last].filter(Boolean).join(" ").trim();
-  if (full) {
-    return full;
-  }
-  if (user.username) {
-    return `@${user.username}`;
-  }
-  return "";
-}
-
-function formatPredictionName(user: PredictionUser | null): string {
-  if (!user) {
-    return "Гравець";
-  }
-  if (user.nickname) {
-    return user.nickname;
-  }
-  const first = user.first_name?.trim() ?? "";
-  const last = user.last_name?.trim() ?? "";
-  const full = [first, last].filter(Boolean).join(" ").trim();
-  if (full) {
-    return full;
-  }
-  if (user.username) {
-    return `@${user.username}`;
-  }
-  return "Гравець";
-}
-
-function getKyivDateString(date = new Date()): string {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Kyiv",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-  return formatter.format(date);
-}
-
-function formatKyivDateLabel(dateString: string): string {
-  const [yearRaw, monthRaw, dayRaw] = dateString.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!year || !month || !day) {
-    return dateString;
-  }
-  const date = new Date(Date.UTC(year, month - 1, day, 12));
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone: "Europe/Kyiv",
-    day: "numeric",
-    month: "long"
-  }).format(date);
-}
-
-function addKyivDays(dateString: string, delta: number): string {
-  const [yearRaw, monthRaw, dayRaw] = dateString.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!year || !month || !day) {
-    return getKyivDateString();
-  }
-  const baseUtc = Date.UTC(year, month - 1, day, 12);
-  const nextDate = new Date(baseUtc + delta * 24 * 60 * 60 * 1000);
-  return getKyivDateString(nextDate);
-}
-
-function formatKyivDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone: "Europe/Kyiv",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-function formatKyivDateShort(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone: "Europe/Kyiv",
-    day: "2-digit",
-    month: "2-digit"
-  }).format(date);
-}
-
-function formatKyivTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone: "Europe/Kyiv",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-function toKyivISOString(dateTimeLocal: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateTimeLocal)) {
-    return null;
-  }
-  const base = new Date(`${dateTimeLocal}:00Z`);
-  if (Number.isNaN(base.getTime())) {
-    return null;
-  }
-  const offset = getTimeZoneOffset(base, "Europe/Kyiv");
-  return new Date(base.getTime() - offset).toISOString();
-}
-
-function getTimeZoneOffset(date: Date, timeZone: string): number {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  });
-
-  const parts = formatter.formatToParts(date);
-  const values: Record<string, string> = {};
-  for (const part of parts) {
-    if (part.type !== "literal") {
-      values[part.type] = part.value;
-    }
-  }
-
-  const asUTC = Date.UTC(
-    Number(values.year),
-    Number(values.month) - 1,
-    Number(values.day),
-    Number(values.hour),
-    Number(values.minute),
-    Number(values.second)
-  );
-
-  return asUTC - date.getTime();
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-function escapeAttribute(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#39;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
 }
