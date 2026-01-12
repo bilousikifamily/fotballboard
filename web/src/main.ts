@@ -1058,11 +1058,15 @@ function renderUser(
             <div class="section-header">
               <div class="date-switcher" data-date-switcher>
                 <button class="date-nav" type="button" data-date-prev aria-label="Попередній день">
-                  <span aria-hidden="true">‹</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6"></path>
+                  </svg>
                 </button>
                 <div class="date-pill" data-date-label>${safeDateLabel}</div>
                 <button class="date-nav" type="button" data-date-next aria-label="Наступний день">
-                  <span aria-hidden="true">›</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6"></path>
+                  </svg>
                 </button>
               </div>
             </div>
