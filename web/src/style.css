@@ -1801,17 +1801,20 @@ h1 {
 .leaderboard-rows {
   display: grid;
   gap: 10px;
+  overflow: visible;
 }
 
 .leaderboard-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 24px 1fr auto 28px;
+  grid-template-columns: 24px 1fr auto;
   align-items: center;
   gap: 8px;
   border-radius: 14px;
   padding: 8px 10px;
   background: transparent;
   border: 1px solid var(--outline-dark);
+  overflow: visible;
 }
 
 .leaderboard-row.is-top {
@@ -1821,13 +1824,18 @@ h1 {
 }
 
 .leaderboard-prize {
-  width: 26px;
-  height: 26px;
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  opacity: 0;
-  transform: scale(0.9);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transform: translateY(-50%);
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 12px rgba(255, 154, 31, 0.35));
 }
 
 .leaderboard-prize img {
@@ -1839,7 +1847,6 @@ h1 {
 
 .leaderboard-prize.is-visible {
   opacity: 1;
-  transform: scale(1);
 }
 
 .leaderboard-identity {
