@@ -867,8 +867,9 @@ function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | 
   };
 }
 
-function renderFactions(profile: ProfileStatsPayload | null): string {
+function renderFactions(profile: ProfileStatsPayload | null, rank: number | null): string {
   const factions = profile?.factions ?? [];
+  const rankLabel = typeof rank === "number" ? `№${rank} У СПИСКУ` : "№— У СПИСКУ";
   const cards = factions
     .map((entry) => {
       const display = getFactionDisplay(entry);
@@ -876,19 +877,31 @@ function renderFactions(profile: ProfileStatsPayload | null): string {
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
         : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
-      const rank = entry.rank ? `№${entry.rank} У СПИСКУ` : "№— У СПИСКУ";
+      const rankMeta = entry.rank ? `№${entry.rank} У СПИСКУ` : "№— У СПИСКУ";
       return `
         <div class="faction-card">
           <div class="faction-logo-wrap">${logo}</div>
           <div class="faction-info">
             <div class="faction-name">${name}</div>
-            <div class="faction-meta">${rank}</div>
+            <div class="faction-meta">${rankMeta}</div>
           </div>
         </div>
       `;
     })
+    .slice(0, 3)
     .join("");
-  const content = cards || `<p class="muted small">Фракції ще не обрані.</p>`;
+  const radaCard = `
+    <div class="faction-card">
+      <div class="faction-logo-wrap">
+        <img class="faction-logo" src="/images/LOGO.png" alt="" />
+      </div>
+      <div class="faction-info">
+        <div class="faction-name">ФУТБОЛЬНА РАДА</div>
+        <div class="faction-meta">${rankLabel}</div>
+      </div>
+    </div>
+  `;
+  const content = cards ? `${radaCard}${cards}` : `${radaCard}<p class="muted small">Фракції ще не обрані.</p>`;
   return `
     <section class="panel profile-factions">
       <div class="section-header">
@@ -927,7 +940,7 @@ function renderUser(
   const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
   const rankText = stats.rank ? `#${stats.rank}` : "—";
   const predictionQualityMarkup = renderPredictionQuality(profile ?? null);
-  const factionsMarkup = renderFactions(profile ?? null);
+  const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
