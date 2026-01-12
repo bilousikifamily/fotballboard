@@ -65,6 +65,7 @@ if (!app) {
 
 const INTRO_SEEN_KEY = "intro_seen";
 const INTRO_TIMEOUT_MS = 900;
+const PRIMARY_FACTION_STORAGE_KEY = "football.primaryFaction";
 const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const shouldShowIntro = !prefersReducedMotion && !sessionStorage.getItem(INTRO_SEEN_KEY);
 let introFinished = false;
@@ -90,6 +91,7 @@ let currentAvatarChoice: string | null = null;
 let currentLogoOrder: string[] | null = null;
 let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
+let currentProfileStats: ProfileStatsPayload | null = null;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
@@ -135,9 +137,9 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
 ];
 
 const NOTICE_RULES = [
-  "Вгаданий результат +1 бал",
-  "Вгаданий рахунок +5 балів",
-  "Не вгаданий результат -1 бал"
+  "Вгаданий результат +1 голос",
+  "Вгаданий рахунок +5 голосів",
+  "Не вгаданий результат -1 голос"
 ];
 
 const tg = window.Telegram?.WebApp;
