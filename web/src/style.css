@@ -289,7 +289,7 @@ body.intro-active {
 }
 
 .panel.profile {
-  padding: 28px 20px;
+  padding: 28px 20px 32px;
   gap: 10px;
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.1), transparent 55%),
@@ -298,6 +298,7 @@ body.intro-active {
     0 0 0 1px rgba(0, 0, 0, 0.75) inset,
     0 18px 40px rgba(0, 0, 0, 0.55);
   position: relative;
+  overflow: hidden;
   z-index: 1;
 }
 
@@ -392,16 +393,40 @@ body.intro-active {
   text-align: center;
 }
 
-.profile-accuracy {
+.card-progress {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 16px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.55);
+}
+
+.card-progress__fill {
+  position: absolute;
+  inset: 0;
+  width: var(--p);
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 10px;
+}
+
+.card-progress__label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
 }
 
 .accuracy-bar-fill {

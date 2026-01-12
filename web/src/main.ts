@@ -1256,9 +1256,9 @@ function renderUser(
             ${safeName ? `<div class="profile-nickname" data-profile-name>${safeName}</div>` : ""}
             ${logoStackMarkup}
             ${logoOrderMenuMarkup}
-            <div class="profile-accuracy" role="img" aria-label="Точність прогнозів ${accuracy}%">
-              <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
-              <span class="accuracy-bar-text">${accuracy}%</span>
+            <div class="card-progress" style="--p:${accuracy}%;" role="img" aria-label="Точність прогнозів ${accuracy}%">
+              <span class="card-progress__fill"></span>
+              <span class="card-progress__label">${accuracy}%</span>
             </div>
           </section>
 
