@@ -1256,9 +1256,9 @@ function renderUser(
     <div class="app-shell">
       <main class="layout">
         <section class="screen" data-screen="profile">
+          ${safeName ? `<div class="profile-nickname" data-profile-name>${safeName}</div>` : ""}
           <section class="panel profile center">
             ${logoStackMarkup}
-            ${safeName ? `<h1 data-profile-name>${safeName}</h1>` : ""}
             ${logoOrderMenuMarkup}
           </section>
 
