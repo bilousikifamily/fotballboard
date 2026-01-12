@@ -1880,6 +1880,7 @@ h1 {
 .leaderboard-row.is-self .leaderboard-name,
 .leaderboard-row.is-self .leaderboard-points {
   color: #0b0b0d;
+  font-weight: 600;
 }
 
 .leaderboard-row.is-self .leaderboard-name {
