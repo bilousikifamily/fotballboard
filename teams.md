@@ -125,4 +125,5 @@ This table lists clubs found in the project with Ukrainian alternatives.
 | Ligue 1 | Stade De Reims | `stade-de-reims` | РЕЙМС |
 | Ligue 1 | Toulouse | `toulouse` | ТУЛУЗА |
 | FA Cup (Additional) | Portsmouth | `portsmouth` | ПОРТСМУТ |
+| FA Cup (Additional) | Barnsley | `barnsley` | БАРНСЛІ |
 | Analytics (Other) | Leeds | `leeds` | ЛІДС |
