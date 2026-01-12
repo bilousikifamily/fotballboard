@@ -890,6 +890,7 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
     })
     .slice(0, 3)
     .join("");
+  const content = cards ? cards : `<p class="muted small">Фракції ще не обрані.</p>`;
   const radaCard = `
     <div class="faction-card">
       <div class="faction-logo-wrap">
@@ -901,9 +902,9 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
       </div>
     </div>
   `;
-  const content = cards ? `${radaCard}${cards}` : `${radaCard}<p class="muted small">Фракції ще не обрані.</p>`;
   return `
     <section class="panel profile-factions">
+      ${radaCard}
       <div class="section-header">
         <h2>ФРАКЦІЇ</h2>
       </div>
