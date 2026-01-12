@@ -517,6 +517,16 @@ body.intro-active {
   align-items: center;
 }
 
+.faction-row--rada {
+  align-items: stretch;
+}
+
+.faction-row--rada .faction-chat {
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1 / 1;
+}
+
 .faction-card {
   display: grid;
   grid-template-columns: 44px 1fr;
