@@ -154,7 +154,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
 };
 
 const EU_ALL_CLUBS = Array.from(new Set(Object.values(EU_CLUBS).flat()));
-const FA_CUP_CLUBS = Array.from(new Set([...EU_CLUBS["english-premier-league"], "portsmouth"]));
+const FA_CUP_CLUBS = Array.from(new Set([...EU_CLUBS["english-premier-league"], "barnsley", "portsmouth"]));
 
 export const ALL_CLUBS: Record<MatchLeagueId, string[]> = {
   "ukrainian-premier-league": UA_CLUBS,
