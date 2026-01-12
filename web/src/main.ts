@@ -798,13 +798,13 @@ function renderAvatarContent(
   return `<div class="avatar placeholder"></div>`;
 }
 
-function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
-  const stats = profile?.prediction;
-  const total = stats?.total ?? 0;
-  const hits = stats?.hits ?? 0;
+function renderPredictionQuality(profile: ProfileStatsPayload | null, points: number): string {
+  const prediction = profile?.prediction;
+  const total = prediction?.total ?? 0;
+  const hits = prediction?.hits ?? 0;
   const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
   const timesLabel = formatUkrainianTimes(total);
-  const lastResults = stats?.last_results ?? [];
+  const lastResults = prediction?.last_results ?? [];
   const icons = lastResults.map((entry) => {
     if (entry.points === 5) {
       return `<span class="result-icon is-perfect" aria-hidden="true">5</span>`;
@@ -814,10 +814,12 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
     }
     return `<span class="result-icon is-miss" aria-hidden="true">✕</span>`;
   }).join("");
+  const pointsLabel = formatUkrainianPoints(points);
   return `
     <section class="panel profile-metrics">
       <div class="section-header">
         <h2>ПРОГОЛОСУВАЛИ ${total} ${timesLabel}</h2>
+        <p class="muted small">ГОЛОСИ: ${points} ${pointsLabel}</p>
       </div>
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
@@ -844,6 +846,22 @@ function formatUkrainianTimes(value: number): string {
     return "РАЗИ";
   }
   return "РАЗІВ";
+}
+
+function formatUkrainianPoints(value: number): string {
+  const absValue = Math.abs(Math.trunc(value));
+  const mod10 = absValue % 10;
+  const mod100 = absValue % 100;
+  if (mod100 >= 11 && mod100 <= 14) {
+    return "БАЛІВ";
+  }
+  if (mod10 === 1) {
+    return "БАЛ";
+  }
+  if (mod10 >= 2 && mod10 <= 4) {
+    return "БАЛИ";
+  }
+  return "БАЛІВ";
 }
 
 function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | null } {
@@ -1120,8 +1138,7 @@ function renderUser(
     logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder, currentNickname ?? displayName) : "";
   const dateValue = date || getKyivDateString();
   const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
-  const rankText = stats.rank ? `#${stats.rank}` : "—";
-  const predictionQualityMarkup = renderPredictionQuality(profile ?? null);
+  const predictionQualityMarkup = renderPredictionQuality(profile ?? null, stats.points);
   const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
@@ -1243,16 +1260,6 @@ function renderUser(
             ${logoStackMarkup}
             ${safeName ? `<h1 data-profile-name>${safeName}</h1>` : ""}
             ${logoOrderMenuMarkup}
-            <div class="stats">
-              <div class="stat">
-                <span class="stat-label">Місце</span>
-                <span class="stat-value">${rankText}</span>
-              </div>
-              <div class="stat">
-                <span class="stat-label">Голоси</span>
-                <span class="stat-value">${stats.points}</span>
-              </div>
-            </div>
           </section>
 
           ${predictionQualityMarkup}
