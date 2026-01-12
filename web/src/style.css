@@ -1655,12 +1655,16 @@ h1 {
 }
 
 .admin-users {
-  display: grid;
+  display: none;
   gap: 10px;
   padding: 12px;
   border-radius: 14px;
   border: 1px solid var(--outline-dark);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-users.is-open {
+  display: grid;
 }
 
 .admin-users-list {

@@ -925,6 +925,7 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-add>ДОДАТИ МАТЧ</button>
           <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
+          <button class="button secondary" type="button" data-admin-toggle-users>КОРИСТУВАЧІ</button>
           <button class="button secondary" type="button" data-admin-toggle-debug>DEBUG</button>
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
         </div>
@@ -933,11 +934,6 @@ function renderUser(
           <p class="muted small">Матчі на підтвердження</p>
           <div class="admin-pending-list" data-admin-pending-list></div>
           <p class="muted small" data-admin-pending-status></p>
-        </div>
-        <div class="admin-users">
-          <p class="muted small">Аналітика користувачів</p>
-          <div data-admin-users-list></div>
-          <p class="muted small" data-admin-users-status></p>
         </div>
         <div class="admin-debug" data-admin-debug>
           <p class="muted small">Чернетка для тестів (не зберігається).</p>
@@ -994,6 +990,11 @@ function renderUser(
           <button class="button" type="submit">Підтягнути коефіцієнти</button>
           <p class="muted small" data-admin-odds-status></p>
         </form>
+        <div class="admin-users" data-admin-users>
+          <p class="muted small">Аналітика користувачів</p>
+          <div data-admin-users-list></div>
+          <p class="muted small" data-admin-users-status></p>
+        </div>
       </section>
     `
     : "";
@@ -1176,6 +1177,7 @@ function renderUser(
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
+    const toggleUsers = app.querySelector<HTMLButtonElement>("[data-admin-toggle-users]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
     const pendingList = app.querySelector<HTMLElement>("[data-admin-pending-list]");
@@ -1184,6 +1186,7 @@ function renderUser(
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
     const debugPanel = app.querySelector<HTMLElement>("[data-admin-debug]");
+    const usersPanel = app.querySelector<HTMLElement>("[data-admin-users]");
 
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
@@ -1213,6 +1216,12 @@ function renderUser(
       oddsForm.addEventListener("submit", (event) => {
         event.preventDefault();
         void submitOddsRefresh(oddsForm);
+      });
+    }
+
+    if (toggleUsers && usersPanel) {
+      toggleUsers.addEventListener("click", () => {
+        usersPanel.classList.toggle("is-open");
       });
     }
 
@@ -1671,7 +1680,8 @@ async function loadPendingMatches(): Promise<void> {
     data.matches.forEach((match) => {
       matchesById.set(match.id, match);
     });
-    list.innerHTML = renderPendingMatchesList(data.matches);
+    const orderedPending = data.matches.slice().sort((left, right) => right.id - left.id);
+    list.innerHTML = renderPendingMatchesList(orderedPending);
     bindMatchActions(list);
     setupMatchAnalitikaFilters(list);
     void loadMatchWeather(data.matches);
