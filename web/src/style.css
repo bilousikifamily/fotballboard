@@ -1833,7 +1833,8 @@ h1 {
   height: 56px;
   display: grid;
   place-items: center;
-  transform: translateY(-50%);
+  transform: translateY(-50%) rotate(5deg);
+  transform-origin: center;
   z-index: -1;
   pointer-events: none;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45))
@@ -1882,7 +1883,7 @@ h1 {
 }
 
 .leaderboard-row.is-self .leaderboard-name {
-  color: #ffffff;
+  color: #0b0b0d;
 }
 
 
