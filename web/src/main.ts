@@ -1026,6 +1026,7 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
       const display = getFactionDisplay(entry);
       const factionId = getFactionId(entry);
       const isPrimary = factionId === primaryId;
+      const membersCount = Number.isFinite(entry.members) ? entry.members : 0;
       const name = escapeHtml(display.name);
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
@@ -1041,6 +1042,10 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
               <div class="faction-name">${name}</div>
               <div class="faction-meta">${rankMeta}</div>
             </div>
+          </div>
+          <div class="faction-members" aria-label="Кількість у фракції">
+            <span class="faction-members-count">${membersCount}</span>
+            <span class="faction-members-icon" aria-hidden="true"></span>
           </div>
         </div>
       `;
