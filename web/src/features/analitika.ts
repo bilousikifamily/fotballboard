@@ -12,6 +12,7 @@ export const ANALITIKA_TEAMS = [
   { slug: "fiorentina", label: "Fiorentina" },
   { slug: "inter", label: "Inter" },
   { slug: "leeds", label: "Leeds" },
+  { slug: "liverpool", label: "Liverpool" },
   { slug: "manchester-city", label: "Manchester City" },
   { slug: "manchester-united", label: "Manchester United" },
   { slug: "milan", label: "Milan" },
@@ -102,23 +103,6 @@ export function buildTeamMatchStatsStatus(items: TeamMatchStat[]): string {
 
 export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: string): string {
   const teamLabel = resolveTeamLabel(teamSlug);
-  if (isFiorentinaTeam(teamSlug, teamLabel, items)) {
-    const alt = escapeAttribute(teamLabel || "Fiorentina");
-    return `
-      <section class="analitika-card is-graph" aria-label="${escapeAttribute(`${teamLabel} — останні матчі`)}">
-        <div class="analitika-card-body">
-          <div class="analitika-line analitika-line--image">
-            <div class="analitika-line-axis" aria-hidden="true"></div>
-            <div class="analitika-line-canvas">
-              <div class="analitika-line-plot analitika-line-plot--image">
-                <img class="analitika-team-image" src="/images/dehea.png" alt="${alt}" loading="lazy" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    `;
-  }
   if (!items.length) {
     return `<p class="muted">Немає даних для ${escapeHtml(teamLabel)}.</p>`;
   }
@@ -219,17 +203,6 @@ export function resolveTeamLabel(teamSlug: string): string {
   return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug)?.label ?? teamSlug;
 }
 
-function isFiorentinaTeam(teamSlug: string, teamLabel: string, items: TeamMatchStat[]): boolean {
-  if (teamSlug === "fiorentina") {
-    return true;
-  }
-  if (normalizeTeamSlugValue(teamLabel) === "fiorentina") {
-    return true;
-  }
-  const fallbackName = items[0]?.team_name ?? "";
-  return normalizeTeamSlugValue(fallbackName) === "fiorentina";
-}
-
 function renderTeamLogo(name: string, logo: string | null): string {
   const alt = escapeAttribute(name);
   return logo
@@ -240,6 +213,7 @@ function renderTeamLogo(name: string, logo: string | null): string {
 const CLUB_NAME_ALIASES: Record<string, string> = {
   "athletic": "athletic-club",
   "athletic bilbao": "athletic-club",
+  "barnsley fc": "barnsley",
   "newcastle united": "newcastle",
   "ipswich town": "ipswich",
   "leeds": "leeds-united",

@@ -189,6 +189,7 @@ function registerClub(slug: string, leagueId: AllLeagueId, logoLeagueId?: AllLea
 }
 
 const CLUB_REGISTRY_EXTRAS: Array<{ slug: string; leagueId: AllLeagueId }> = [
+  { slug: "barnsley", leagueId: "english-premier-league" },
   { slug: "portsmouth", leagueId: "english-premier-league" }
 ];
 
