@@ -1057,8 +1057,8 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
             </div>
           </div>
           <div class="faction-members" aria-label="Кількість у фракції">
-            <span class="faction-members-count">${membersCount}</span>
             <span class="faction-members-icon" aria-hidden="true"></span>
+            <span class="faction-members-count">${membersCount}</span>
           </div>
         </div>
       `;
