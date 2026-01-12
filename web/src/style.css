@@ -1118,6 +1118,11 @@ h1 {
   object-fit: contain;
 }
 
+img[src*="/tottenham.png"] {
+  background: #ffffff;
+  border-radius: 50%;
+}
+
 .match-logo-fallback {
   border-radius: 14px;
   background: var(--surface-strong);
