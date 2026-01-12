@@ -425,6 +425,19 @@ body.intro-active {
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
+.faction-card[data-faction-id] {
+  cursor: pointer;
+}
+
+.faction-card.is-primary {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(255, 154, 31, 0.22));
+  border: 1px solid rgba(255, 154, 31, 0.55);
+  box-shadow:
+    0 0 0 1px var(--outline-dark) inset,
+    0 0 20px rgba(255, 122, 26, 0.35),
+    0 16px 34px rgba(0, 0, 0, 0.35);
+}
+
 .faction-logo-wrap {
   width: 44px;
   height: 44px;

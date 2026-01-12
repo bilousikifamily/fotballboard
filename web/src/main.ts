@@ -869,19 +869,118 @@ function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | 
   };
 }
 
+function getFactionId(entry: FactionEntry): string {
+  return `${entry.key}:${entry.value}`;
+}
+
+function getPrimaryFactionId(): string | null {
+  try {
+    return localStorage.getItem(PRIMARY_FACTION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setPrimaryFactionId(id: string | null): void {
+  try {
+    if (id) {
+      localStorage.setItem(PRIMARY_FACTION_STORAGE_KEY, id);
+    } else {
+      localStorage.removeItem(PRIMARY_FACTION_STORAGE_KEY);
+    }
+  } catch {
+    return;
+  }
+}
+
+function getPrimaryFactionLogo(profile: ProfileStatsPayload | null): string | null {
+  const primaryId = getPrimaryFactionId();
+  if (!primaryId || !profile?.factions?.length) {
+    return null;
+  }
+  const selected = profile.factions.find((entry) => getFactionId(entry) === primaryId);
+  if (!selected) {
+    return null;
+  }
+  return getFactionDisplay(selected).logo;
+}
+
+function updateLeaderboardPrimaryFaction(logo: string | null): void {
+  if (!logo || !app) {
+    return;
+  }
+  const row = app.querySelector<HTMLElement>(".leaderboard-row.is-self");
+  if (!row) {
+    return;
+  }
+  const identity = row.querySelector<HTMLElement>(".leaderboard-identity");
+  if (!identity) {
+    return;
+  }
+  const avatarMarkup = `<img class="table-avatar logo-avatar" src="${escapeAttribute(logo)}" alt="" />`;
+  const existingAvatar = identity.querySelector<HTMLElement>(".table-avatar");
+  if (existingAvatar) {
+    existingAvatar.outerHTML = avatarMarkup;
+    return;
+  }
+  identity.insertAdjacentHTML("afterbegin", avatarMarkup);
+}
+
+function setupPrimaryFactionSelection(profile: ProfileStatsPayload | null): void {
+  if (!app || !profile?.factions?.length) {
+    return;
+  }
+  const list = app.querySelector<HTMLElement>(".profile-factions .faction-list");
+  if (!list) {
+    return;
+  }
+  const cards = Array.from(list.querySelectorAll<HTMLElement>(".faction-card[data-faction-id]"));
+  if (!cards.length) {
+    return;
+  }
+  cards.forEach((card) => {
+    card.addEventListener("click", () => {
+      const factionId = card.dataset.factionId;
+      if (!factionId) {
+        return;
+      }
+      setPrimaryFactionId(factionId);
+      list.prepend(card);
+      cards.forEach((item) => item.classList.toggle("is-primary", item === card));
+      const logo = card.dataset.factionLogo || null;
+      updateLeaderboardPrimaryFaction(logo);
+    });
+  });
+}
+
 function renderFactions(profile: ProfileStatsPayload | null, rank: number | null): string {
   const factions = profile?.factions ?? [];
   const rankLabel = typeof rank === "number" ? `№${rank} У СПИСКУ` : "№— У СПИСКУ";
-  const cards = factions
+  const primaryId = getPrimaryFactionId();
+  const sortedFactions = primaryId
+    ? [...factions].sort((left, right) => {
+        const leftPrimary = getFactionId(left) === primaryId;
+        const rightPrimary = getFactionId(right) === primaryId;
+        if (leftPrimary === rightPrimary) {
+          return 0;
+        }
+        return leftPrimary ? -1 : 1;
+      })
+    : [...factions];
+  const cards = sortedFactions
     .map((entry) => {
       const display = getFactionDisplay(entry);
+      const factionId = getFactionId(entry);
+      const isPrimary = factionId === primaryId;
       const name = escapeHtml(display.name);
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
         : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
       const rankMeta = entry.rank ? `№${entry.rank} У СПИСКУ` : "№— У СПИСКУ";
       return `
-        <div class="faction-card">
+        <div class="faction-card${isPrimary ? " is-primary" : ""}" data-faction-id="${escapeAttribute(
+          factionId
+        )}" data-faction-logo="${display.logo ? escapeAttribute(display.logo) : ""}">
           <div class="faction-logo-wrap">${logo}</div>
           <div class="faction-info">
             <div class="faction-name">${name}</div>
@@ -925,6 +1024,7 @@ function renderUser(
   nickname?: string | null,
   profile?: ProfileStatsPayload | null
 ): void {
+  currentProfileStats = profile ?? null;
   const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
   const logoOptions = buildAvatarOptions(currentOnboarding);
@@ -1189,6 +1289,7 @@ function renderUser(
   setupTabs();
   setupNoticeTicker();
   setupLogoOrderControls();
+  setupPrimaryFactionSelection(currentProfileStats);
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
   const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
@@ -3137,7 +3238,8 @@ async function loadLeaderboard(): Promise<void> {
 
     container.innerHTML = renderLeaderboardList(data.users, {
       currentUserId,
-      startingPoints: STARTING_POINTS
+      startingPoints: STARTING_POINTS,
+      primaryFactionLogo: getPrimaryFactionLogo(currentProfileStats)
     });
     leaderboardLoaded = true;
   } catch {

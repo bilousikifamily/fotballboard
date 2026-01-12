@@ -9,7 +9,7 @@ export function renderUsersError(container: HTMLElement): void {
 
 export function renderLeaderboardList(
   users: LeaderboardUser[],
-  options: { currentUserId: number | null; startingPoints: number }
+  options: { currentUserId: number | null; startingPoints: number; primaryFactionLogo?: string | null }
 ): string {
   if (!users.length) {
     return `<p class="muted small">Поки що немає користувачів.</p>`;
@@ -25,13 +25,16 @@ export function renderLeaderboardList(
         currentRank += 1;
         lastPoints = points;
       }
+      const isSelf = options.currentUserId === user.id;
+      const primaryLogo = isSelf ? options.primaryFactionLogo : null;
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
-      const avatar = avatarLogo
+      const avatar = primaryLogo
+        ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(primaryLogo)}" alt="" />`
+        : avatarLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
         : user.photo_url
         ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
         : `<div class="table-avatar placeholder"></div>`;
-      const isSelf = options.currentUserId === user.id;
       return `
         <div class="leaderboard-row ${isSelf ? "is-self" : ""}">
           <span class="leaderboard-rank">${currentRank}</span>
