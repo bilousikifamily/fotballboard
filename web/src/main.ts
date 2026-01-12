@@ -1261,7 +1261,10 @@ function renderUser(
             ${logoOrderMenuMarkup}
           </section>
 
-          <div class="profile-points">ГОЛОСИ: ${stats.points} ${pointsLabel}</div>
+          <div class="profile-points" aria-label="Голоси">
+            <span class="profile-points-icon" aria-hidden="true"></span>
+            <span class="profile-points-value">${stats.points}</span>
+          </div>
 
           ${predictionQualityMarkup}
           ${factionsMarkup}

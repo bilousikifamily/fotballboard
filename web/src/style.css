@@ -309,13 +309,13 @@ body.intro-active {
 
 .profile-nickname {
   margin: 8px 0 12px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: rgba(255, 122, 26, 0.18);
-  border: 1px solid rgba(255, 154, 31, 0.35);
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(11, 12, 14, 0.75);
+  border: 1px solid var(--outline-light);
   text-align: center;
-  font-size: 1rem;
-  letter-spacing: 0.14em;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 500;
@@ -325,11 +325,33 @@ body.intro-active {
 
 .profile-points {
   margin: 6px 0 14px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.profile-points-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-color: #ffffff;
+  mask-image: url("/icons/brain.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: url("/icons/brain.svg");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.profile-points-value {
   font-size: 0.95rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink);
+  color: #ffffff;
 }
 
 .panel.profile .avatar {
