@@ -1254,10 +1254,6 @@ function renderUser(
         <section class="screen" data-screen="profile">
           <section class="panel profile center">
             ${safeName ? `<div class="profile-nickname" data-profile-name>${safeName}</div>` : ""}
-            <div class="profile-points" aria-label="Голоси">
-              <span class="profile-points-icon" aria-hidden="true"></span>
-              <span class="profile-points-value">${stats.points}</span>
-            </div>
             ${logoStackMarkup}
             ${logoOrderMenuMarkup}
           </section>
