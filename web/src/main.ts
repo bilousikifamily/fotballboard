@@ -885,16 +885,29 @@ function getFactionChatLink(entry: FactionEntry): string | null {
 }
 
 function openFactionChat(url: string): void {
-  if (!url) {
+  const normalizedUrl = normalizeTelegramThreadLink(url);
+  if (!normalizedUrl) {
     return;
   }
   if (window.Telegram?.WebApp?.openTelegramLink) {
-    window.Telegram.WebApp.openTelegramLink(url);
+    window.Telegram.WebApp.openTelegramLink(normalizedUrl);
     window.Telegram.WebApp.close();
     return;
   }
-  window.open(url, "_blank", "noopener,noreferrer");
+  window.open(normalizedUrl, "_blank", "noopener,noreferrer");
   window.Telegram?.WebApp?.close?.();
+}
+
+function normalizeTelegramThreadLink(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const match = trimmed.match(/^https?:\/\/t\.me\/(\d+)\/(\d+)$/i);
+  if (match) {
+    return `https://t.me/c/${match[1]}/${match[2]}`;
+  }
+  return trimmed;
 }
 
 function getFactionId(entry: FactionEntry): string {
