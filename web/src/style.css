@@ -1825,14 +1825,14 @@ h1 {
 
 .leaderboard-prize {
   position: absolute;
-  right: -14px;
+  left: -20px;
   top: 50%;
   width: 40px;
   height: 40px;
   display: grid;
   place-items: center;
   transform: translateY(-50%);
-  z-index: 2;
+  z-index: -1;
   pointer-events: none;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 12px rgba(255, 154, 31, 0.35));
