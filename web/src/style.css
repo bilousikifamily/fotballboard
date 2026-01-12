@@ -1808,10 +1808,16 @@ h1 {
   grid-template-columns: 24px 1fr auto;
   align-items: center;
   gap: 8px;
-  background: var(--surface);
   border-radius: 14px;
   padding: 8px 10px;
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  background: transparent;
+  border: 1px solid var(--outline-dark);
+}
+
+.leaderboard-row.is-top {
+  background: var(--surface);
+  border-color: var(--outline-light);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset, 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 .leaderboard-identity {

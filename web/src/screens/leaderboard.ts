@@ -18,7 +18,7 @@ export function renderLeaderboardList(
   let lastPoints: number | null = null;
   let currentRank = 0;
   const rows = users
-    .map((user) => {
+    .map((user, index) => {
       const name = formatUserName(user);
       const points = typeof user.points_total === "number" ? user.points_total : options.startingPoints;
       if (lastPoints === null || points !== lastPoints) {
@@ -26,6 +26,14 @@ export function renderLeaderboardList(
         lastPoints = points;
       }
       const isSelf = options.currentUserId === user.id;
+      const isTop = index < 5;
+      const rowClasses = ["leaderboard-row"];
+      if (isSelf) {
+        rowClasses.push("is-self");
+      }
+      if (isTop) {
+        rowClasses.push("is-top");
+      }
       const primaryLogo = isSelf ? options.primaryFactionLogo : null;
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
       const avatar = primaryLogo
@@ -36,7 +44,7 @@ export function renderLeaderboardList(
         ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
         : `<div class="table-avatar placeholder"></div>`;
       return `
-        <div class="leaderboard-row ${isSelf ? "is-self" : ""}">
+        <div class="${rowClasses.join(" ")}">
           <span class="leaderboard-rank">${currentRank}</span>
           <div class="leaderboard-identity">
             ${avatar}
