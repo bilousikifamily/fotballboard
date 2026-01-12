@@ -202,7 +202,9 @@ export interface TelegramMessage {
   message_id?: number;
   text?: string;
   entities?: Array<{ type?: string; offset?: number; length?: number }>;
-  chat?: { id?: number };
+  from?: TelegramUser & { is_bot?: boolean };
+  chat?: { id?: number; type?: string; title?: string; username?: string };
+  message_thread_id?: number;
 }
 
 export interface TelegramInlineKeyboardMarkup {

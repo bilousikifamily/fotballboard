@@ -44,6 +44,7 @@ import type {
   TeamsResult,
   TelegramUser,
   TelegramUpdate,
+  TelegramMessage,
   UserOnboarding,
   UserOnboardingRow,
   UserStats,
@@ -68,7 +69,7 @@ import {
   logFixturesFallback,
   logFixturesSearch
 } from "./services/apiFootball";
-import { handleUpdate, sendMessage } from "./services/telegram";
+import { deleteMessage, getUpdateMessage, handleUpdate, sendMessage } from "./services/telegram";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 
 const STARTING_POINTS = 100;
@@ -989,6 +990,12 @@ export default {
         return new Response("Bad Request", { status: 400 });
       }
 
+      const message = getUpdateMessage(update);
+      if (message) {
+        const supabase = createSupabaseClient(env);
+        await handleFactionChatModeration(message, env, supabase);
+      }
+
       await handleUpdate(update, env);
       return new Response("ok");
     }
@@ -1010,6 +1017,175 @@ function createSupabaseClient(env: Env): SupabaseClient | null {
     auth: { persistSession: false },
     global: { headers: { "X-Client-Info": "tg-webapp-worker" } }
   });
+}
+
+type FactionChatRef = {
+  chatId?: number;
+  chatUsername?: string;
+  threadId?: number | null;
+  label: string;
+};
+
+type FactionChatRefs = {
+  real?: FactionChatRef;
+  barca?: FactionChatRef;
+  general?: FactionChatRef;
+};
+
+function parseChatRef(value: string | undefined, label: string): FactionChatRef | null {
+  const raw = value?.trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (/^-?\d+$/.test(raw)) {
+    return { chatId: Number(raw), threadId: null, label };
+  }
+
+  const normalized = raw.replace(/^https?:\/\//, "").replace(/^@/, "");
+  const privateMatch = normalized.match(/^t\.me\/c\/(\d+)(?:\/(\d+))?/i);
+  if (privateMatch) {
+    const internalId = privateMatch[1];
+    const threadId = privateMatch[2] ? Number(privateMatch[2]) : null;
+    return {
+      chatId: Number(`-100${internalId}`),
+      threadId: Number.isFinite(threadId ?? NaN) ? threadId : null,
+      label
+    };
+  }
+
+  const publicMatch = normalized.match(/^t\.me\/([a-z0-9_]{5,})(?:\/(\d+))?/i);
+  if (publicMatch) {
+    const threadId = publicMatch[2] ? Number(publicMatch[2]) : null;
+    return {
+      chatUsername: publicMatch[1].toLowerCase(),
+      threadId: Number.isFinite(threadId ?? NaN) ? threadId : null,
+      label
+    };
+  }
+
+  if (/^[a-z0-9_]{5,}$/i.test(normalized)) {
+    return { chatUsername: normalized.toLowerCase(), threadId: null, label };
+  }
+
+  return null;
+}
+
+function getFactionChatRefs(env: Env): FactionChatRefs {
+  return {
+    real: parseChatRef(env.FACTION_CHAT_REAL, "real_madrid"),
+    barca: parseChatRef(env.FACTION_CHAT_BARCA, "barcelona"),
+    general: parseChatRef(env.FACTION_CHAT_GENERAL, "general")
+  };
+}
+
+function matchChatRef(message: TelegramMessage, ref: FactionChatRef): boolean {
+  const chatId = message.chat?.id;
+  const chatUsername = message.chat?.username?.toLowerCase();
+  const matchesChat =
+    (ref.chatId !== undefined && chatId === ref.chatId) ||
+    (!!ref.chatUsername && !!chatUsername && ref.chatUsername === chatUsername);
+  if (!matchesChat) {
+    return false;
+  }
+  if (ref.threadId !== null && ref.threadId !== undefined) {
+    return message.message_thread_id === ref.threadId;
+  }
+  return true;
+}
+
+function formatFactionName(faction: "real_madrid" | "barcelona"): string {
+  return faction === "real_madrid" ? "Реал" : "Барселона";
+}
+
+function formatUserDisplay(user: TelegramUser): string {
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  const username = user.username ? `@${user.username}` : null;
+  if (name && username) {
+    return `${name} (${username})`;
+  }
+  if (name) {
+    return name;
+  }
+  if (username) {
+    return username;
+  }
+  return `id:${user.id}`;
+}
+
+async function getUserClassicoChoice(
+  supabase: SupabaseClient,
+  userId: number
+): Promise<"real_madrid" | "barcelona" | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("classico_choice")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to load user faction", error);
+      return null;
+    }
+
+    if (data?.classico_choice === "real_madrid" || data?.classico_choice === "barcelona") {
+      return data.classico_choice;
+    }
+  } catch (error) {
+    console.error("Failed to load user faction", error);
+  }
+  return null;
+}
+
+async function handleFactionChatModeration(
+  message: TelegramMessage,
+  env: Env,
+  supabase: SupabaseClient | null
+): Promise<void> {
+  const from = message.from;
+  const chatId = message.chat?.id;
+  const messageId = message.message_id;
+  if (!from || !chatId || !messageId || from.is_bot) {
+    return;
+  }
+
+  const refs = getFactionChatRefs(env);
+  const inReal = refs.real && matchChatRef(message, refs.real);
+  const inBarca = refs.barca && matchChatRef(message, refs.barca);
+  const targetFaction = inReal ? "real_madrid" : inBarca ? "barcelona" : null;
+  if (!targetFaction) {
+    return;
+  }
+
+  if (!supabase) {
+    console.error("Failed to moderate faction chat: missing_supabase");
+    return;
+  }
+
+  const userFaction = await getUserClassicoChoice(supabase, from.id);
+  if (!userFaction || userFaction === targetFaction) {
+    return;
+  }
+
+  await deleteMessage(env, chatId, messageId);
+
+  const targetLabel = formatFactionName(targetFaction);
+  const userLabel = formatUserDisplay(from);
+  const userFactionLabel = formatFactionName(userFaction);
+
+  const directMessage = `Твоє повідомлення видалено: це чат фракції ${targetLabel}. Твоя фракція: ${userFactionLabel}.`;
+  await sendMessage(env, from.id, directMessage);
+
+  if (refs.general) {
+    const generalChatTarget =
+      refs.general.chatId ?? (refs.general.chatUsername ? `@${refs.general.chatUsername}` : null);
+    if (!generalChatTarget) {
+      return;
+    }
+    const generalText = `Порушення у чаті ${targetLabel}: ${userLabel} (${userFactionLabel}) написав у чужій гілці. Повідомлення видалено.`;
+    await sendMessage(env, generalChatTarget, generalText);
+  }
 }
 
 async function storeUser(

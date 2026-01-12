@@ -67,7 +67,7 @@ export function extractCommandToken(token: string): string | null {
 
 export async function sendMessage(
   env: Env,
-  chatId: number,
+  chatId: number | string,
   text: string,
   replyMarkup?: TelegramInlineKeyboardMarkup,
   parseMode?: "HTML" | "MarkdownV2"
@@ -83,6 +83,20 @@ export async function sendMessage(
   if (parseMode) {
     payload.parse_mode = parseMode;
   }
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteMessage(env: Env, chatId: number | string, messageId: number): Promise<void> {
+  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/deleteMessage`;
+  const payload = {
+    chat_id: chatId,
+    message_id: messageId
+  };
 
   await fetch(url, {
     method: "POST",
