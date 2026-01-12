@@ -798,7 +798,7 @@ function renderAvatarContent(
   return `<div class="avatar placeholder"></div>`;
 }
 
-function renderPredictionQuality(profile: ProfileStatsPayload | null, points: number): string {
+function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   const prediction = profile?.prediction;
   const total = prediction?.total ?? 0;
   const hits = prediction?.hits ?? 0;
@@ -814,12 +814,10 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null, points: nu
     }
     return `<span class="result-icon is-miss" aria-hidden="true">✕</span>`;
   }).join("");
-  const pointsLabel = formatUkrainianPoints(points);
   return `
     <section class="panel profile-metrics">
       <div class="section-header">
         <h2>ПРОГОЛОСУВАЛИ ${total} ${timesLabel}</h2>
-        <p class="muted small">ГОЛОСИ: ${points} ${pointsLabel}</p>
       </div>
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
@@ -1138,7 +1136,8 @@ function renderUser(
     logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder, currentNickname ?? displayName) : "";
   const dateValue = date || getKyivDateString();
   const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
-  const predictionQualityMarkup = renderPredictionQuality(profile ?? null, stats.points);
+  const pointsLabel = formatUkrainianPoints(stats.points);
+  const predictionQualityMarkup = renderPredictionQuality(profile ?? null);
   const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
@@ -1261,6 +1260,8 @@ function renderUser(
             ${logoStackMarkup}
             ${logoOrderMenuMarkup}
           </section>
+
+          <div class="profile-points">ГОЛОСИ: ${stats.points} ${pointsLabel}</div>
 
           ${predictionQualityMarkup}
           ${factionsMarkup}

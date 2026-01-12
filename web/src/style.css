@@ -323,6 +323,15 @@ body.intro-active {
   z-index: 2;
 }
 
+.profile-points {
+  margin: 6px 0 14px;
+  text-align: center;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
 .panel.profile .avatar {
   border: 2px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
