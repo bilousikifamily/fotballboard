@@ -310,11 +310,7 @@ body.intro-active {
 }
 
 .profile-nickname {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
+  margin: 0 auto 4px;
   padding: 10px 18px;
   border-radius: 999px;
   background: rgba(12, 13, 16, 0.72);
@@ -329,26 +325,25 @@ body.intro-active {
   text-transform: uppercase;
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 600;
-  z-index: 2;
 }
 
 .profile-points {
-  margin: 0 0 10px;
-  padding: 8px 12px;
+  margin: 0;
+  padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(12px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--ink);
 }
 
 .profile-points-icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   display: block;
   background-color: #ffffff;
   mask-image: url("/icons/brain.svg");
@@ -362,8 +357,8 @@ body.intro-active {
 }
 
 .profile-points-value {
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #ffffff;
 }
@@ -380,7 +375,7 @@ body.intro-active {
 .profile-metrics .section-header,
 .profile-factions .section-header {
   margin-bottom: 6px;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .profile-metrics .section-header h2,
