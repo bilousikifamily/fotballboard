@@ -18,9 +18,16 @@ export async function handleUpdate(update: TelegramUpdate, env: Env): Promise<vo
   }
 
   if (command === "start" || command === "app" || command === "webapp") {
-    await sendMessage(env, message.chat.id, "Готово ✅ Натисни кнопку, щоб відкрити WebApp", {
-      inline_keyboard: [[{ text: "Open WebApp", web_app: { url: env.WEBAPP_URL } }]]
-    });
+    await sendMessage(
+      env,
+      message.chat.id,
+      "Готово ✅ Натисни кнопку, щоб відкрити WebApp",
+      {
+        inline_keyboard: [[{ text: "Open WebApp", web_app: { url: env.WEBAPP_URL } }]]
+      },
+      undefined,
+      message.message_thread_id
+    );
   }
 }
 
@@ -70,7 +77,8 @@ export async function sendMessage(
   chatId: number | string,
   text: string,
   replyMarkup?: TelegramInlineKeyboardMarkup,
-  parseMode?: "HTML" | "MarkdownV2"
+  parseMode?: "HTML" | "MarkdownV2",
+  messageThreadId?: number
 ): Promise<void> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
   const payload: Record<string, unknown> = {
@@ -82,6 +90,9 @@ export async function sendMessage(
   }
   if (parseMode) {
     payload.parse_mode = parseMode;
+  }
+  if (typeof messageThreadId === "number") {
+    payload.message_thread_id = messageThreadId;
   }
 
   await fetch(url, {

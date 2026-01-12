@@ -1038,11 +1038,25 @@ function parseChatRef(value: string | undefined, label: string): FactionChatRef 
     return null;
   }
 
+  const normalized = raw.replace(/^https?:\/\//, "").replace(/^@/, "");
+  const numericThreadMatch = normalized.match(/^t\.me\/(-?\d+)\/(\d+)$/i) ?? normalized.match(/^(-?\d+)\/(\d+)$/);
+  if (numericThreadMatch) {
+    const rawChatId = numericThreadMatch[1];
+    const threadId = Number(numericThreadMatch[2]);
+    const chatId =
+      rawChatId.startsWith("-100") || rawChatId.startsWith("-")
+        ? Number(rawChatId)
+        : Number(`-100${rawChatId}`);
+    return {
+      chatId,
+      threadId: Number.isFinite(threadId) ? threadId : null,
+      label
+    };
+  }
+
   if (/^-?\d+$/.test(raw)) {
     return { chatId: Number(raw), threadId: null, label };
   }
-
-  const normalized = raw.replace(/^https?:\/\//, "").replace(/^@/, "");
   const privateMatch = normalized.match(/^t\.me\/c\/(\d+)(?:\/(\d+))?/i);
   if (privateMatch) {
     const internalId = privateMatch[1];

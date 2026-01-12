@@ -1026,7 +1026,6 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
       const display = getFactionDisplay(entry);
       const factionId = getFactionId(entry);
       const isPrimary = factionId === primaryId;
-      const chatLink = getFactionChatLink(entry);
       const name = escapeHtml(display.name);
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
@@ -1043,15 +1042,6 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
               <div class="faction-meta">${rankMeta}</div>
             </div>
           </div>
-          ${
-            chatLink
-              ? `<button class="faction-chat" type="button" data-faction-chat data-chat-url="${escapeAttribute(
-                  chatLink
-                )}" aria-label="Чат фракції">
-                  <span class="faction-chat-icon" aria-hidden="true"></span>
-                </button>`
-              : ""
-          }
         </div>
       `;
     })
@@ -1069,7 +1059,7 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
           <div class="faction-meta">${rankLabel}</div>
         </div>
       </div>
-      <button class="faction-chat" type="button" data-faction-chat data-chat-url="https://t.me/c/3415133128/5" aria-label="Чат ради">
+      <button class="faction-chat" type="button" data-faction-chat data-chat-url="https://t.me/3415133128/19" aria-label="Чат ради">
         <span class="faction-chat-icon" aria-hidden="true"></span>
       </button>
     </div>
