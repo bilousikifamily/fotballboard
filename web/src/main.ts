@@ -92,7 +92,6 @@ let currentLogoOrder: string[] | null = null;
 let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let currentProfileStats: ProfileStatsPayload | null = null;
-let currentProfilePoints = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
@@ -816,14 +815,7 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
     return `<span class="result-icon is-miss" aria-hidden="true">✕</span>`;
   }).join("");
   return `
-    <section class="panel profile-metrics">
-      <div class="profile-points" aria-label="Голоси">
-        <span class="profile-points-icon" aria-hidden="true"></span>
-        <span class="profile-points-value">${currentProfilePoints}</span>
-      </div>
-      <div class="section-header">
-        <h2>ПРОГОЛОСУВАЛИ ${total} ${timesLabel}</h2>
-      </div>
+    <section class="profile-metrics" aria-label="Прогнози">
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
         <span class="accuracy-bar-text">${accuracy}%</span>
@@ -1125,7 +1117,6 @@ function renderUser(
   profile?: ProfileStatsPayload | null
 ): void {
   currentProfileStats = profile ?? null;
-  currentProfilePoints = stats.points;
   const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
   const logoOptions = buildAvatarOptions(currentOnboarding);
@@ -1263,6 +1254,10 @@ function renderUser(
         <section class="screen" data-screen="profile">
           <section class="panel profile center">
             ${safeName ? `<div class="profile-nickname" data-profile-name>${safeName}</div>` : ""}
+            <div class="profile-points" aria-label="Голоси">
+              <span class="profile-points-icon" aria-hidden="true"></span>
+              <span class="profile-points-value">${stats.points}</span>
+            </div>
             ${logoStackMarkup}
             ${logoOrderMenuMarkup}
           </section>
