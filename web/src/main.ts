@@ -801,6 +801,7 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   const total = stats?.total ?? 0;
   const hits = stats?.hits ?? 0;
   const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
+  const timesLabel = formatUkrainianTimes(total);
   const lastResults = stats?.last_results ?? [];
   const icons = lastResults.map((entry) => {
     if (entry.points === 5) {
@@ -814,7 +815,7 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   return `
     <section class="panel profile-metrics">
       <div class="section-header">
-        <h2>ЗРОБЛЕНО ${total} ПРОГНОЗІВ</h2>
+        <h2>ПРОГОЛОСУВАЛИ ${total} ${timesLabel}</h2>
       </div>
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
@@ -825,6 +826,22 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
       </div>
     </section>
   `;
+}
+
+function formatUkrainianTimes(value: number): string {
+  const absValue = Math.abs(Math.trunc(value));
+  const mod10 = absValue % 10;
+  const mod100 = absValue % 100;
+  if (mod100 >= 11 && mod100 <= 14) {
+    return "РАЗІВ";
+  }
+  if (mod10 === 1) {
+    return "РАЗ";
+  }
+  if (mod10 >= 2 && mod10 <= 4) {
+    return "РАЗИ";
+  }
+  return "РАЗІВ";
 }
 
 function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | null } {
@@ -1037,7 +1054,7 @@ function renderUser(
                 <span class="stat-value">${rankText}</span>
               </div>
               <div class="stat">
-                <span class="stat-label">Бали</span>
+                <span class="stat-label">Голоси</span>
                 <span class="stat-value">${stats.points}</span>
               </div>
             </div>

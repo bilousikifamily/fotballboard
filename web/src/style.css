@@ -369,10 +369,9 @@ body.intro-active {
   --result-gap: 6px;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: var(--result-gap);
-  width: min(100%, calc(10 * var(--result-size) + 9 * var(--result-gap)));
-  margin: 0 auto;
+  width: 100%;
 }
 
 .result-icon {
