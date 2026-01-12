@@ -501,28 +501,22 @@ body.intro-active {
 }
 
 .faction-members {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 6px;
 }
 
 .faction-members-count {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: #ffffff;
   line-height: 1;
 }
 
 .faction-members-icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   display: block;
   background-color: #ffffff;
   mask-image: url("/icons/person.svg");
