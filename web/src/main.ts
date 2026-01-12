@@ -871,14 +871,15 @@ function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | 
 
 function getFactionChatLink(entry: FactionEntry): string | null {
   const value = String(entry.value).toLowerCase();
+  const base = "https://t.me/c/3415133128";
   const map: Record<string, string> = {
-    real_madrid: "https://t.me/3415133128/3",
-    barcelona: "https://t.me/3415133128/4",
-    liverpool: "https://t.me/3415133128/7",
-    chelsea: "https://t.me/3415133128/8",
-    dnipro: "https://t.me/3415133128/6",
-    "dnipro-1": "https://t.me/3415133128/6",
-    dnipro_1: "https://t.me/3415133128/6"
+    real_madrid: `${base}/3`,
+    barcelona: `${base}/4`,
+    liverpool: `${base}/7`,
+    chelsea: `${base}/8`,
+    dnipro: `${base}/6`,
+    "dnipro-1": `${base}/6`,
+    dnipro_1: `${base}/6`
   };
   return map[value] ?? null;
 }
@@ -961,20 +962,30 @@ function setupPrimaryFactionSelection(profile: ProfileStatsPayload | null): void
   if (!list) {
     return;
   }
-  const cards = Array.from(list.querySelectorAll<HTMLElement>(".faction-card[data-faction-id]"));
-  if (!cards.length) {
+  const rows = Array.from(list.querySelectorAll<HTMLElement>(".faction-row[data-faction-id]"));
+  if (!rows.length) {
     return;
   }
-  cards.forEach((card) => {
+  rows.forEach((row) => {
+    const card = row.querySelector<HTMLElement>(".faction-card");
+    if (!card) {
+      return;
+    }
     card.addEventListener("click", () => {
-      const factionId = card.dataset.factionId;
+      const factionId = row.dataset.factionId;
       if (!factionId) {
         return;
       }
       setPrimaryFactionId(factionId);
-      list.prepend(card);
-      cards.forEach((item) => item.classList.toggle("is-primary", item === card));
-      const logo = card.dataset.factionLogo || null;
+      list.prepend(row);
+      rows.forEach((item) => {
+        const itemCard = item.querySelector<HTMLElement>(".faction-card");
+        if (!itemCard) {
+          return;
+        }
+        itemCard.classList.toggle("is-primary", item === row);
+      });
+      const logo = row.dataset.factionLogo || null;
       updateLeaderboardPrimaryFaction(logo);
     });
   });
@@ -1022,13 +1033,15 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
         : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
       const rankMeta = entry.rank ? `№${entry.rank} У СПИСКУ` : "№— У СПИСКУ";
       return `
-        <div class="faction-card${isPrimary ? " is-primary" : ""}" data-faction-id="${escapeAttribute(
+        <div class="faction-row" data-faction-id="${escapeAttribute(
           factionId
         )}" data-faction-logo="${display.logo ? escapeAttribute(display.logo) : ""}">
-          <div class="faction-logo-wrap">${logo}</div>
-          <div class="faction-info">
-            <div class="faction-name">${name}</div>
-            <div class="faction-meta">${rankMeta}</div>
+          <div class="faction-card${isPrimary ? " is-primary" : ""}">
+            <div class="faction-logo-wrap">${logo}</div>
+            <div class="faction-info">
+              <div class="faction-name">${name}</div>
+              <div class="faction-meta">${rankMeta}</div>
+            </div>
           </div>
           ${
             chatLink
@@ -1046,15 +1059,17 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
     .join("");
   const content = cards ? cards : `<p class="muted small">Фракції ще не обрані.</p>`;
   const radaCard = `
-    <div class="faction-card">
-      <div class="faction-logo-wrap">
-        <img class="faction-logo" src="/images/LOGO.png" alt="" />
+    <div class="faction-row faction-row--rada">
+      <div class="faction-card">
+        <div class="faction-logo-wrap">
+          <img class="faction-logo" src="/images/LOGO.png" alt="" />
+        </div>
+        <div class="faction-info">
+          <div class="faction-name">ФУТБОЛЬНА РАДА</div>
+          <div class="faction-meta">${rankLabel}</div>
+        </div>
       </div>
-      <div class="faction-info">
-        <div class="faction-name">ФУТБОЛЬНА РАДА</div>
-        <div class="faction-meta">${rankLabel}</div>
-      </div>
-      <button class="faction-chat" type="button" data-faction-chat data-chat-url="https://t.me/3415133128/5" aria-label="Чат ради">
+      <button class="faction-chat" type="button" data-faction-chat data-chat-url="https://t.me/c/3415133128/5" aria-label="Чат ради">
         <span class="faction-chat-icon" aria-hidden="true"></span>
       </button>
     </div>

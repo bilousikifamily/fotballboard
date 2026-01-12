@@ -414,9 +414,16 @@ body.intro-active {
   gap: 10px;
 }
 
+.faction-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .faction-card {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px 1fr;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -425,7 +432,7 @@ body.intro-active {
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
-.faction-card[data-faction-id] {
+.faction-row[data-faction-id] .faction-card {
   cursor: pointer;
 }
 
