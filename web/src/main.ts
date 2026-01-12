@@ -816,10 +816,6 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   }).join("");
   return `
     <section class="profile-metrics" aria-label="Прогнози">
-      <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
-        <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
-        <span class="accuracy-bar-text">${accuracy}%</span>
-      </div>
       <div class="recent-results">
         <div class="result-icons">${icons}</div>
       </div>
@@ -1134,6 +1130,10 @@ function renderUser(
   const dateValue = date || getKyivDateString();
   const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
   const pointsLabel = formatUkrainianPoints(stats.points);
+  const prediction = profile?.prediction;
+  const totalPredictions = prediction?.total ?? 0;
+  const hitsPredictions = prediction?.hits ?? 0;
+  const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
   const predictionQualityMarkup = renderPredictionQuality(profile ?? null);
   const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
@@ -1256,6 +1256,10 @@ function renderUser(
             ${safeName ? `<div class="profile-nickname" data-profile-name>${safeName}</div>` : ""}
             ${logoStackMarkup}
             ${logoOrderMenuMarkup}
+            <div class="profile-accuracy" role="img" aria-label="Точність прогнозів ${accuracy}%">
+              <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
+              <span class="accuracy-bar-text">${accuracy}%</span>
+            </div>
           </section>
 
           ${predictionQualityMarkup}
