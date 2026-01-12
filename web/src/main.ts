@@ -869,6 +869,33 @@ function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | 
   };
 }
 
+function getFactionChatLink(entry: FactionEntry): string | null {
+  const value = String(entry.value).toLowerCase();
+  const map: Record<string, string> = {
+    real_madrid: "https://t.me/3415133128/3",
+    barcelona: "https://t.me/3415133128/4",
+    liverpool: "https://t.me/3415133128/7",
+    chelsea: "https://t.me/3415133128/8",
+    dnipro: "https://t.me/3415133128/6",
+    "dnipro-1": "https://t.me/3415133128/6",
+    dnipro_1: "https://t.me/3415133128/6"
+  };
+  return map[value] ?? null;
+}
+
+function openFactionChat(url: string): void {
+  if (!url) {
+    return;
+  }
+  if (window.Telegram?.WebApp?.openTelegramLink) {
+    window.Telegram.WebApp.openTelegramLink(url);
+    window.Telegram.WebApp.close();
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.Telegram?.WebApp?.close?.();
+}
+
 function getFactionId(entry: FactionEntry): string {
   return `${entry.key}:${entry.value}`;
 }
@@ -953,6 +980,22 @@ function setupPrimaryFactionSelection(profile: ProfileStatsPayload | null): void
   });
 }
 
+function setupFactionChatButtons(): void {
+  if (!app) {
+    return;
+  }
+  app.querySelectorAll<HTMLButtonElement>("[data-faction-chat]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const url = button.dataset.chatUrl;
+      if (!url) {
+        return;
+      }
+      openFactionChat(url);
+    });
+  });
+}
+
 function renderFactions(profile: ProfileStatsPayload | null, rank: number | null): string {
   const factions = profile?.factions ?? [];
   const rankLabel = typeof rank === "number" ? `№${rank} У СПИСКУ` : "№— У СПИСКУ";
@@ -972,6 +1015,7 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
       const display = getFactionDisplay(entry);
       const factionId = getFactionId(entry);
       const isPrimary = factionId === primaryId;
+      const chatLink = getFactionChatLink(entry);
       const name = escapeHtml(display.name);
       const logo = display.logo
         ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
@@ -986,6 +1030,15 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
             <div class="faction-name">${name}</div>
             <div class="faction-meta">${rankMeta}</div>
           </div>
+          ${
+            chatLink
+              ? `<button class="faction-chat" type="button" data-faction-chat data-chat-url="${escapeAttribute(
+                  chatLink
+                )}" aria-label="Чат фракції">
+                  <span class="faction-chat-icon" aria-hidden="true"></span>
+                </button>`
+              : ""
+          }
         </div>
       `;
     })
@@ -1001,6 +1054,9 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
         <div class="faction-name">ФУТБОЛЬНА РАДА</div>
         <div class="faction-meta">${rankLabel}</div>
       </div>
+      <button class="faction-chat" type="button" data-faction-chat data-chat-url="https://t.me/3415133128/5" aria-label="Чат ради">
+        <span class="faction-chat-icon" aria-hidden="true"></span>
+      </button>
     </div>
   `;
   return `
@@ -1290,6 +1346,7 @@ function renderUser(
   setupNoticeTicker();
   setupLogoOrderControls();
   setupPrimaryFactionSelection(currentProfileStats);
+  setupFactionChatButtons();
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
   const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
