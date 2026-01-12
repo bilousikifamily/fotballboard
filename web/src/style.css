@@ -525,6 +525,14 @@ body.intro-active {
   height: 100%;
   width: auto;
   aspect-ratio: 1 / 1;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.faction-row--rada .faction-chat-icon {
+  width: 100%;
+  height: 100%;
 }
 
 .faction-card {
