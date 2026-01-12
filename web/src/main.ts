@@ -817,12 +817,12 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   }).join("");
   return `
     <section class="panel profile-metrics">
+      <div class="profile-points" aria-label="Голоси">
+        <span class="profile-points-icon" aria-hidden="true"></span>
+        <span class="profile-points-value">${currentProfilePoints}</span>
+      </div>
       <div class="section-header">
         <h2>ПРОГОЛОСУВАЛИ ${total} ${timesLabel}</h2>
-        <div class="profile-points" aria-label="Голоси">
-          <span class="profile-points-icon" aria-hidden="true"></span>
-          <span class="profile-points-value">${currentProfilePoints}</span>
-        </div>
       </div>
       <div class="accuracy-bar" role="img" aria-label="Точність прогнозів ${accuracy}%">
         <span class="accuracy-bar-fill" style="width: ${accuracy}%;"></span>
