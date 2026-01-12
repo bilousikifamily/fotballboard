@@ -1427,11 +1427,12 @@ async function listRecentPredictionResults(supabase: SupabaseClient, userId: num
   try {
     const { data, error } = await supabase
       .from("predictions")
-      .select("points, matches!inner(kickoff_at, status)")
+      .select("id, points, matches!inner(kickoff_at, status)")
       .eq("user_id", userId)
       .eq("matches.status", "finished")
       .not("points", "is", null)
-      .order("kickoff_at", { foreignTable: "matches", ascending: true });
+      .order("kickoff_at", { foreignTable: "matches", ascending: true })
+      .order("id", { ascending: true });
     if (error || !data) {
       return [];
     }
