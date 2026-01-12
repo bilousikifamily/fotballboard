@@ -1769,6 +1769,7 @@ h1 {
   display: none;
   position: relative;
   z-index: 1;
+  overflow: visible;
 }
 
 .leaderboard-shell {
@@ -1781,6 +1782,7 @@ h1 {
 .leaderboard-shell .panel.leaderboard {
   position: relative;
   z-index: 1;
+  overflow: visible;
 }
 
 .leaderboard-list.is-open {
@@ -1825,10 +1827,10 @@ h1 {
 
 .leaderboard-prize {
   position: absolute;
-  left: -20px;
+  left: -28px;
   top: 50%;
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
   transform: translateY(-50%);
@@ -1865,8 +1867,8 @@ h1 {
 .leaderboard-row.is-self {
   background: linear-gradient(
     135deg,
-    rgba(255, 122, 26, 0.7),
-    rgba(255, 154, 31, 0.7)
+    rgb(255, 122, 26),
+    rgb(255, 154, 31)
   );
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 12px 26px rgba(255, 122, 26, 0.3);
