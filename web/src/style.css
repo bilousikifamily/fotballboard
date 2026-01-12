@@ -11,8 +11,8 @@
   --accent: #ff7a1a;
   --accent-strong: #ff9a1f;
   --accent-soft: rgba(255, 122, 26, 0.2);
-  --outline-light: rgba(255, 255, 255, 0.18);
-  --outline-dark: rgba(0, 0, 0, 0.75);
+  --outline-light: rgba(255, 255, 255, 0.12);
+  --outline-dark: rgba(0, 0, 0, 0.65);
   --tabbar-height: 72px;
   --tabbar-offset: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
 }
@@ -289,9 +289,11 @@ body.intro-active {
 }
 
 .panel.profile {
-  padding: 18px 20px 0;
+  padding: 28px 20px 0;
   gap: 10px;
-  background: linear-gradient(160deg, #17181d 0%, #101114 100%);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.1), transparent 55%),
+    linear-gradient(160deg, #17181d 0%, #101114 100%);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.75) inset,
     0 18px 40px rgba(0, 0, 0, 0.55);
@@ -308,23 +310,35 @@ body.intro-active {
 }
 
 .profile-nickname {
-  margin: 8px 0 12px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  background: rgba(11, 12, 14, 0.75);
-  border: 1px solid var(--outline-light);
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(12, 13, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset;
+  backdrop-filter: blur(14px);
   text-align: center;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-weight: 500;
-  position: relative;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 600;
   z-index: 2;
 }
 
 .profile-points {
-  margin: 6px 0 14px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -349,7 +363,7 @@ body.intro-active {
 
 .profile-points-value {
   font-size: 0.95rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #ffffff;
 }
@@ -477,8 +491,9 @@ body.intro-active {
   align-items: center;
   padding: 10px 12px;
   border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
 }
 
 .faction-row[data-faction-id] .faction-card {
