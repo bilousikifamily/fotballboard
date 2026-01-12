@@ -5139,7 +5139,15 @@ async function handlePredictionReminders(env: Env): Promise<void> {
     if (users.length > 0) {
       const message = formatPredictionReminderMessage(match);
       for (const user of users) {
-        await sendMessage(env, user.id, message, undefined, "HTML");
+        await sendMessage(
+          env,
+          user.id,
+          message,
+          {
+            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
+          },
+          "HTML"
+        );
       }
     }
 
