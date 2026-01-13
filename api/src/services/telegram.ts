@@ -18,9 +18,12 @@ export async function handleUpdate(update: TelegramUpdate, env: Env): Promise<vo
   }
 
   if (command === "start" || command === "app" || command === "webapp") {
-    await sendMessage(
+    const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
+    const imageUrl = `${webappBaseUrl}/images/beginig.png`;
+    await sendPhoto(
       env,
       message.chat.id,
+      imageUrl,
       "Кожен депутат Футбольної Ради представляє певні фракції.\n\nБез фракції:\n— нема голосу\n— нема впливу\n— нема комунікації",
       {
         inline_keyboard: [[{ text: "ОБРАТИ ФРАКЦІЮ", web_app: { url: env.WEBAPP_URL } }]]
@@ -85,6 +88,40 @@ export async function sendMessage(
     chat_id: chatId,
     text
   };
+  if (replyMarkup) {
+    payload.reply_markup = replyMarkup;
+  }
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
+  if (typeof messageThreadId === "number") {
+    payload.message_thread_id = messageThreadId;
+  }
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function sendPhoto(
+  env: Env,
+  chatId: number | string,
+  photoUrl: string,
+  caption?: string,
+  replyMarkup?: TelegramInlineKeyboardMarkup,
+  parseMode?: "HTML" | "MarkdownV2",
+  messageThreadId?: number
+): Promise<void> {
+  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`;
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    photo: photoUrl
+  };
+  if (caption) {
+    payload.caption = caption;
+  }
   if (replyMarkup) {
     payload.reply_markup = replyMarkup;
   }
