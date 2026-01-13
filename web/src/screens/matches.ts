@@ -93,6 +93,33 @@ export function renderPendingMatchesList(matches: Match[]): string {
     .join("");
 }
 
+function resolveMatchTimezone(match: Match): string | null {
+  if (match.weather_timezone) {
+    return match.weather_timezone;
+  }
+  switch (match.league_id) {
+    case "english-premier-league":
+    case "fa-cup":
+      return "Europe/London";
+    case "la-liga":
+    case "copa-del-rey":
+      return "Europe/Madrid";
+    case "serie-a":
+    case "coppa-italia":
+      return "Europe/Rome";
+    case "bundesliga":
+    case "dfb-pokal":
+      return "Europe/Berlin";
+    case "ligue-1":
+    case "coupe-de-france":
+      return "Europe/Paris";
+    case "ukrainian-premier-league":
+      return "Europe/Kyiv";
+    default:
+      return null;
+  }
+}
+
 type MatchRenderOptions = {
   preview?: boolean;
 };
@@ -104,10 +131,14 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
   const city = match.venue_city ?? match.venue_name ?? "";
   const cityLabel = city ? city.toUpperCase() : "";
   const kyivTime = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
-  const localTime = formatTimeInZone(match.kickoff_at, match.weather_timezone ?? "Europe/Kyiv");
+  const localTimezone = resolveMatchTimezone(match);
+  const localTime = localTimezone ? formatTimeInZone(match.kickoff_at, localTimezone) : null;
   const tempValue = formatTemperature(match.weather_temp_c ?? null);
   const cityMarkup = city
     ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(cityLabel)}</span>`
+    : "";
+  const localTimeMarkup = localTime
+    ? `<span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(localTime)})</span>`
     : "";
   const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
   const rainValue = formatRainProbability(rainPercent);
@@ -208,9 +239,7 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         <div class="match-time-row">
           <span class="match-time-value" data-match-kyiv-time data-match-id="${match.id}">${escapeHtml(kyivTime)}</span>
           ${cityMarkup}
-          <span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(
-            localTime
-          )})</span>
+          ${localTimeMarkup}
           <span class="match-meta-sep">·</span>
           <span class="match-temp" data-match-temp data-match-id="${match.id}">${escapeHtml(tempValue)}</span>
         </div>

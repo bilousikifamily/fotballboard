@@ -264,6 +264,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
       }
 
+      const existingOnboarding = await getUserOnboarding(supabase, auth.user.id);
+      const wasOnboarded = Boolean(existingOnboarding?.completedAt);
+
       const onboardingSelections = { classicoChoice, uaClubId, euClubId };
       if (avatarChoice && !isAvatarChoiceAllowed(avatarChoice, onboardingSelections)) {
         return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
@@ -290,6 +293,10 @@ export default {
       });
       if (!saved) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      if (!wasOnboarded && (classicoChoice === "real_madrid" || classicoChoice === "barcelona")) {
+        await notifyFactionChatNewDeputy(env, auth.user, classicoChoice);
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -1134,6 +1141,26 @@ function formatUserDisplay(user: TelegramUser): string {
     return username;
   }
   return `id:${user.id}`;
+}
+
+async function notifyFactionChatNewDeputy(
+  env: Env,
+  user: TelegramUser,
+  faction: "real_madrid" | "barcelona"
+): Promise<void> {
+  const refs = getFactionChatRefs(env);
+  const targetRef = faction === "real_madrid" ? refs.real : refs.barca;
+  if (!targetRef) {
+    return;
+  }
+  const chatTarget = targetRef.chatId ?? (targetRef.chatUsername ? `@${targetRef.chatUsername}` : null);
+  if (!chatTarget) {
+    return;
+  }
+  const factionLabel = formatFactionName(faction);
+  const userLabel = formatUserDisplay(user);
+  const message = `У НАШІЙ ФРАКЦІЇ ${factionLabel.toUpperCase()} НОВИЙ ДЕПУТАТ:\n${userLabel}`;
+  await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
 }
 
 async function getUserClassicoChoice(

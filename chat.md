@@ -36,6 +36,16 @@ These templates are used for text communication in the Telegram bot for this pro
 - `points_label` uses Ukrainian pluralization for “бал/бали/балів”
 - Source: `api/src/handlers.ts`
 
+## New deputy in faction chat
+- Message:
+```
+У НАШІЙ ФРАКЦІЇ {FACTION_NAME} НОВИЙ ДЕПУТАТ:
+{USER_LABEL}
+```
+- Faction names: `РЕАЛ`, `БАРСЕЛОНА`
+- User label: `{first_name} {last_name} (@username)` (fallbacks to name/username/id)
+- Source: `api/src/handlers.ts`
+
 ## Missed match + pending votes
 - Message:
 ```
