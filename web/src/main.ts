@@ -333,6 +333,8 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
+    const blockedEuClubs = new Set(["barcelona", "real-madrid", "real_madrid"]);
+    const isBlockedEuClub = (clubId: string | null): boolean => (clubId ? blockedEuClubs.has(clubId) : false);
     const stepTitle = `Крок ${state.step} з 4`;
     const headerTitle = getOnboardingTitle(state.step);
     const header = `
@@ -391,8 +393,13 @@ function renderOnboarding(
         `;
       }).join("");
 
+      if (isBlockedEuClub(state.euClubId)) {
+        state.euClubId = null;
+        state.euClubLeague = null;
+      }
+
       const euChoices = EU_CLUBS[state.euLeague].filter(
-        (clubId) => clubId !== "barcelona" && clubId !== "real-madrid"
+        (clubId) => !blockedEuClubs.has(clubId)
       );
 
       body = `
@@ -516,6 +523,9 @@ function renderOnboarding(
     app.querySelectorAll<HTMLButtonElement>("[data-eu-choice]").forEach((button) => {
       button.addEventListener("click", () => {
         const clubId = button.dataset.euChoice || null;
+        if (isBlockedEuClub(clubId)) {
+          return;
+        }
         state.euClubId = clubId;
         state.euClubLeague = clubId ? state.euLeague : null;
         renderStep();
@@ -554,7 +564,7 @@ function getOnboardingTitle(step: number): string {
     case 3:
       return "ЯКУ ЄВРОПЕЙСЬКУ ФРАКЦІЮ ОБИРАЄШ?";
     case 4:
-      return "У КОЖНОГО ДЕПУТАТА ПОВИНЕН БУТИ НІКНЕЙМ";
+      return "НАПИШИ СВІЙ НІКНЕЙМ";
     default:
       return "ОБЕРИ ЄВРОПЕЙСЬКИЙ КЛУБ";
   }
