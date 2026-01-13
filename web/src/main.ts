@@ -391,10 +391,14 @@ function renderOnboarding(
         `;
       }).join("");
 
+      const euChoices = EU_CLUBS[state.euLeague].filter(
+        (clubId) => clubId !== "barcelona" && clubId !== "real-madrid"
+      );
+
       body = `
         <div class="league-tabs">${leagueTabs}</div>
         <div class="logo-grid">
-          ${EU_CLUBS[state.euLeague].map((clubId) =>
+          ${euChoices.map((clubId) =>
             renderClubChoice({
               id: clubId,
               name: formatClubName(clubId),
