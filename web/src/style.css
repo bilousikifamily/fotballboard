@@ -51,6 +51,11 @@ body {
   opacity: 1;
 }
 
+body.onboarding-active #app {
+  width: 100%;
+  padding: 24px 16px 40px;
+}
+
 #app.app-hidden {
   opacity: 0;
   transform: translateY(18px);
@@ -137,6 +142,11 @@ body.intro-active {
   min-height: calc(100dvh - 48px);
   align-content: center;
   justify-items: center;
+  width: 100%;
+}
+
+.layout.onboarding .onboarding-panel {
+  width: 100%;
 }
 
 .app-shell {
@@ -952,6 +962,13 @@ body.intro-active {
   width: 64px;
   height: 64px;
   object-fit: contain;
+}
+
+.logo-choice[data-classico-choice] .logo-img {
+  width: 128px;
+  height: 128px;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .logo-name {

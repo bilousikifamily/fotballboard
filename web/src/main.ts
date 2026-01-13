@@ -272,10 +272,12 @@ async function bootstrap(data: string): Promise<void> {
     currentLogoOrder = onboarding.logo_order ?? null;
 
     if (!onboarding.completed) {
+      document.body.classList.add("onboarding-active");
       renderOnboarding(payload.user, stats, onboarding);
       return;
     }
 
+    document.body.classList.remove("onboarding-active");
     renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
     await loadMatches(currentDate);
     if (isAdmin) {
@@ -542,13 +544,13 @@ function renderOnboarding(
 function getOnboardingTitle(step: number): string {
   switch (step) {
     case 1:
-      return "ХТО КРАЩЕ?";
+      return "ЯКУ ФРАКЦІЮ ОБИРАЄШ?";
     case 2:
-      return "ОБЕРИ УКРАЇНСЬКИЙ КЛУБ";
+      return "ЯКУ УКРАЇНСЬКУ ФРАКЦІЮ ОБИРАЄШ?";
     case 3:
-      return "ОБЕРИ ЄВРОПЕЙСЬКИЙ КЛУБ";
+      return "ЯКУ ЄВРОПЕЙСЬКУ ФРАКЦІЮ ОБИРАЄШ?";
     case 4:
-      return "ВВЕДИ НІКНЕЙМ";
+      return "У КОЖНОГО ДЕПУТАТА ПОВИНЕН БУТИ НІКНЕЙМ";
     default:
       return "ОБЕРИ ЄВРОПЕЙСЬКИЙ КЛУБ";
   }
