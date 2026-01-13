@@ -17,6 +17,7 @@ export const ANALITIKA_TEAMS = [
   { slug: "manchester-united", label: "Manchester United" },
   { slug: "milan", label: "Milan" },
   { slug: "napoli", label: "Napoli" },
+  { slug: "newcastle", label: "Newcastle" },
   { slug: "real-madrid", label: "Real Madrid" }
 ];
 
@@ -229,6 +230,7 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "tottenham hotspur": "tottenham",
   "man city": "manchester-city",
   "man utd": "manchester-united",
+  "exeter city": "exeter",
   "brighton and hove albion": "brighton",
   "nottingham forest": "nottingham-forest",
   "portsmouth": "portsmouth"

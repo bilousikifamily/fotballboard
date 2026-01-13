@@ -3,12 +3,15 @@
 These templates are used for text communication in the Telegram bot for this project.
 
 ## /start and related commands
-- Message: `Готово ✅ Натисни кнопку, щоб відкрити WebApp`
-- Button label: `Open WebApp`
+- Message: `Кожен депутат Футбольної Ради представляє певні фракції.\n\nБез фракції:\n— нема голосу\n— нема впливу\n— нема комунікації`
+- Image: `beginig.png`
+- Button label: `ОБРАТИ ФРАКЦІЮ`
 - Source: `api/src/services/telegram.ts`
 
 ## Match announcements
 - Message: `На тебе вже чекають прогнози на сьогоднішні матчі.`
+- Image: `new_predictions.png`
+- Button label: `ПРОГОЛОСУВАТИ`
 - Source: `api/src/handlers.ts`
 
 ## Prediction reminder (1 hour before close)
@@ -25,6 +28,11 @@ These templates are used for text communication in the Telegram bot for this pro
 ## Match result points
 - Positive points: `Тобі нараховано {points} {points_label}`
 - Negative points: `Ти втратив {points} {points_label}`
+- Images:
+  - `+1golos.png` for +1
+  - `-1golos.png` for -1
+  - `+5golosiv.png` for +5
+- Button label: `ПОДИВИТИСЬ ТАБЛИЦЮ`
 - `points_label` uses Ukrainian pluralization for “бал/бали/балів”
 - Source: `api/src/handlers.ts`
 
