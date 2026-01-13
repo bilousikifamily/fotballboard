@@ -861,6 +861,7 @@ body.intro-active {
 
 .onboarding-panel {
   gap: 18px;
+  align-content: start;
 }
 
 .onboarding-header {
