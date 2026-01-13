@@ -133,6 +133,12 @@ body.intro-active {
   padding-bottom: 0;
 }
 
+.layout.onboarding {
+  min-height: calc(100dvh - 48px);
+  align-content: center;
+  justify-items: center;
+}
+
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
