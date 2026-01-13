@@ -69,7 +69,7 @@ import {
   logFixturesFallback,
   logFixturesSearch
 } from "./services/apiFootball";
-import { deleteMessage, getUpdateMessage, handleUpdate, sendMessage } from "./services/telegram";
+import { deleteMessage, getUpdateMessage, handleUpdate, sendMessage, sendPhoto } from "./services/telegram";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 
 const STARTING_POINTS = 100;
@@ -974,7 +974,15 @@ export default {
       }
 
       for (const user of users) {
-        await sendMessage(env, user.id, MATCHES_ANNOUNCEMENT_MESSAGE);
+        await sendPhoto(
+          env,
+          user.id,
+          buildWebappImageUrl(env, "new_predictions.png"),
+          MATCHES_ANNOUNCEMENT_MESSAGE,
+          {
+            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
+          }
+        );
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -5113,6 +5121,19 @@ async function notifyUsersAboutMatchResult(
 ): Promise<void> {
   for (const notification of notifications) {
     const message = formatMatchResultMessage(notification);
+    const imageFile = getMatchResultImageFile(notification.delta);
+    if (imageFile) {
+      await sendPhoto(
+        env,
+        notification.user_id,
+        buildWebappImageUrl(env, imageFile),
+        message,
+        {
+          inline_keyboard: [[{ text: "ПОДИВИТИСЬ ТАБЛИЦЮ", web_app: { url: env.WEBAPP_URL } }]]
+        }
+      );
+      continue;
+    }
     await sendMessage(env, notification.user_id, message);
   }
 }
@@ -5307,6 +5328,24 @@ function formatPredictionReminderMessage(match: PredictionReminderMatch): string
   const homeLabel = escapeTelegramHtml(home);
   const awayLabel = escapeTelegramHtml(away);
   return `До закриття прийому прогнозів на матч:\n<b>${homeLabel}</b> — <b>${awayLabel}</b>\nзалишилась 1 година...`;
+}
+
+function buildWebappImageUrl(env: Env, fileName: string): string {
+  const baseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
+  return `${baseUrl}/images/${fileName}`;
+}
+
+function getMatchResultImageFile(delta: number): string | null {
+  if (delta === 1) {
+    return "+1golos.png";
+  }
+  if (delta === -1) {
+    return "-1golos.png";
+  }
+  if (delta === 5) {
+    return "+5golosiv.png";
+  }
+  return null;
 }
 
 function formatMatchResultMessage(notification: MatchResultNotification): string {
