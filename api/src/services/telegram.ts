@@ -21,9 +21,9 @@ export async function handleUpdate(update: TelegramUpdate, env: Env): Promise<vo
     await sendMessage(
       env,
       message.chat.id,
-      "Готово ✅ Натисни кнопку, щоб відкрити WebApp",
+      "Кожен депутат Футбольної Ради представляє певні фракції.\n\nБез фракції:\n— нема голосу\n— нема впливу\n— нема комунікації",
       {
-        inline_keyboard: [[{ text: "Open WebApp", web_app: { url: env.WEBAPP_URL } }]]
+        inline_keyboard: [[{ text: "ОБРАТИ ФРАКЦІЮ", web_app: { url: env.WEBAPP_URL } }]]
       },
       undefined,
       message.message_thread_id
