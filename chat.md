@@ -26,8 +26,10 @@ These templates are used for text communication in the Telegram bot for this pro
 - Source: `api/src/handlers.ts`
 
 ## Match result points
-- Positive points: `Тобі нараховано {points} {points_label}`
-- Negative points: `Ти втратив {points} {points_label}`
+- Caption with image: `<b>{HOME_TEAM_UK}</b> {HOME_SCORE}:{AWAY_SCORE} <b>{AWAY_TEAM_UK}</b>`
+- Fallback text (коли нема зображення): 
+  - Positive points: `Тобі нараховано {points} {points_label}`
+  - Negative points: `Ти втратив {points} {points_label}`
 - Images:
   - `+1golos.png` for +1
   - `-1golos.png` for -1
@@ -35,6 +37,9 @@ These templates are used for text communication in the Telegram bot for this pro
 - Button label: `ПОДИВИТИСЬ ТАБЛИЦЮ`
 - `points_label` uses Ukrainian pluralization for “бал/бали/балів”
 - Source: `api/src/handlers.ts`
+- Нотифікація надсилається лише тоді, коли поточна сума балів за матч **змінилась**:
+  - якщо для користувача перерахунок результату не змінив суму (дельта `0`), нове повідомлення не приходить;
+  - якщо дельта `+1`, `-1` або `+5`, бот відправляє відповідну картинку (`+1golos.png`, `-1golos.png`, `+5golosiv.png`) з підписом-результатом матчу.
 
 ## New deputy in faction chat
 - Message:

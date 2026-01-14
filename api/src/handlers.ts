@@ -5148,21 +5148,23 @@ async function notifyUsersAboutMatchResult(
   notifications: MatchResultNotification[]
 ): Promise<void> {
   for (const notification of notifications) {
+    const resultLine = formatMatchResultLine(notification);
     const message = formatMatchResultMessage(notification);
     const imageFile = getMatchResultImageFile(notification.delta);
+    const caption = resultLine || message;
     if (imageFile) {
       await sendPhoto(
         env,
         notification.user_id,
         buildWebappImageUrl(env, imageFile),
-        message,
+        caption,
         {
           inline_keyboard: [[{ text: "ПОДИВИТИСЬ ТАБЛИЦЮ", web_app: { url: env.WEBAPP_URL } }]]
         }
       );
       continue;
     }
-    await sendMessage(env, notification.user_id, message);
+    await sendMessage(env, notification.user_id, caption);
   }
 }
 
@@ -5374,6 +5376,15 @@ function getMatchResultImageFile(delta: number): string | null {
     return "+5golosiv.png";
   }
   return null;
+}
+
+function formatMatchResultLine(notification: MatchResultNotification): string {
+  const home = resolveUkrainianClubName(notification.home_team, null);
+  const away = resolveUkrainianClubName(notification.away_team, null);
+  const homeLabel = escapeTelegramHtml(home);
+  const awayLabel = escapeTelegramHtml(away);
+  const score = `${notification.home_score}:${notification.away_score}`;
+  return `<b>${homeLabel}</b> ${score} <b>${awayLabel}</b>`;
 }
 
 function formatMatchResultMessage(notification: MatchResultNotification): string {
