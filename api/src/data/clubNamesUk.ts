@@ -1,6 +1,7 @@
 // Generated from teams.md. Update teams.md first, then re-sync this file.
 export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "alaves": "АЛАВЕС",
+  "albacete": "АЛЬБАСЕТЕ",
   "angers": "АНЖЕ",
   "arsenal": "АРС",
   "as-monaco": "МОНАКО",

@@ -85,7 +85,8 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "talavera",
     "valencia",
     "valladolid",
-    "villarreal"
+    "villarreal",
+    "albacete"
   ],
   "serie-a": [
     "atalanta",
