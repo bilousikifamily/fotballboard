@@ -363,7 +363,7 @@ function renderOnboarding(
             dataAttr: "data-classico-choice"
           })}
         </div>
-        <button class="button secondary" type="button" data-classico-skip>Пропустити</button>
+        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
     } else if (state.step === 2) {
       body = `
@@ -378,7 +378,7 @@ function renderOnboarding(
             })
           ).join("")}
         </div>
-        <button class="button secondary" type="button" data-ua-skip>Пропустити</button>
+        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
     } else if (state.step === 3) {
       const leagueTabs = EUROPEAN_LEAGUES.map((league) => {
@@ -415,7 +415,7 @@ function renderOnboarding(
             })
           ).join("")}
         </div>
-        <button class="button secondary" type="button" data-eu-skip>Пропустити</button>
+        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
     } else {
       body = `
@@ -457,6 +457,18 @@ function renderOnboarding(
     const nextButton = app.querySelector<HTMLButtonElement>("[data-onboarding-next]");
     if (nextButton) {
       nextButton.addEventListener("click", () => {
+        if (state.step === 1 && !state.classicoChoice) {
+          renderStep("Оберіть фракцію, щоб продовжити.");
+          return;
+        }
+        if (state.step === 2 && !state.uaClubId) {
+          renderStep("Оберіть українську фракцію, щоб продовжити.");
+          return;
+        }
+        if (state.step === 3 && !state.euClubId) {
+          renderStep("Оберіть європейську фракцію, щоб продовжити.");
+          return;
+        }
         state.step = Math.min(4, state.step + 1);
         renderStep();
       });
@@ -483,14 +495,6 @@ function renderOnboarding(
       });
     });
 
-    const classicoSkip = app.querySelector<HTMLButtonElement>("[data-classico-skip]");
-    if (classicoSkip) {
-      classicoSkip.addEventListener("click", () => {
-        state.classicoChoice = null;
-        renderStep();
-      });
-    }
-
     app.querySelectorAll<HTMLButtonElement>("[data-ua-choice]").forEach((button) => {
       button.addEventListener("click", () => {
         const clubId = button.dataset.uaChoice || null;
@@ -498,14 +502,6 @@ function renderOnboarding(
         renderStep();
       });
     });
-
-    const uaSkip = app.querySelector<HTMLButtonElement>("[data-ua-skip]");
-    if (uaSkip) {
-      uaSkip.addEventListener("click", () => {
-        state.uaClubId = null;
-        renderStep();
-      });
-    }
 
     app.querySelectorAll<HTMLButtonElement>("[data-eu-league]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -531,15 +527,6 @@ function renderOnboarding(
         renderStep();
       });
     });
-
-    const euSkip = app.querySelector<HTMLButtonElement>("[data-eu-skip]");
-    if (euSkip) {
-      euSkip.addEventListener("click", () => {
-        state.euClubId = null;
-        state.euClubLeague = null;
-        renderStep();
-      });
-    }
 
     const form = app.querySelector<HTMLFormElement>("[data-onboarding-form]");
     if (form) {

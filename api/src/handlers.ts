@@ -245,17 +245,17 @@ export default {
       }
 
       const classicoChoice = normalizeClassicoChoice(body.classico_choice);
-      if (body.classico_choice !== undefined && body.classico_choice !== null && classicoChoice === null) {
+      if (!classicoChoice) {
         return jsonResponse({ ok: false, error: "bad_classico_choice" }, 400, corsHeaders());
       }
 
       const uaClubId = normalizeClubId(body.ua_club_id);
-      if (body.ua_club_id !== undefined && body.ua_club_id !== null && uaClubId === null) {
+      if (!uaClubId) {
         return jsonResponse({ ok: false, error: "bad_ua_club" }, 400, corsHeaders());
       }
 
       const euClubId = normalizeClubId(body.eu_club_id);
-      if (body.eu_club_id !== undefined && body.eu_club_id !== null && euClubId === null) {
+      if (!euClubId) {
         return jsonResponse({ ok: false, error: "bad_eu_club" }, 400, corsHeaders());
       }
 
@@ -1760,14 +1760,30 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
       return null;
     }
     const completedAt = (data as UserOnboardingRow).onboarding_completed_at ?? null;
+    const classicoChoice = data.classico_choice ?? null;
+    const uaClubId = data.ua_club_id ?? null;
+    const euClubId = data.eu_club_id ?? null;
+    const nickname = (data.nickname ?? "").trim();
+    const logoOrder = (data as UserOnboardingRow).logo_order ?? null;
+
+    // Вважаємо онбординг повністю завершеним тільки коли заповнені всі кроки.
+    const isFullyCompleted =
+      Boolean(completedAt) &&
+      Boolean(classicoChoice) &&
+      Boolean(uaClubId) &&
+      Boolean(euClubId) &&
+      nickname.length >= 2 &&
+      Array.isArray(logoOrder) &&
+      logoOrder.length > 0;
+
     return {
-      classico_choice: data.classico_choice ?? null,
-      ua_club_id: data.ua_club_id ?? null,
-      eu_club_id: data.eu_club_id ?? null,
-      nickname: data.nickname ?? null,
+      classico_choice: classicoChoice,
+      ua_club_id: uaClubId,
+      eu_club_id: euClubId,
+      nickname: nickname || null,
       avatar_choice: data.avatar_choice ?? null,
-      logo_order: (data as UserOnboardingRow).logo_order ?? null,
-      completed: Boolean(completedAt)
+      logo_order: logoOrder,
+      completed: isFullyCompleted
     };
   } catch {
     return null;
