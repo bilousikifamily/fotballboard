@@ -5556,7 +5556,7 @@ function formatPredictionReminderMessage(match: PredictionReminderMatch): string
   const away = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
   const homeLabel = escapeTelegramHtml(home);
   const awayLabel = escapeTelegramHtml(away);
-  return `До закриття прийому прогнозів на матч:\n<b>${homeLabel}</b> — <b>${awayLabel}</b>\nзалишилась 1 година...`;
+  return `До закриття прийому прогнозів на матч:\n${homeLabel} — ${awayLabel}\nзалишилась 1 година...`;
 }
 
 function buildWebappImageUrl(env: Env, fileName: string): string {
@@ -5583,7 +5583,7 @@ function formatMatchResultLine(notification: MatchResultNotification): string {
   const homeLabel = escapeTelegramHtml(home);
   const awayLabel = escapeTelegramHtml(away);
   const score = `${notification.home_score}:${notification.away_score}`;
-  return `<b>${homeLabel}</b> ${score} <b>${awayLabel}</b>`;
+  return `${homeLabel} ${score} ${awayLabel}`;
 }
 
 function formatMatchResultMessage(notification: MatchResultNotification): string {
