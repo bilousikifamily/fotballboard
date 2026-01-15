@@ -116,6 +116,7 @@ function renderMatchCard(match: PresentationMatch): string {
         ${renderProbability("Нічия", match.drawProbability, "draw")}
         ${renderProbability("Гості", match.awayProbability, "away")}
       </div>
+      ${renderAveragePrediction(match.predictions)}
       <div class="presentation-match-predictions">
         <p class="presentation-section-title">Прогнози користувачів</p>
         ${renderPredictions(match.predictions)}
@@ -190,6 +191,27 @@ function renderHistoryRows(items?: TeamMatchStat[]): string {
       `;
     })
     .join("");
+}
+
+function renderAveragePrediction(predictions?: PresentationMatch["predictions"]): string {
+  if (!predictions?.length) {
+    return "";
+  }
+  const sumHome = predictions.reduce((acc, prediction) => acc + prediction.home_pred, 0);
+  const sumAway = predictions.reduce((acc, prediction) => acc + prediction.away_pred, 0);
+  const total = predictions.length;
+  const formatValue = (value: number): string => {
+    const rounded = Number((value).toFixed(1));
+    return Number.isFinite(rounded) ? rounded.toString().replace(/\.0$/, "") : "0";
+  };
+  const averageHome = sumHome / total;
+  const averageAway = sumAway / total;
+  return `
+    <div class="presentation-average-prediction">
+      <span>Середній прогноз</span>
+      <strong>${formatValue(averageHome)}:${formatValue(averageAway)}</strong>
+    </div>
+  `;
 }
 
 function formatHistoryScore(item: TeamMatchStat): string {

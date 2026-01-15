@@ -376,6 +376,20 @@ a {
 .presentation-probability__label strong {
   font-size: 0.95rem;
 }
+.presentation-average-prediction {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(245, 246, 250, 0.7);
+  margin-bottom: clamp(6px, 1vw, 12px);
+}
+.presentation-average-prediction strong {
+  font-size: 1.1rem;
+  letter-spacing: 0.4em;
+}
 
 .presentation-probability__bar {
   width: 100%;
