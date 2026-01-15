@@ -113,10 +113,13 @@
   align-content: start;
   scroll-snap-align: center;
   scroll-snap-stop: always;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .match {
   width: 100%;
+  max-width: 100%;
   background: var(--surface);
   border-radius: 18px;
   padding: 16px 18px;
@@ -124,7 +127,7 @@
   gap: 10px;
   text-align: center;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
-  overflow: visible;
+  overflow-x: hidden;
   align-self: start;
 }
 
@@ -689,11 +692,13 @@
 
 .match-analitika {
   width: 100%;
+  max-width: 100%;
   margin: 12px 0 0;
   display: grid;
   gap: 12px;
   justify-items: stretch;
   text-align: left;
+  overflow-x: hidden;
 }
 
 .match-analitika-title {
@@ -749,6 +754,9 @@
   gap: 4px;
   --line-logo-size: 36px;
   --line-score-gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .analitika-line--image {
@@ -769,11 +777,15 @@
 .analitika-line-canvas {
   position: relative;
   height: 320px;
+  overflow: hidden;
+  width: 100%;
 }
 
 .analitika-line-plot {
   position: absolute;
   inset: 16px 4px 120px;
+  overflow: visible;
+  max-width: calc(100% - 8px);
 }
 
 .analitika-line-grid {
@@ -891,6 +903,9 @@
   display: grid;
   gap: 10px;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .analitika-card-header {
@@ -926,7 +941,9 @@
 
 .analitika-card.is-graph .analitika-line {
   width: 100%;
+  max-width: 100%;
   margin: 0;
+  overflow-x: hidden;
 }
 
 .analitika-line--image .analitika-line-axis {
