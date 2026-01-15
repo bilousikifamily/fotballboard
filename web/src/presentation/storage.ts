@@ -187,6 +187,20 @@ function clampProbability(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function resolveProbability(
+  remoteValue: number | null | undefined,
+  previousValue: number | null | undefined,
+  fallback: number
+): number {
+  if (typeof remoteValue === "number" && Number.isFinite(remoteValue)) {
+    return clampProbability(remoteValue);
+  }
+  if (typeof previousValue === "number" && Number.isFinite(previousValue)) {
+    return clampProbability(previousValue);
+  }
+  return clampProbability(fallback);
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -354,15 +368,21 @@ function buildPresentationMatchFromRemote(
     homeTeam,
     awayTeam,
     kickoff,
-    homeProbability:
-      previous?.homeProbability ??
-      clampProbability(remote.home_probability ?? DEFAULT_REMOTE_PROBABILITIES.home),
-    drawProbability:
-      previous?.drawProbability ??
-      clampProbability(remote.draw_probability ?? DEFAULT_REMOTE_PROBABILITIES.draw),
-    awayProbability:
-      previous?.awayProbability ??
-      clampProbability(remote.away_probability ?? DEFAULT_REMOTE_PROBABILITIES.away),
+    homeProbability: resolveProbability(
+      remote.home_probability,
+      previous?.homeProbability,
+      DEFAULT_REMOTE_PROBABILITIES.home
+    ),
+    drawProbability: resolveProbability(
+      remote.draw_probability,
+      previous?.drawProbability,
+      DEFAULT_REMOTE_PROBABILITIES.draw
+    ),
+    awayProbability: resolveProbability(
+      remote.away_probability,
+      previous?.awayProbability,
+      DEFAULT_REMOTE_PROBABILITIES.away
+    ),
     note,
     venueCity: typeof remote.venue_city === "string" ? remote.venue_city.trim() : null,
     venueName: typeof remote.venue_name === "string" ? remote.venue_name.trim() : null,

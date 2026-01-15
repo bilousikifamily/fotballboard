@@ -141,6 +141,7 @@ const NOTICE_RULES = [
   "Вгаданий рахунок +5 голосів",
   "Не вгаданий результат -1 голос"
 ];
+const QUERY_TAB_PARAM = new URLSearchParams(window.location.search).get("tab") ?? null;
 
 const tg = window.Telegram?.WebApp;
 if (tg?.ready) {
@@ -2805,6 +2806,14 @@ function setupTabs(): void {
       setActive(tab);
     });
   });
+
+  const tabIds = Array.from(buttons)
+    .map((button) => button.dataset.tab)
+    .filter((tab): tab is string => Boolean(tab));
+  const normalizedQueryTab = QUERY_TAB_PARAM?.trim().toLowerCase();
+  const initialTab =
+    normalizedQueryTab && tabIds.includes(normalizedQueryTab) ? normalizedQueryTab : "matches";
+  setActive(initialTab);
 }
 
 

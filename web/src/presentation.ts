@@ -61,6 +61,17 @@ function renderMatchCard(match: PresentationMatch): string {
   const rainLabel = formatRainProbability(rainPercent);
   const weatherIcon = getWeatherIcon(match.weatherCondition ?? null);
   const tempLabel = formatTemperature(match.weatherTempC ?? null);
+  const venueName = typeof match.venueName === "string" ? match.venueName.trim() : "";
+  const venueCity = typeof match.venueCity === "string" ? match.venueCity.trim() : "";
+  const venueCityLabel = venueCity ? venueCity.toUpperCase() : "";
+  const venueMarkup =
+    venueName || venueCity
+      ? `<p class="presentation-match-card__venue">${
+          venueName ? `<span class="presentation-match-card__venue-name">${escapeHtml(venueName)}</span>` : ""
+        }${venueCity ? `<span class="presentation-match-card__venue-city">${escapeHtml(
+          venueCityLabel
+        )}</span>` : ""}</p>`
+      : "";
   const noteMarkup = match.note
     ? `<span class="presentation-note">${escapeHtml(match.note)}</span>`
     : `<span class="presentation-note">Прогноз</span>`;
@@ -70,9 +81,11 @@ function renderMatchCard(match: PresentationMatch): string {
       <header class="presentation-match-card__header">
         <div class="presentation-match-card__time">
           <strong>${escapeHtml(formatKyivDateTime(match.kickoff))}</strong>
-          ${match.venueCity ? `<span>· ${escapeHtml(match.venueCity.toUpperCase())}</span>` : ""}
         </div>
-        ${noteMarkup}
+        <div class="presentation-match-card__meta">
+          ${venueMarkup}
+          ${noteMarkup}
+        </div>
       </header>
       <div class="presentation-match-card__teams">
         <div class="presentation-match-team">

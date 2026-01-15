@@ -5534,7 +5534,14 @@ async function notifyUsersAboutMatchResult(
         buildWebappImageUrl(env, imageFile),
         caption,
         {
-          inline_keyboard: [[{ text: "ПОДИВИТИСЬ ТАБЛИЦЮ", web_app: { url: env.WEBAPP_URL } }]]
+          inline_keyboard: [
+            [
+              {
+                text: "ПОДИВИТИСЬ ТАБЛИЦЮ",
+                web_app: { url: buildWebappLeaderboardUrl(env) }
+              }
+            ]
+          ]
         }
       );
       continue;
@@ -5748,6 +5755,11 @@ function buildMatchesAnnouncementCaption(matches: DbMatch[]): string {
 function buildWebappImageUrl(env: Env, fileName: string): string {
   const baseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
   return `${baseUrl}/images/${fileName}`;
+}
+
+function buildWebappLeaderboardUrl(env: Env): string {
+  const baseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
+  return `${baseUrl}?tab=leaderboard`;
 }
 
 function getMatchResultImageFile(delta: number): string | null {
