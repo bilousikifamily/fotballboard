@@ -87,11 +87,13 @@ const TEAM_SEARCH_ALIASES: Record<string, string> = {
   milan: "AC Milan",
   "como1907": "Como",
   "como 1907": "Como",
-  "como-1907": "Como"
+  "como-1907": "Como",
+  racing: "Real Racing Club de Santander"
 };
 const TEAM_MATCH_ALIASES: Record<string, string> = {
   inter: "intermilan",
-  milan: "acmilan"
+  milan: "acmilan",
+  racing: "realracingclubdesantander"
 };
 
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
