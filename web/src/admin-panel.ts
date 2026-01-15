@@ -36,7 +36,8 @@ const LEAGUE_LABELS: Record<MatchLeagueId, string> = {
   "coupe-de-france": "Кубок Франції"
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
 
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const adminPanel = document.querySelector<HTMLElement>("[data-admin-panel]");

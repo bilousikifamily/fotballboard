@@ -20,7 +20,8 @@ const matchList = root.querySelector<HTMLElement>("[data-match-list]");
 const emptyState = root.querySelector<HTMLElement>("[data-empty-state]");
 const updatedLabel = root.querySelector<HTMLElement>("[data-last-updated]");
 const formatter = new Intl.DateTimeFormat("uk-UA", { hour: "2-digit", minute: "2-digit" });
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
 
 function render(): void {
   const matches = loadPresentationMatches();
