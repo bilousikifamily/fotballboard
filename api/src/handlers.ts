@@ -548,7 +548,6 @@ export default {
 
       const scheduledMatches = matches.filter((match) => match.status === "scheduled");
       const matchIds = scheduledMatches.map((match) => match.id);
-      const probabilities = await aggregatePresentationPredictionPercentages(supabase, matchIds);
       const predictionLists = await listPresentationPredictions(
         supabase,
         matchIds,
@@ -558,9 +557,12 @@ export default {
 
       const payload = [];
       for (const match of scheduledMatches) {
-        const prediction = probabilities.get(match.id);
         const homeClub = normalizeTeamSlug(match.home_club_id ?? match.home_team) ?? match.home_team;
         const awayClub = normalizeTeamSlug(match.away_club_id ?? match.away_team) ?? match.away_team;
+        
+        // Extract probabilities from API Football odds_json
+        const oddsProbabilities = extractOddsProbabilitiesFromMatch(match);
+        
         const homeStats = await fetchPresentationTeamStats(
           supabase,
           teamStatsCache,
@@ -577,9 +579,9 @@ export default {
           ...match,
           home_club_id: homeClub,
           away_club_id: awayClub,
-          home_probability: prediction?.home ?? DEFAULT_PRESENTATION_PROBABILITIES.home,
-          draw_probability: prediction?.draw ?? DEFAULT_PRESENTATION_PROBABILITIES.draw,
-          away_probability: prediction?.away ?? DEFAULT_PRESENTATION_PROBABILITIES.away,
+          home_probability: oddsProbabilities?.home ?? DEFAULT_PRESENTATION_PROBABILITIES.home,
+          draw_probability: oddsProbabilities?.draw ?? DEFAULT_PRESENTATION_PROBABILITIES.draw,
+          away_probability: oddsProbabilities?.away ?? DEFAULT_PRESENTATION_PROBABILITIES.away,
           predictions: predictionLists.get(match.id) ?? [],
           home_recent_matches: homeStats,
           away_recent_matches: awayStats
@@ -4502,6 +4504,140 @@ function getPredictionCloseAt(kickoffAt?: string | null): string | null {
 const DEFAULT_PRESENTATION_PROBABILITIES = { home: 50, draw: 25, away: 25 };
 const PRESENTATION_PREDICTION_LIMIT = 4;
 const PRESENTATION_RECENT_MATCHES_LIMIT = 5;
+
+function normalizeOddsTeamName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function isMatchWinnerBet(bet: { id?: number; name?: string }): boolean {
+  if (bet.id === 1) {
+    return true;
+  }
+  const name = bet.name?.toLowerCase() ?? "";
+  return name.includes("match winner") || name.includes("match result") || name.includes("fulltime result");
+}
+
+function parseOddNumber(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function isOddsLabelMatch(left: string, right: string): boolean {
+  if (!left || !right) {
+    return false;
+  }
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function resolveThreeWayOdds(
+  values: Array<{ value?: string; odd?: string | number }>,
+  homeNormalized: string,
+  awayNormalized: string
+): { home: number; draw: number; away: number } | null {
+  let home: number | null = null;
+  let draw: number | null = null;
+  let away: number | null = null;
+
+  for (const entry of values) {
+    const labelRaw = typeof entry.value === "string" ? entry.value.trim() : "";
+    if (!labelRaw) {
+      continue;
+    }
+    const labelLower = labelRaw.toLowerCase();
+    const labelNormalized = normalizeOddsTeamName(labelRaw);
+    const oddValue = parseOddNumber(entry.odd);
+    if (!oddValue) {
+      continue;
+    }
+
+    if (labelLower === "home" || labelLower === "1") {
+      home = oddValue;
+      continue;
+    }
+    if (labelLower === "draw" || labelLower === "x") {
+      draw = oddValue;
+      continue;
+    }
+    if (labelLower === "away" || labelLower === "2") {
+      away = oddValue;
+      continue;
+    }
+
+    if (labelNormalized && isOddsLabelMatch(labelNormalized, homeNormalized)) {
+      home = oddValue;
+      continue;
+    }
+    if (labelNormalized && isOddsLabelMatch(labelNormalized, awayNormalized)) {
+      away = oddValue;
+      continue;
+    }
+  }
+
+  if (!home || !draw || !away) {
+    return null;
+  }
+
+  return { home, draw, away };
+}
+
+function toProbability(homeOdd: number, drawOdd: number, awayOdd: number): { home: number; draw: number; away: number } | null {
+  const homeInv = 1 / homeOdd;
+  const drawInv = 1 / drawOdd;
+  const awayInv = 1 / awayOdd;
+  const total = homeInv + drawInv + awayInv;
+  if (!Number.isFinite(total) || total <= 0) {
+    return null;
+  }
+  return {
+    home: Math.round((homeInv / total) * 100),
+    draw: Math.round((drawInv / total) * 100),
+    away: Math.round((awayInv / total) * 100)
+  };
+}
+
+function extractOddsProbabilitiesFromMatch(
+  match: DbMatch
+): { home: number; draw: number; away: number } | null {
+  if (!match.odds_json || !Array.isArray(match.odds_json) || !match.odds_json.length) {
+    return null;
+  }
+
+  const homeNormalized = normalizeOddsTeamName(match.home_team);
+  const awayNormalized = normalizeOddsTeamName(match.away_team);
+
+  for (const entry of match.odds_json) {
+    const bookmakers = (entry as { bookmakers?: unknown }).bookmakers;
+    if (!Array.isArray(bookmakers)) {
+      continue;
+    }
+    for (const bookmaker of bookmakers) {
+      const bets = (bookmaker as { bets?: unknown }).bets;
+      if (!Array.isArray(bets) || !bets.length) {
+        continue;
+      }
+      const preferred = bets.filter((bet) => isMatchWinnerBet(bet as { id?: number; name?: string }));
+      const candidates = preferred.length ? preferred : bets;
+      for (const bet of candidates) {
+        const values = (bet as { values?: unknown }).values;
+        if (!Array.isArray(values)) {
+          continue;
+        }
+        const odds = resolveThreeWayOdds(values, homeNormalized, awayNormalized);
+        if (odds) {
+          const probabilities = toProbability(odds.home, odds.draw, odds.away);
+          if (probabilities) {
+            return probabilities;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
 
 async function aggregatePresentationPredictionPercentages(
   supabase: SupabaseClient,

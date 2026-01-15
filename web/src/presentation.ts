@@ -112,7 +112,7 @@ function renderMatchCard(match: PresentationMatch): string {
           ${renderTeamLogo(homeName, homeLogo)}
           <strong>${escapeHtml(homeName)}</strong>
         </div>
-        <span class="presentation-match-card__vs">vs</span>
+        ${renderAveragePredictionScore(match.predictions)}
         <div class="presentation-match-team">
           ${renderTeamLogo(awayName, awayLogo)}
           <strong>${escapeHtml(awayName)}</strong>
@@ -136,7 +136,6 @@ function renderMatchCard(match: PresentationMatch): string {
         ${renderProbability("Нічия", match.drawProbability, "draw")}
         ${renderProbability("Гості", match.awayProbability, "away")}
       </div>
-      ${renderAveragePrediction(match.predictions)}
       <div class="presentation-match-predictions">
         <p class="presentation-section-title">Прогнози користувачів</p>
         ${renderPredictions(match.predictions)}
@@ -246,9 +245,9 @@ function renderHistoryRows(items?: TeamMatchStat[]): string {
   `;
 }
 
-function renderAveragePrediction(predictions?: PresentationMatch["predictions"]): string {
+function renderAveragePredictionScore(predictions?: PresentationMatch["predictions"]): string {
   if (!predictions?.length) {
-    return "";
+    return `<span class="presentation-match-card__vs">vs</span>`;
   }
   const sumHome = predictions.reduce((acc, prediction) => acc + prediction.home_pred, 0);
   const sumAway = predictions.reduce((acc, prediction) => acc + prediction.away_pred, 0);
@@ -259,12 +258,7 @@ function renderAveragePrediction(predictions?: PresentationMatch["predictions"])
   };
   const averageHome = sumHome / total;
   const averageAway = sumAway / total;
-  return `
-    <div class="presentation-average-prediction">
-      <span>Середній прогноз</span>
-      <strong>${formatValue(averageHome)}:${formatValue(averageAway)}</strong>
-    </div>
-  `;
+  return `<span class="presentation-match-card__score">${formatValue(averageHome)}:${formatValue(averageAway)}</span>`;
 }
 
 function formatHistoryScore(item: TeamMatchStat): string {
