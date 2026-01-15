@@ -1,4 +1,5 @@
 import { ALL_CLUBS, type MatchLeagueId } from "../data/clubs";
+import { findClubLeague } from "../features/clubs";
 
 export const STORAGE_KEY = "presentation.matches";
 export const STORAGE_UPDATED_KEY = "presentation.matches.updated";
@@ -204,4 +205,84 @@ function normalizeKickoff(value: unknown): string | null {
     return null;
   }
   return parsed.toISOString();
+}
+
+const REMOTE_MATCH_PREFIX = "match-";
+const DEFAULT_REMOTE_PROBABILITIES = { home: 51, draw: 25, away: 24 };
+
+export type PresentationRemoteMatch = {
+  id: number;
+  home_team: string;
+  away_team: string;
+  home_club_id?: string | null;
+  away_club_id?: string | null;
+  league_id?: string | null;
+  kickoff_at: string;
+  note?: string | null;
+};
+
+export function mergePresentationMatches(
+  existing: PresentationMatch[],
+  remoteMatches: PresentationRemoteMatch[]
+): PresentationMatch[] {
+  const existingById = new Map<string, PresentationMatch>();
+  existing.forEach((match) => existingById.set(match.id, match));
+
+  const merged: PresentationMatch[] = remoteMatches.map((remote) => {
+    const remoteId = buildRemoteMatchId(remote.id);
+    const previous = existingById.get(remoteId) ?? null;
+    return buildPresentationMatchFromRemote(remote, previous);
+  });
+
+  const extras = existing.filter((match) => !match.id.startsWith(REMOTE_MATCH_PREFIX));
+  return [...merged, ...extras];
+}
+
+function buildPresentationMatchFromRemote(
+  remote: PresentationRemoteMatch,
+  previous: PresentationMatch | null
+): PresentationMatch {
+  const homeClub = remote.home_club_id ?? remote.home_team;
+  const awayClub = remote.away_club_id ?? remote.away_team;
+  const homeLeague = resolveRemoteLeague(remote.league_id ?? null, homeClub, awayClub) ?? previous?.homeLeague ?? MATCH_LEAGUES[0];
+  const awayLeague =
+    resolveRemoteLeague(remote.league_id ?? null, awayClub, homeClub) ?? previous?.awayLeague ?? homeLeague;
+  const kickoff = normalizeKickoff(remote.kickoff_at) || previous?.kickoff || new Date().toISOString();
+  const note = previous?.note ?? (typeof remote.note === "string" && remote.note.trim() ? remote.note.trim() : undefined);
+
+  return {
+    id: buildRemoteMatchId(remote.id),
+    homeLeague,
+    awayLeague,
+    homeClub,
+    awayClub,
+    kickoff,
+    homeProbability: previous?.homeProbability ?? DEFAULT_REMOTE_PROBABILITIES.home,
+    drawProbability: previous?.drawProbability ?? DEFAULT_REMOTE_PROBABILITIES.draw,
+    awayProbability: previous?.awayProbability ?? DEFAULT_REMOTE_PROBABILITIES.away,
+    note,
+    createdAt: previous?.createdAt ?? Date.now()
+  };
+}
+
+function resolveRemoteLeague(leagueId: string | null, primaryClub: string, secondaryClub: string): MatchLeagueId | null {
+  const normalizedLeague = normalizeLeague(leagueId);
+  if (normalizedLeague) {
+    return normalizedLeague;
+  }
+  const candidate = primaryClub ? findClubLeague(primaryClub) : null;
+  if (candidate) {
+    return candidate;
+  }
+  if (secondaryClub) {
+    const fallback = findClubLeague(secondaryClub);
+    if (fallback) {
+      return fallback;
+    }
+  }
+  return null;
+}
+
+function buildRemoteMatchId(matchId: number): string {
+  return `${REMOTE_MATCH_PREFIX}${matchId}`;
 }

@@ -526,6 +526,29 @@ export default {
       return jsonResponse({ ok: false, error: "disabled" }, 410, corsHeaders());
     }
 
+    if (url.pathname === "/api/presentation/matches") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const dateParam = url.searchParams.get("date");
+      const date = isValidKyivDateString(dateParam) ? dateParam : getKyivDateString();
+      const matches = await listMatches(supabase, date);
+      if (!matches) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, matches }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/matches") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -5181,6 +5204,20 @@ function getKyivDayRange(dateStr: string): { start: string; end: string } | null
   const end = new Date(getKyivStart(nextDate).getTime() - 1);
 
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function getKyivDateString(date = new Date()): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  return formatter.format(date);
+}
+
+function isValidKyivDateString(value: string | null): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function getKyivStart(dateStr: string): Date {

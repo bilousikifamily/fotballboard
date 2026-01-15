@@ -4,9 +4,12 @@ import { formatClubName, getClubLogoPath } from "./features/clubs";
 import {
   getPresentationUpdatedAt,
   loadPresentationMatches,
+  mergePresentationMatches,
   PresentationMatch,
+  savePresentationMatches,
   STORAGE_KEY
 } from "./presentation/storage";
+import { fetchPresentationMatches } from "./presentation/remote";
 
 const root = document.querySelector<HTMLElement>("#presentation");
 if (!root) {
@@ -17,6 +20,7 @@ const matchList = root.querySelector<HTMLElement>("[data-match-list]");
 const emptyState = root.querySelector<HTMLElement>("[data-empty-state]");
 const updatedLabel = root.querySelector<HTMLElement>("[data-last-updated]");
 const formatter = new Intl.DateTimeFormat("uk-UA", { hour: "2-digit", minute: "2-digit" });
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 function render(): void {
   const matches = loadPresentationMatches();
@@ -38,8 +42,8 @@ function render(): void {
 function renderMatchCard(match: PresentationMatch): string {
   const homeName = formatClubName(match.homeClub);
   const awayName = formatClubName(match.awayClub);
-  const homeLogo = getClubLogoPath(match.homeLeague, match.homeClub);
-  const awayLogo = getClubLogoPath(match.awayLeague, match.awayClub);
+const homeLogo = getClubLogoPath(match.homeLeague, match.homeClub);
+const awayLogo = getClubLogoPath(match.awayLeague, match.awayClub);
   const noteMarkup = match.note ? `<span class="pill">${escapeHtml(match.note)}</span>` : `<span class="pill">Прогноз</span>`;
 
   return `
@@ -97,6 +101,23 @@ window.addEventListener("storage", (event) => {
   }
 });
 
-window.addEventListener("focus", () => render());
+window.addEventListener("focus", () => {
+  void ensureRemoteMatches();
+});
 
 render();
+void ensureRemoteMatches();
+
+async function ensureRemoteMatches(): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  const remoteMatches = await fetchPresentationMatches(API_BASE);
+  if (!remoteMatches.length) {
+    return;
+  }
+  const existing = loadPresentationMatches();
+  const merged = mergePresentationMatches(existing, remoteMatches);
+  savePresentationMatches(merged);
+  render();
+}

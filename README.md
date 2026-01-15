@@ -203,3 +203,5 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 - `presentation.html` renders the match cards that should appear on the visual screen. It reads the stored forecasts from `localStorage` (key `presentation.matches`) and listens for updates from the admin page.
 - `admin.html` is the control room. Log in with the configured credentials, update or reorder matches, and the presentation page will react to the changes immediately (the admin page also exposes a reset button and a quick link to open `presentation.html` in a new tab).
 - The new pages are built by Vite alongside the Telegram WebApp entry, so run `npm run build` or `npm run dev` from the `web/` folder as usual.
+- `presentation.html` also pulls today’s scheduled matches from the Worker via `/api/presentation/matches`, merging them with any locally stored probabilities so the display always reflects the planned slate.
+- `admin.html` exposes the new “Синхронізувати матчі” button to refresh stored cards from Supabase before adjusting the probabilities or ordering.

@@ -5,10 +5,12 @@ import {
   createDefaultMatches,
   generateMatchId,
   loadPresentationMatches,
+  mergePresentationMatches,
   PresentationMatch,
   savePresentationMatches,
   STORAGE_KEY
 } from "./presentation/storage";
+import { fetchPresentationMatches } from "./presentation/remote";
 import { escapeHtml } from "./utils/escape";
 
 const LOGIN_USERNAME = "artur2026";
@@ -34,11 +36,15 @@ const LEAGUE_LABELS: Record<MatchLeagueId, string> = {
   "coupe-de-france": "Кубок Франції"
 };
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const adminPanel = document.querySelector<HTMLElement>("[data-admin-panel]");
 const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
 const loginError = document.querySelector<HTMLElement>("[data-login-error]");
 const logoutButton = document.querySelector<HTMLButtonElement>("[data-logout]");
+const syncButton = document.querySelector<HTMLButtonElement>("[data-admin-sync]");
+const syncStatus = document.querySelector<HTMLElement>("[data-admin-sync-status]");
 
 const matchForm = document.querySelector<HTMLFormElement>("[data-match-form]");
 const homeLeagueSelect = matchForm?.querySelector<HTMLSelectElement>("[name='homeLeague']");
@@ -92,6 +98,7 @@ function showAdmin(): void {
   populateLeagueSelect(awayLeagueSelect);
   resetForm();
   renderMatchList();
+  void syncRemoteMatches();
 }
 
 function resetForm(): void {
@@ -178,6 +185,28 @@ function persistMatches(updated: PresentationMatch[]): void {
   matches = updated;
   savePresentationMatches(updated);
   renderMatchList();
+}
+
+function setSyncStatus(message: string): void {
+  if (syncStatus) {
+    syncStatus.textContent = message;
+  }
+}
+
+async function syncRemoteMatches(): Promise<void> {
+  if (!API_BASE) {
+    setSyncStatus("API не налаштовано");
+    return;
+  }
+  setSyncStatus("Завантажуємо...");
+  const remoteMatches = await fetchPresentationMatches(API_BASE);
+  if (!remoteMatches.length) {
+    setSyncStatus("Матчів не знайдено");
+    return;
+  }
+  const merged = mergePresentationMatches(matches, remoteMatches);
+  persistMatches(merged);
+  setSyncStatus("Синхронізовано");
 }
 
 function handleLogin(event: Event): void {
@@ -318,6 +347,9 @@ if (loginForm) {
 }
 
 logoutButton?.addEventListener("click", handleLogout);
+syncButton?.addEventListener("click", () => {
+  void syncRemoteMatches();
+});
 
 homeLeagueSelect?.addEventListener("change", () => {
   if (!homeLeagueSelect) {
