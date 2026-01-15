@@ -88,12 +88,14 @@ const TEAM_SEARCH_ALIASES: Record<string, string> = {
   "como1907": "Como",
   "como 1907": "Como",
   "como-1907": "Como",
-  racing: "Real Racing Club de Santander"
+  racing: "Real Racing Club de Santander",
+  racingsantander: "Real Racing Club de Santander"
 };
 const TEAM_MATCH_ALIASES: Record<string, string> = {
   inter: "intermilan",
   milan: "acmilan",
-  racing: "realracingclubdesantander"
+  racing: "realracingclubdesantander",
+  racingsantander: "realracingclubdesantander"
 };
 
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
@@ -2004,8 +2006,8 @@ async function fetchAndStoreOdds(
     debug.date = dateParam;
   }
 
-  const homeTeamResult = await resolveTeamId(env, match.home_team);
-  const awayTeamResult = await resolveTeamId(env, match.away_team);
+  const homeTeamResult = await resolveTeamId(env, match.home_team, match.home_club_id ?? undefined);
+  const awayTeamResult = await resolveTeamId(env, match.away_team, match.away_club_id ?? undefined);
   if (debug) {
     debug.homeTeamId = homeTeamResult.id;
     debug.awayTeamId = awayTeamResult.id;
@@ -2379,7 +2381,7 @@ async function resolveAnalitikaTeamsWithCache(
     const cached = staticRows.get(key) ?? null;
     let teamId = isAnalitikaStaticFresh(cached) ? extractTeamIdFromStatic(cached) : null;
     if (!teamId) {
-      const resolvedTeam = await resolveTeamId(env, team.name);
+      const resolvedTeam = await resolveTeamId(env, team.name, team.slug);
       if (!resolvedTeam.id) {
         return { ok: false, error: "team_not_found", detail: team.slug };
       }
@@ -2426,7 +2428,7 @@ async function resolveAnalitikaTeams(
 
   const resolved: AnalitikaTeam[] = [];
   for (const team of targets) {
-    const resolvedTeam = await resolveTeamId(env, team.name);
+    const resolvedTeam = await resolveTeamId(env, team.name, team.slug);
     if (!resolvedTeam.id) {
       return { ok: false, error: "team_not_found", detail: team.slug };
     }
@@ -2717,7 +2719,8 @@ function extractStandingsTeamSample(payload: unknown, limit = 6): Array<{ id: nu
 
 async function resolveTeamId(
   env: Env,
-  teamName: string
+  teamName: string,
+  slug?: string
 ): Promise<{
   id: number | null;
   source: "search" | "cache" | "none";
@@ -2730,7 +2733,7 @@ async function resolveTeamId(
   searchAttempts?: number[];
 }> {
   const normalized = normalizeTeamKey(teamName);
-  const queries = getTeamSearchQueries(teamName);
+  const queries = getTeamSearchQueries(teamName, slug);
   const queryAttempts: string[] = [];
   const searchAttempts: number[] = [];
   let lastCandidates: Array<{ id?: number; name?: string }> = [];
@@ -4216,9 +4219,21 @@ function getTeamSearchQuery(teamName: string): string {
   return TEAM_SEARCH_ALIASES[normalized] ?? teamName;
 }
 
-function getTeamSearchQueries(teamName: string): string[] {
+function getTeamSearchQueries(teamName: string, slug?: string): string[] {
   const alias = getTeamSearchQuery(teamName);
-  const queries = [alias, teamName].filter(Boolean);
+  const queries: string[] = [];
+  if (alias) {
+    queries.push(alias);
+  }
+  if (slug) {
+    const slugLabel = formatClubLabel(slug);
+    if (slugLabel) {
+      queries.push(slugLabel);
+    }
+  }
+  if (teamName) {
+    queries.push(teamName);
+  }
   return Array.from(new Set(queries));
 }
 
@@ -4942,7 +4957,8 @@ const CLUB_NAME_OVERRIDES: Record<string, string> = {
   "lnz-cherkasy": "LNZ Cherkasy",
   "west-ham": "West Ham",
   "nottingham-forest": "Nottingham Forest",
-  "como-1907": "Como 1907"
+  "como-1907": "Como 1907",
+  "racing": "Racing Santander"
 };
 
 let ukrainianClubLookup: Map<string, string> | null = null;
