@@ -117,76 +117,192 @@ a {
   gap: 16px;
 }
 
-.presentation-card {
+.presentation-match-card {
   background: rgba(6, 10, 20, 0.9);
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  min-height: 360px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+  gap: 14px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
 }
 
-.presentation-card__header {
+.presentation-match-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
+  flex-wrap: wrap;
+}
+
+.presentation-match-card__time {
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.presentation-match-card__time span {
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  color: rgba(245, 246, 250, 0.65);
+}
+
+.presentation-note {
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
 }
 
-.presentation-card__header .pill {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.presentation-card__teams {
+.presentation-match-card__teams {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
 }
 
-.presentation-team {
+.presentation-match-team {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   text-transform: uppercase;
   font-size: 0.75rem;
-  letter-spacing: 0.25em;
+  letter-spacing: 0.2em;
 }
 
-.presentation-team strong {
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
+.presentation-match-team strong {
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
 }
 
-.presentation-team img {
-  width: 68px;
-  height: 68px;
-  object-fit: contain;
+.presentation-match-card__vs {
+  font-size: 0.9rem;
+  letter-spacing: 0.5em;
+  color: rgba(245, 246, 250, 0.5);
 }
 
-.presentation-team-logo-fallback {
-  width: 68px;
-  height: 68px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  display: grid;
-  place-items: center;
+.presentation-match-weather {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245, 246, 250, 0.7);
 }
 
-.presentation-card__vs {
-  font-size: 1rem;
-  letter-spacing: 0.4em;
+.presentation-match-weather__temp {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.presentation-match-weather__rain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.presentation-weather-icon {
+  font-size: 1.2rem;
+}
+
+.presentation-match-weather__bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.presentation-match-weather__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #5f97ff, #8dd2ff);
+  transition: width 200ms ease;
+}
+
+.presentation-match-predictions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.presentation-section-title {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   color: rgba(245, 246, 250, 0.6);
 }
 
+.presentation-predictions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.presentation-prediction-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.presentation-match-history {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.presentation-history-column {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.presentation-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.history-date {
+  color: rgba(245, 246, 250, 0.55);
+}
+
+.history-score {
+  font-weight: 700;
+}
+
+.presentation-history-row.is-win .history-score {
+  color: #5ef579;
+}
+
+.presentation-history-row.is-loss .history-score {
+  color: #ff6b6b;
+}
+
+.presentation-history-row.is-draw .history-score {
+  color: #ffd77f;
+}
 .presentation-probabilities {
   display: grid;
   gap: 12px;

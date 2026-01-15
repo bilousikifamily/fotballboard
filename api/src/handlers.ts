@@ -546,24 +546,45 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      const probabilities = await aggregatePresentationPredictionPercentages(
-        supabase,
-        matches.map((match) => match.id)
-      );
       const scheduledMatches = matches.filter((match) => match.status === "scheduled");
-      const payload = scheduledMatches.map((match) => {
+      const matchIds = scheduledMatches.map((match) => match.id);
+      const probabilities = await aggregatePresentationPredictionPercentages(supabase, matchIds);
+      const predictionLists = await listPresentationPredictions(
+        supabase,
+        matchIds,
+        PRESENTATION_PREDICTION_LIMIT
+      );
+      const teamStatsCache = new Map<string, DbTeamMatchStat[]>();
+
+      const payload = [];
+      for (const match of scheduledMatches) {
         const prediction = probabilities.get(match.id);
         const homeClub = normalizeTeamSlug(match.home_club_id ?? match.home_team) ?? match.home_team;
         const awayClub = normalizeTeamSlug(match.away_club_id ?? match.away_team) ?? match.away_team;
-        return {
+        const homeStats = await fetchPresentationTeamStats(
+          supabase,
+          teamStatsCache,
+          match.home_team,
+          PRESENTATION_RECENT_MATCHES_LIMIT
+        );
+        const awayStats = await fetchPresentationTeamStats(
+          supabase,
+          teamStatsCache,
+          match.away_team,
+          PRESENTATION_RECENT_MATCHES_LIMIT
+        );
+        payload.push({
           ...match,
           home_club_id: homeClub,
           away_club_id: awayClub,
           home_probability: prediction?.home ?? DEFAULT_PRESENTATION_PROBABILITIES.home,
           draw_probability: prediction?.draw ?? DEFAULT_PRESENTATION_PROBABILITIES.draw,
-          away_probability: prediction?.away ?? DEFAULT_PRESENTATION_PROBABILITIES.away
-        };
-      });
+          away_probability: prediction?.away ?? DEFAULT_PRESENTATION_PROBABILITIES.away,
+          predictions: predictionLists.get(match.id) ?? [],
+          home_recent_matches: homeStats,
+          away_recent_matches: awayStats
+        });
+      }
 
       return jsonResponse({ ok: true, matches: payload }, 200, corsHeaders());
     }
@@ -4442,6 +4463,8 @@ function getPredictionCloseAt(kickoffAt?: string | null): string | null {
 }
 
 const DEFAULT_PRESENTATION_PROBABILITIES = { home: 50, draw: 25, away: 25 };
+const PRESENTATION_PREDICTION_LIMIT = 4;
+const PRESENTATION_RECENT_MATCHES_LIMIT = 5;
 
 async function aggregatePresentationPredictionPercentages(
   supabase: SupabaseClient,
@@ -4498,6 +4521,123 @@ async function aggregatePresentationPredictionPercentages(
     console.error("Failed to aggregate presentation predictions", error);
     return new Map();
   }
+}
+
+type PresentationPredictionUser = {
+  nickname?: string | null;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+async function listPresentationPredictions(
+  supabase: SupabaseClient,
+  matchIds: number[],
+  limitPerMatch: number
+): Promise<
+  Map<number, Array<{ home_pred: number; away_pred: number; points: number | null; user: PresentationPredictionUser | null }>>
+> {
+  if (!matchIds.length) {
+    return new Map();
+  }
+
+  type PredictionRecord = {
+    match_id: number;
+    home_pred: number;
+    away_pred: number;
+    points?: number | null;
+    user_id: number;
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("match_id, home_pred, away_pred, points, user_id, created_at")
+      .in("match_id", matchIds)
+      .order("match_id", { ascending: true })
+      .order("points", { ascending: false })
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch presentation predictions", error);
+      return new Map();
+    }
+
+    const grouped = new Map<number, PredictionRecord[]>();
+    const userIds = new Set<number>();
+
+    for (const entry of (data as PredictionRecord[]) ?? []) {
+      const matchId = entry.match_id;
+      const list = grouped.get(matchId) ?? [];
+      if (list.length >= limitPerMatch) {
+        continue;
+      }
+      list.push(entry);
+      grouped.set(matchId, list);
+      userIds.add(entry.user_id);
+    }
+
+    const userMap = new Map<number, StoredUser>();
+    if (userIds.size) {
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, username, first_name, last_name, nickname")
+        .in("id", Array.from(userIds));
+      if (users && !usersError) {
+        (users as StoredUser[]).forEach((user) => {
+          userMap.set(user.id, user);
+        });
+      }
+    }
+
+    const result = new Map<
+      number,
+      Array<{ home_pred: number; away_pred: number; points: number | null; user: PresentationPredictionUser | null }>
+    >();
+    for (const [matchId, entries] of grouped.entries()) {
+      const formatted = entries.map((entry) => {
+        const userRecord = userMap.get(entry.user_id);
+        const userPayload = userRecord
+          ? {
+              nickname: userRecord.nickname ?? null,
+              username: userRecord.username ?? null,
+              first_name: userRecord.first_name ?? null,
+              last_name: userRecord.last_name ?? null
+            }
+          : null;
+        return {
+          home_pred: entry.home_pred,
+          away_pred: entry.away_pred,
+          points: entry.points ?? null,
+          user: userPayload
+        };
+      });
+      result.set(matchId, formatted);
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Failed to fetch presentation predictions", error);
+    return new Map();
+  }
+}
+
+async function fetchPresentationTeamStats(
+  supabase: SupabaseClient,
+  cache: Map<string, DbTeamMatchStat[]>,
+  teamName: string,
+  limit: number
+): Promise<DbTeamMatchStat[]> {
+  if (!teamName) {
+    return [];
+  }
+  if (cache.has(teamName)) {
+    return cache.get(teamName) ?? [];
+  }
+  const stats = await listTeamMatchStats(supabase, teamName, limit);
+  const normalized = stats ?? [];
+  cache.set(teamName, normalized);
+  return normalized;
 }
 
 async function findPrediction(
