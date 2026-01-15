@@ -7,17 +7,22 @@ const LOGIN_USERNAME = "artur2026";
 const LOGIN_PASSWORD = "Qwe123Asd321";
 const AUTH_KEY = "presentation.admin.auth";
 const PRESENTATION_VIEW_MODE_KEY = "presentation.viewMode";
+const PRESENTATION_LAST5_TEAM_KEY = "presentation.last5Team";
 
-type PresentationViewMode = "normal" | "average" | "chart";
+type PresentationViewMode = 
+  | "logos-only"
+  | "stage"
+  | "weather"
+  | "probability"
+  | "last5"
+  | "average-score";
 
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const adminPanel = document.querySelector<HTMLElement>("[data-admin-panel]");
 const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
 const loginError = document.querySelector<HTMLElement>("[data-login-error]");
 const logoutButton = document.querySelector<HTMLButtonElement>("[data-logout]");
-const nextMatchButton = document.querySelector<HTMLButtonElement>("[data-admin-next-match]");
-const showAverageButton = document.querySelector<HTMLButtonElement>("[data-admin-show-average]");
-const showChartButton = document.querySelector<HTMLButtonElement>("[data-admin-show-chart]");
+const viewModeButtons = document.querySelectorAll<HTMLButtonElement>("[data-admin-view-mode]");
 
 function showLogin(): void {
   loginPanel?.classList.remove("is-hidden");
@@ -39,6 +44,22 @@ function setPresentationViewMode(mode: PresentationViewMode): void {
     new StorageEvent("storage", {
       key: PRESENTATION_VIEW_MODE_KEY,
       newValue: mode
+    })
+  );
+}
+
+function toggleLast5Team(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const current = window.localStorage.getItem(PRESENTATION_LAST5_TEAM_KEY);
+  const nextTeam = current === "away" ? "home" : "away";
+  window.localStorage.setItem(PRESENTATION_LAST5_TEAM_KEY, nextTeam);
+  // Trigger storage event for presentation screen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: PRESENTATION_LAST5_TEAM_KEY,
+      newValue: nextTeam
     })
   );
 }
@@ -71,45 +92,25 @@ if (loginForm) {
 
 logoutButton?.addEventListener("click", handleLogout);
 
-const CURRENT_MATCH_INDEX_KEY = "presentation.currentMatchIndex";
-
-function getCurrentMatchIndex(matchesLength: number): number {
-  if (typeof window === "undefined" || matchesLength === 0) {
-    return 0;
-  }
-  const stored = window.localStorage.getItem(CURRENT_MATCH_INDEX_KEY);
-  const parsed = stored ? Number(stored) : 0;
-  const index = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-  return Math.min(index, Math.max(0, matchesLength - 1));
-}
-
-nextMatchButton?.addEventListener("click", () => {
-  const matches = loadPresentationMatches();
-  if (matches.length === 0) {
-    return;
-  }
-  const currentIndex = getCurrentMatchIndex(matches.length);
-  const nextIndex = (currentIndex + 1) % matches.length;
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(CURRENT_MATCH_INDEX_KEY, String(nextIndex));
-    // Trigger storage event for presentation screen
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: CURRENT_MATCH_INDEX_KEY,
-        newValue: String(nextIndex)
-      })
-    );
-    // Reset view mode to normal when changing match
-    setPresentationViewMode("normal");
-  }
-});
-
-showAverageButton?.addEventListener("click", () => {
-  setPresentationViewMode("average");
-});
-
-showChartButton?.addEventListener("click", () => {
-  setPresentationViewMode("chart");
+// Setup view mode buttons
+viewModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const mode = button.dataset.adminViewMode;
+    if (
+      mode === "logos-only" ||
+      mode === "stage" ||
+      mode === "weather" ||
+      mode === "probability" ||
+      mode === "last5" ||
+      mode === "average-score"
+    ) {
+      if (mode === "last5") {
+        // Toggle team when clicking last5 button
+        toggleLast5Team();
+      }
+      setPresentationViewMode(mode);
+    }
+  });
 });
 
 const authenticated = sessionStorage.getItem(AUTH_KEY) === "1";

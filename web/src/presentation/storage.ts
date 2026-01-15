@@ -22,6 +22,8 @@ export type PresentationMatch = {
   createdAt: number;
   venueCity?: string | null;
   venueName?: string | null;
+  tournamentName?: string | null;
+  tournamentStage?: string | null;
   rainProbability?: number | null;
   weatherCondition?: string | null;
   weatherTempC?: number | null;
@@ -249,6 +251,8 @@ function ensureMatch(value: unknown): PresentationMatch | null {
     ,
     venueCity: typeof value.venueCity === "string" ? value.venueCity.trim() : null,
     venueName: typeof value.venueName === "string" ? value.venueName.trim() : null,
+    tournamentName: typeof value.tournamentName === "string" ? value.tournamentName.trim() : null,
+    tournamentStage: typeof value.tournamentStage === "string" ? value.tournamentStage.trim() : null,
     rainProbability: normalizeNumber(value.rainProbability),
     weatherCondition: typeof value.weatherCondition === "string" ? value.weatherCondition.trim() : null,
     weatherTempC: normalizeNumber(value.weatherTempC),
@@ -297,6 +301,8 @@ export type PresentationRemoteMatch = {
   away_probability?: number | null;
   venue_city?: string | null;
   venue_name?: string | null;
+  tournament_name?: string | null;
+  tournament_stage?: string | null;
   rain_probability?: number | null;
   weather_condition?: string | null;
   weather_temp_c?: number | null;
@@ -386,6 +392,8 @@ function buildPresentationMatchFromRemote(
     note,
     venueCity: typeof remote.venue_city === "string" ? remote.venue_city.trim() : null,
     venueName: typeof remote.venue_name === "string" ? remote.venue_name.trim() : null,
+    tournamentName: typeof remote.tournament_name === "string" ? remote.tournament_name.trim() : null,
+    tournamentStage: typeof remote.tournament_stage === "string" ? remote.tournament_stage.trim() : null,
     rainProbability: normalizeNumber(remote.rain_probability),
     weatherCondition: typeof remote.weather_condition === "string" ? remote.weather_condition.trim() : null,
     weatherTempC: normalizeNumber(remote.weather_temp_c),

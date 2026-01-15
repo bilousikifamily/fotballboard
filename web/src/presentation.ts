@@ -23,8 +23,15 @@ import { fetchPresentationMatches } from "./presentation/remote";
 
 const CURRENT_MATCH_INDEX_KEY = "presentation.currentMatchIndex";
 const PRESENTATION_VIEW_MODE_KEY = "presentation.viewMode";
+const PRESENTATION_LAST5_TEAM_KEY = "presentation.last5Team";
 
-type PresentationViewMode = "normal" | "average" | "chart";
+type PresentationViewMode = 
+  | "logos-only"      // НАСТУПНИЙ МАТЧ - only two logos
+  | "stage"           // СТАДІЯ - tournament and stage
+  | "weather"         // ПОГОДА - humidity and temperature
+  | "probability"     // ЙМОВІРНІСТЬ - probability 1 / X / 2
+  | "last5"           // ОСТАННІ 5 МАТЧІВ - filters for two teams
+  | "average-score";  // СЕРЕДНІЙ РАХУНОК - logos and average score
 
 const root = document.querySelector<HTMLElement>("#presentation");
 if (!root) {
@@ -51,13 +58,41 @@ function getCurrentMatchIndex(matchesLength: number): number {
 
 function getViewMode(): PresentationViewMode {
   if (typeof window === "undefined") {
-    return "normal";
+    return "logos-only";
   }
   const stored = window.localStorage.getItem(PRESENTATION_VIEW_MODE_KEY);
-  if (stored === "average" || stored === "chart") {
+  if (
+    stored === "logos-only" ||
+    stored === "stage" ||
+    stored === "weather" ||
+    stored === "probability" ||
+    stored === "last5" ||
+    stored === "average-score"
+  ) {
     return stored;
   }
-  return "normal";
+  return "logos-only";
+}
+
+function getLast5Team(): "home" | "away" {
+  if (typeof window === "undefined") {
+    return "home";
+  }
+  const stored = window.localStorage.getItem(PRESENTATION_LAST5_TEAM_KEY);
+  return stored === "away" ? "away" : "home";
+}
+
+function setLast5Team(team: "home" | "away"): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(PRESENTATION_LAST5_TEAM_KEY, team);
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: PRESENTATION_LAST5_TEAM_KEY,
+      newValue: team
+    })
+  );
 }
 
 function render(): void {
@@ -93,7 +128,57 @@ function render(): void {
   updatedLabel.textContent = `Оновлено ${formatter.format(getPresentationUpdatedAt())}`;
 }
 
-function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMode = "normal"): string {
+function formatTournamentStage(stage: string): string {
+  const trimmed = stage.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("quarter-final")) {
+    return "ЧВЕРТЬФІНАЛ";
+  }
+  if (lower.includes("semi-final")) {
+    return "ПІВФІНАЛ";
+  }
+  if (lower.includes("final")) {
+    return "ФІНАЛ";
+  }
+  if (lower.includes("1/8")) {
+    return "1/8 ФІНАЛУ";
+  }
+  if (lower.includes("1/4")) {
+    return "1/4 ФІНАЛУ";
+  }
+  if (lower.includes("1/2")) {
+    return "1/2 ФІНАЛУ";
+  }
+  const roundOfMatch = lower.match(/round\s+of\s+(\d+)/);
+  if (roundOfMatch) {
+    const roundNumber = Number.parseInt(roundOfMatch[1], 10);
+    if (roundNumber === 16) {
+      return "1/8 ФІНАЛУ";
+    }
+    if (roundNumber === 8) {
+      return "1/4 ФІНАЛУ";
+    }
+    if (roundNumber === 4) {
+      return "ПІВФІНАЛ";
+    }
+    if (roundNumber === 2) {
+      return "ФІНАЛ";
+    }
+    if (roundNumber === 32) {
+      return "1/16 ФІНАЛУ";
+    }
+  }
+  const regularMatch = lower.match(/regular\s+season\s*-\s*(\d+)/);
+  if (regularMatch) {
+    return `${regularMatch[1]} РАУНД`;
+  }
+  return trimmed;
+}
+
+function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMode = "logos-only"): string {
   const homeName = match.homeTeam || formatClubName(match.homeClub);
   const awayName = match.awayTeam || formatClubName(match.awayClub);
   const leagueForLogos = resolveLogoLeagueId(match.homeLeague ?? match.awayLeague ?? null);
@@ -107,66 +192,68 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
   const venueName = typeof match.venueName === "string" ? match.venueName.trim() : "";
   const venueCity = typeof match.venueCity === "string" ? match.venueCity.trim() : "";
   const venueCityLabel = venueCity ? venueCity.toUpperCase() : "";
-  const venueMarkup =
-    venueName || venueCity
-      ? `<p class="presentation-match-card__venue">${
-          venueName ? `<span class="presentation-match-card__venue-name">${escapeHtml(venueName)}</span>` : ""
-        }${venueCity ? `<span class="presentation-match-card__venue-city">${escapeHtml(
-          venueCityLabel
-        )}</span>` : ""}</p>`
-      : "";
-  const noteMarkup = match.note
-    ? `<span class="presentation-note">${escapeHtml(match.note)}</span>`
-    : `<span class="presentation-note">Прогноз</span>`;
-
-  const isChartMode = viewMode === "chart";
-  const isAverageMode = viewMode === "average";
-  const showNormalContent = viewMode === "normal";
-
+  const tournamentName = match.tournamentName?.trim() ?? "";
+  const tournamentStage = match.tournamentStage ? formatTournamentStage(match.tournamentStage) : "";
+  
   // Extract average score for average mode
   const averageScoreHtml = renderAveragePredictionScore(match.predictions);
-  const averageScoreText = averageScoreHtml.replace(/<[^>]*>/g, "").trim();
+  
+  // Determine which team to show for last5 mode
+  const last5Team = getLast5Team();
+  const last5Matches = last5Team === "home" ? match.homeRecentMatches : match.awayRecentMatches;
+  const last5TeamName = last5Team === "home" ? homeName : awayName;
 
-  return `
-    <article class="presentation-match-card" data-view-mode="${viewMode}">
-      ${showNormalContent || isAverageMode ? `
-        <header class="presentation-match-card__header">
-          <div class="presentation-match-card__time">
-            <strong>${escapeHtml(formatKyivDateTime(match.kickoff))}</strong>
+  // Mode-specific rendering
+  if (viewMode === "logos-only") {
+    // 1. НАСТУПНИЙ МАТЧ - only two logos
+    return `
+      <article class="presentation-match-card" data-view-mode="${viewMode}">
+        <div class="presentation-match-card__teams">
+          <div class="presentation-match-team">
+            ${renderTeamLogo(homeName, homeLogo)}
           </div>
-          <div class="presentation-match-card__meta">
-            ${venueMarkup}
-            ${noteMarkup}
+          <div class="presentation-match-team">
+            ${renderTeamLogo(awayName, awayLogo)}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+  
+  if (viewMode === "stage") {
+    // 2. СТАДІЯ - tournament and stage
+    return `
+      <article class="presentation-match-card" data-view-mode="${viewMode}">
+        <header class="presentation-match-card__header">
+          <div class="presentation-match-card__stage">
+            ${tournamentName ? `<div class="presentation-tournament-name">${escapeHtml(tournamentName.toUpperCase())}</div>` : ""}
+            ${tournamentStage ? `<div class="presentation-tournament-stage">${escapeHtml(tournamentStage)}</div>` : ""}
           </div>
         </header>
         <div class="presentation-match-card__teams">
           <div class="presentation-match-team">
             ${renderTeamLogo(homeName, homeLogo)}
-            <strong>${escapeHtml(homeName)}</strong>
           </div>
-          ${averageScoreHtml}
           <div class="presentation-match-team">
             ${renderTeamLogo(awayName, awayLogo)}
-            <strong>${escapeHtml(awayName)}</strong>
           </div>
         </div>
-      ` : ""}
-      ${isChartMode ? `
-        <header class="presentation-match-card__header">
-          <div class="presentation-match-card__teams">
-            <div class="presentation-match-team">
-              ${renderTeamLogo(homeName, homeLogo)}
-              <strong>${escapeHtml(homeName)}</strong>
-            </div>
-            <span class="presentation-match-card__vs">vs</span>
-            <div class="presentation-match-team">
-              ${renderTeamLogo(awayName, awayLogo)}
-              <strong>${escapeHtml(awayName)}</strong>
-            </div>
+      </article>
+    `;
+  }
+  
+  if (viewMode === "weather") {
+    // 3. ПОГОДА - humidity and temperature
+    return `
+      <article class="presentation-match-card" data-view-mode="${viewMode}">
+        <div class="presentation-match-card__teams">
+          <div class="presentation-match-team">
+            ${renderTeamLogo(homeName, homeLogo)}
           </div>
-        </header>
-      ` : ""}
-      ${showNormalContent ? `
+          <div class="presentation-match-team">
+            ${renderTeamLogo(awayName, awayLogo)}
+          </div>
+        </div>
         <div class="presentation-match-weather">
           <div class="presentation-match-weather__temp">
             <span>${escapeHtml(tempLabel)}</span>
@@ -180,34 +267,83 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
             <span>${escapeHtml(rainLabel)}</span>
           </div>
         </div>
+      </article>
+    `;
+  }
+  
+  if (viewMode === "probability") {
+    // 4. ЙМОВІРНІСТЬ - probability 1 / X / 2
+    return `
+      <article class="presentation-match-card" data-view-mode="${viewMode}">
+        <div class="presentation-match-card__teams">
+          <div class="presentation-match-team">
+            ${renderTeamLogo(homeName, homeLogo)}
+          </div>
+          <div class="presentation-match-team">
+            ${renderTeamLogo(awayName, awayLogo)}
+          </div>
+        </div>
         <div class="presentation-probabilities">
-          ${renderProbability("Господарі", match.homeProbability, "home")}
-          ${renderProbability("Нічия", match.drawProbability, "draw")}
-          ${renderProbability("Гості", match.awayProbability, "away")}
+          ${renderProbability("1", match.homeProbability, "home")}
+          ${renderProbability("X", match.drawProbability, "draw")}
+          ${renderProbability("2", match.awayProbability, "away")}
         </div>
-        <div class="presentation-match-predictions">
-          <p class="presentation-section-title">Прогнози користувачів</p>
-          ${renderPredictions(match.predictions)}
-        </div>
-      ` : ""}
-      ${isAverageMode ? `
-        <div class="presentation-average-prediction-large">
-          <p class="presentation-section-title">Середній прогноз</p>
-          <div class="presentation-average-prediction-score">${averageScoreHtml}</div>
-        </div>
-      ` : ""}
-      ${showNormalContent || isChartMode ? `
+      </article>
+    `;
+  }
+  
+  if (viewMode === "last5") {
+    // 5. ОСТАННІ 5 МАТЧІВ - filters for two teams, clicking switches team
+    return `
+      <article class="presentation-match-card" data-view-mode="${viewMode}">
+        <header class="presentation-match-card__header">
+          <div class="presentation-last5-filters">
+            <button class="presentation-last5-filter ${last5Team === "home" ? "is-active" : ""}" data-last5-team="home">
+              ${escapeHtml(homeName.toUpperCase())}
+            </button>
+            <button class="presentation-last5-filter ${last5Team === "away" ? "is-active" : ""}" data-last5-team="away">
+              ${escapeHtml(awayName.toUpperCase())}
+            </button>
+          </div>
+        </header>
         <div class="presentation-match-history">
           <div class="presentation-history-column">
-            <p class="presentation-section-title">Останні 5 — ${escapeHtml(homeName)}</p>
-            ${renderHistoryRows(match.homeRecentMatches)}
-          </div>
-          <div class="presentation-history-column">
-            <p class="presentation-section-title">Останні 5 — ${escapeHtml(awayName)}</p>
-            ${renderHistoryRows(match.awayRecentMatches)}
+            <p class="presentation-section-title">ОСТАННІ 5 МАТЧІВ — ${escapeHtml(last5TeamName)}</p>
+            ${renderHistoryRows(last5Matches)}
           </div>
         </div>
-      ` : ""}
+      </article>
+    `;
+  }
+  
+  if (viewMode === "average-score") {
+    // 6. СЕРЕДНІЙ РАХУНОК - logos and average score
+    return `
+      <article class="presentation-match-card" data-view-mode="${viewMode}">
+        <div class="presentation-match-card__teams">
+          <div class="presentation-match-team">
+            ${renderTeamLogo(homeName, homeLogo)}
+          </div>
+          ${averageScoreHtml}
+          <div class="presentation-match-team">
+            ${renderTeamLogo(awayName, awayLogo)}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+  
+  // Fallback to logos-only
+  return `
+    <article class="presentation-match-card" data-view-mode="logos-only">
+      <div class="presentation-match-card__teams">
+        <div class="presentation-match-team">
+          ${renderTeamLogo(homeName, homeLogo)}
+        </div>
+        <div class="presentation-match-team">
+          ${renderTeamLogo(awayName, awayLogo)}
+        </div>
+      </div>
     </article>
   `;
 }
@@ -370,9 +506,10 @@ window.addEventListener("storage", (event) => {
   if (
     event.key === STORAGE_KEY ||
     event.key === CURRENT_MATCH_INDEX_KEY ||
-    event.key === PRESENTATION_VIEW_MODE_KEY
+    event.key === PRESENTATION_VIEW_MODE_KEY ||
+    event.key === PRESENTATION_LAST5_TEAM_KEY
   ) {
-    render();
+    renderWithHandlers();
   }
 });
 
@@ -380,7 +517,30 @@ window.addEventListener("focus", () => {
   void ensureRemoteMatches();
 });
 
-render();
+// Setup event handlers for last5 filter buttons
+function setupLast5Filters(): void {
+  const filters = document.querySelectorAll<HTMLButtonElement>("[data-last5-team]");
+  filters.forEach((button) => {
+    button.addEventListener("click", () => {
+      const team = button.dataset.last5Team;
+      if (team === "home" || team === "away") {
+        setLast5Team(team);
+        render();
+      }
+    });
+  });
+}
+
+// Setup event handlers after render
+function renderWithHandlers(): void {
+  render();
+  // Setup handlers for dynamically rendered elements
+  requestAnimationFrame(() => {
+    setupLast5Filters();
+  });
+}
+
+renderWithHandlers();
 void ensureRemoteMatches();
 
 async function ensureRemoteMatches(): Promise<void> {
@@ -394,5 +554,5 @@ async function ensureRemoteMatches(): Promise<void> {
   const existing = loadPresentationMatches();
   const merged = mergePresentationMatches(existing, remoteMatches);
   savePresentationMatches(merged);
-  render();
+  renderWithHandlers();
 }

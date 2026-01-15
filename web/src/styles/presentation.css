@@ -197,6 +197,65 @@ a {
   display: none;
 }
 
+/* Tournament/Stage mode styles */
+.presentation-match-card__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  background: rgba(139, 69, 19, 0.8);
+  border-radius: 12px;
+  width: 100%;
+}
+
+.presentation-tournament-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+}
+
+.presentation-tournament-stage {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+}
+
+/* Last5 filters styles */
+.presentation-last5-filters {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 0;
+}
+
+.presentation-last5-filter {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 120ms ease;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 246, 250, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.presentation-last5-filter.is-active {
+  background: linear-gradient(135deg, var(--accent), #ffbd80);
+  color: #050404;
+  box-shadow: 0 10px 30px rgba(255, 189, 128, 0.4);
+}
+
+.presentation-last5-filter:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(245, 246, 250, 0.9);
+}
+
 .presentation-match-card > * {
   animation: fadeInUp 0.6s ease-out forwards;
   animation-delay: calc(var(--animation-delay, 0) * 0.1s);
