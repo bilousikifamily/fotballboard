@@ -77,7 +77,7 @@ const PREDICTION_CUTOFF_MS = 0;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
-const MATCHES_ANNOUNCEMENT_MESSAGE = "На тебе вже чекають прогнози на сьогоднішні матчі.";
+const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const ANALITIKA_LEAGUE_ID = "english-premier-league";
 const ANALITIKA_HEAD_TO_HEAD_LIMIT = 10;
@@ -1046,17 +1046,33 @@ export default {
         return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
       }
 
+      const scheduledMatches = await listScheduledMatches(supabase);
+      if (scheduledMatches === null) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+      if (scheduledMatches.length === 0) {
+        return jsonResponse({ ok: true }, 200, corsHeaders());
+      }
+
+      const matchIds = scheduledMatches.map((match) => match.id);
+
       const users = await listAllUserIds(supabase);
       if (!users) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
       for (const user of users) {
+        const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
+        const missingMatches = scheduledMatches.filter((match) => !predicted.has(match.id));
+        if (!missingMatches.length) {
+          continue;
+        }
+        const caption = buildMatchesAnnouncementCaption(missingMatches);
         await sendPhoto(
           env,
           user.id,
-          buildWebappImageUrl(env, "new_predictions.png"),
-          MATCHES_ANNOUNCEMENT_MESSAGE,
+          buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE),
+          caption,
           {
             inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
           }
@@ -4370,6 +4386,26 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
   }
 }
 
+async function listScheduledMatches(supabase: SupabaseClient): Promise<DbMatch[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, home_team, away_team, home_club_id, away_club_id, kickoff_at")
+      .eq("status", "scheduled")
+      .order("kickoff_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to list scheduled matches", error);
+      return null;
+    }
+
+    return (data as DbMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list scheduled matches", error);
+    return null;
+  }
+}
+
 async function listPendingMatches(supabase: SupabaseClient): Promise<DbMatch[] | null> {
   try {
     const { data, error } = await supabase
@@ -5699,6 +5735,16 @@ function formatPredictionReminderMessage(match: PredictionReminderMatch): string
   return `До закриття прийому прогнозів на матч:\n${homeLabel} — ${awayLabel}\nзалишилась 1 година...`;
 }
 
+function formatAnnouncementMatchLine(match: DbMatch): string {
+  const home = resolveUkrainianClubName(match.home_team, match.home_club_id ?? null);
+  const away = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
+  return `${home} - ${away}`;
+}
+
+function buildMatchesAnnouncementCaption(matches: DbMatch[]): string {
+  return matches.map(formatAnnouncementMatchLine).join("\n");
+}
+
 function buildWebappImageUrl(env: Env, fileName: string): string {
   const baseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
   return `${baseUrl}/images/${fileName}`;
@@ -5706,13 +5752,13 @@ function buildWebappImageUrl(env: Env, fileName: string): string {
 
 function getMatchResultImageFile(delta: number): string | null {
   if (delta === 1) {
-    return "+1golos.png";
+    return "+1golosok.png";
   }
   if (delta === -1) {
-    return "-1golos.png";
+    return "-1golosok.png";
   }
   if (delta === 5) {
-    return "+5golosiv.png";
+    return "+5goloskov.png";
   }
   return null;
 }
