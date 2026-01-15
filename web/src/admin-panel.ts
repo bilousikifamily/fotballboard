@@ -412,9 +412,39 @@ if (authenticated) {
   showLogin();
 }
 
+const CURRENT_MATCH_INDEX_KEY = "presentation.currentMatchIndex";
+
+function getCurrentMatchIndex(matchesLength: number): number {
+  if (typeof window === "undefined" || matchesLength === 0) {
+    return 0;
+  }
+  const stored = window.localStorage.getItem(CURRENT_MATCH_INDEX_KEY);
+  const parsed = stored ? Number(stored) : 0;
+  const index = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  return Math.min(index, Math.max(0, matchesLength - 1));
+}
+
 const resetButton = document.querySelector<HTMLButtonElement>("[data-admin-reset]");
 resetButton?.addEventListener("click", () => {
   const defaults = createDefaultMatches();
   persistMatches(defaults);
   resetForm();
+});
+
+const nextMatchButton = document.querySelector<HTMLButtonElement>("[data-admin-next-match]");
+nextMatchButton?.addEventListener("click", () => {
+  const matches = loadPresentationMatches();
+  if (matches.length === 0) {
+    return;
+  }
+  const currentIndex = getCurrentMatchIndex(matches.length);
+  const nextIndex = (currentIndex + 1) % matches.length;
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(CURRENT_MATCH_INDEX_KEY, String(nextIndex));
+    // Trigger storage event for presentation screen
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: CURRENT_MATCH_INDEX_KEY,
+      newValue: String(nextIndex)
+    }));
+  }
 });

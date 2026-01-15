@@ -114,10 +114,11 @@ a {
 
 .presentation-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr;
   gap: clamp(16px, 2vw, 28px);
   align-items: stretch;
   width: 100%;
+  justify-items: center;
 }
 
 .presentation-match-card {
@@ -131,6 +132,8 @@ a {
   flex-direction: column;
   gap: clamp(14px, 2vw, 20px);
   min-height: 520px;
+  max-width: 1000px;
+  width: 100%;
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65);
   position: relative;
   transition:
@@ -353,6 +356,108 @@ a {
 }
 
 .presentation-history-row.is-draw .history-score {
+  color: #ffd77f;
+}
+
+.presentation-history-graph {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 120px;
+  padding: 8px 0;
+}
+
+.presentation-history-graph-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.presentation-history-graph-bars {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 100%;
+  width: 100%;
+  justify-content: center;
+}
+
+.presentation-history-graph-bar {
+  flex: 1;
+  min-width: 20px;
+  max-width: 40px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: height 200ms ease;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.presentation-history-graph-bar.is-win {
+  background: linear-gradient(180deg, #5ef579, #4dd166);
+}
+
+.presentation-history-graph-bar.is-loss {
+  background: linear-gradient(180deg, #ff6b6b, #ff5252);
+}
+
+.presentation-history-graph-bar.is-draw {
+  background: linear-gradient(180deg, #ffd77f, #ffc947);
+}
+
+.presentation-history-graph-bar.opponent {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.presentation-history-graph-value {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.presentation-history-graph-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.65rem;
+  text-align: center;
+  width: 100%;
+}
+
+.presentation-history-graph-label .history-date {
+  color: rgba(245, 246, 250, 0.55);
+}
+
+.presentation-history-graph-label .history-opponent {
+  color: rgba(245, 246, 250, 0.7);
+  font-size: 0.6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.presentation-history-graph-label .history-score {
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.presentation-history-graph-label .history-score.is-win {
+  color: #5ef579;
+}
+
+.presentation-history-graph-label .history-score.is-loss {
+  color: #ff6b6b;
+}
+
+.presentation-history-graph-label .history-score.is-draw {
   color: #ffd77f;
 }
 .presentation-probabilities {

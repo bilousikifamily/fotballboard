@@ -21,6 +21,8 @@ import type { PresentationPredictionUser } from "./presentation/storage";
 import type { PredictionUser, TeamMatchStat } from "./types";
 import { fetchPresentationMatches } from "./presentation/remote";
 
+const CURRENT_MATCH_INDEX_KEY = "presentation.currentMatchIndex";
+
 const root = document.querySelector<HTMLElement>("#presentation");
 if (!root) {
   throw new Error("Presentation root element is missing");
@@ -33,6 +35,17 @@ const formatter = new Intl.DateTimeFormat("uk-UA", { hour: "2-digit", minute: "2
 const API_BASE =
   import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
 
+function getCurrentMatchIndex(matchesLength: number): number {
+  if (typeof window === "undefined" || matchesLength === 0) {
+    return 0;
+  }
+  const stored = window.localStorage.getItem(CURRENT_MATCH_INDEX_KEY);
+  const parsed = stored ? Number(stored) : 0;
+  const index = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  // Ensure index is within bounds
+  return Math.min(index, Math.max(0, matchesLength - 1));
+}
+
 function render(): void {
   const matches = loadPresentationMatches();
   if (!matchList || !updatedLabel || !emptyState) {
@@ -44,7 +57,14 @@ function render(): void {
     emptyState.classList.remove("is-hidden");
   } else {
     emptyState.classList.add("is-hidden");
-    matchList.innerHTML = matches.map(renderMatchCard).join("");
+    const currentIndex = getCurrentMatchIndex(matches.length);
+    const currentMatch = matches[currentIndex];
+    if (currentMatch) {
+      matchList.innerHTML = renderMatchCard(currentMatch);
+    } else {
+      matchList.innerHTML = "";
+      emptyState.classList.remove("is-hidden");
+    }
   }
 
   updatedLabel.textContent = `Оновлено ${formatter.format(getPresentationUpdatedAt())}`;
@@ -101,7 +121,7 @@ function renderMatchCard(match: PresentationMatch): string {
       <div class="presentation-match-weather">
         <div class="presentation-match-weather__temp">
           <span>${escapeHtml(tempLabel)}</span>
-          ${match.weatherTimezone ? `<span>${escapeHtml(match.weatherTimezone)}</span>` : ""}
+          ${match.weatherTimezone ? `<span>${escapeHtml(match.weatherTimezone.toUpperCase())}</span>` : match.venueCity ? `<span>${escapeHtml(match.venueCity.toUpperCase())}</span>` : ""}
         </div>
         <div class="presentation-match-weather__rain">
           <span class="presentation-weather-icon" aria-hidden="true">${weatherIcon}</span>
@@ -176,21 +196,54 @@ function renderHistoryRows(items?: TeamMatchStat[]): string {
   if (!items?.length) {
     return `<p class="muted small">Немає даних.</p>`;
   }
-  return items
-    .map((item) => {
-      const dateLabel = item.match_date ? formatKyivDateShort(item.match_date) : "—";
-      const opponent = item.opponent_name ?? "—";
-      const score = formatHistoryScore(item);
-      const outcomeClass = getHistoryOutcomeClass(item);
-      return `
-        <div class="presentation-history-row ${escapeAttribute(outcomeClass)}">
-          <span class="history-date">${escapeHtml(dateLabel)}</span>
-          <span class="history-opponent">${escapeHtml(opponent)}</span>
-          <span class="history-score">${escapeHtml(score)}</span>
-        </div>
-      `;
-    })
-    .join("");
+  // Limit to last 5 matches
+  const recentMatches = items.slice(0, 5);
+  const scores = recentMatches.map((item) => {
+    const teamGoals = parseHistoryNumber(item.team_goals) ?? 0;
+    const opponentGoals = parseHistoryNumber(item.opponent_goals) ?? 0;
+    return { teamGoals, opponentGoals };
+  });
+  
+  // Calculate max goals for scaling the graph
+  const maxGoals = Math.max(
+    1,
+    ...scores.map((s) => Math.max(s.teamGoals, s.opponentGoals))
+  );
+  
+  return `
+    <div class="presentation-history-graph">
+      ${recentMatches
+        .map((item) => {
+          const dateLabel = item.match_date ? formatKyivDateShort(item.match_date) : "—";
+          const opponent = item.opponent_name ?? "—";
+          const score = formatHistoryScore(item);
+          const outcomeClass = getHistoryOutcomeClass(item);
+          const teamGoals = parseHistoryNumber(item.team_goals) ?? 0;
+          const opponentGoals = parseHistoryNumber(item.opponent_goals) ?? 0;
+          const teamHeight = maxGoals > 0 ? (teamGoals / maxGoals) * 100 : 0;
+          const opponentHeight = maxGoals > 0 ? (opponentGoals / maxGoals) * 100 : 0;
+          
+          return `
+            <div class="presentation-history-graph-item">
+              <div class="presentation-history-graph-bars">
+                <div class="presentation-history-graph-bar ${escapeAttribute(outcomeClass)}" style="height: ${teamHeight}%">
+                  <span class="presentation-history-graph-value">${teamGoals}</span>
+                </div>
+                <div class="presentation-history-graph-bar opponent" style="height: ${opponentHeight}%">
+                  <span class="presentation-history-graph-value">${opponentGoals}</span>
+                </div>
+              </div>
+              <div class="presentation-history-graph-label">
+                <span class="history-date">${escapeHtml(dateLabel)}</span>
+                <span class="history-opponent">${escapeHtml(opponent)}</span>
+                <span class="history-score ${escapeAttribute(outcomeClass)}">${escapeHtml(score)}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 function renderAveragePrediction(predictions?: PresentationMatch["predictions"]): string {
@@ -262,7 +315,7 @@ function toPredictionUser(user: PresentationPredictionUser | null | undefined): 
 }
 
 window.addEventListener("storage", (event) => {
-  if (event.key === STORAGE_KEY) {
+  if (event.key === STORAGE_KEY || event.key === CURRENT_MATCH_INDEX_KEY) {
     render();
   }
 });
