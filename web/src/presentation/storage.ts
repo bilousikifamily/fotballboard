@@ -1,5 +1,6 @@
 import { ALL_CLUBS, type MatchLeagueId } from "../data/clubs";
 import { findClubLeague } from "../features/clubs";
+import { normalizeTeamSlugValue } from "../features/analitika";
 
 export const STORAGE_KEY = "presentation.matches";
 export const STORAGE_UPDATED_KEY = "presentation.matches.updated";
@@ -219,6 +220,9 @@ export type PresentationRemoteMatch = {
   league_id?: string | null;
   kickoff_at: string;
   note?: string | null;
+  home_probability?: number | null;
+  draw_probability?: number | null;
+  away_probability?: number | null;
 };
 
 export function mergePresentationMatches(
@@ -242,8 +246,8 @@ function buildPresentationMatchFromRemote(
   remote: PresentationRemoteMatch,
   previous: PresentationMatch | null
 ): PresentationMatch {
-  const homeClub = remote.home_club_id ?? remote.home_team;
-  const awayClub = remote.away_club_id ?? remote.away_team;
+  const homeClub = deriveClubSlug(remote.home_club_id, remote.home_team);
+  const awayClub = deriveClubSlug(remote.away_club_id, remote.away_team);
   const homeLeague = resolveRemoteLeague(remote.league_id ?? null, homeClub, awayClub) ?? previous?.homeLeague ?? MATCH_LEAGUES[0];
   const awayLeague =
     resolveRemoteLeague(remote.league_id ?? null, awayClub, homeClub) ?? previous?.awayLeague ?? homeLeague;
@@ -257,9 +261,15 @@ function buildPresentationMatchFromRemote(
     homeClub,
     awayClub,
     kickoff,
-    homeProbability: previous?.homeProbability ?? DEFAULT_REMOTE_PROBABILITIES.home,
-    drawProbability: previous?.drawProbability ?? DEFAULT_REMOTE_PROBABILITIES.draw,
-    awayProbability: previous?.awayProbability ?? DEFAULT_REMOTE_PROBABILITIES.away,
+    homeProbability:
+      previous?.homeProbability ??
+      clampProbability(remote.home_probability ?? DEFAULT_REMOTE_PROBABILITIES.home),
+    drawProbability:
+      previous?.drawProbability ??
+      clampProbability(remote.draw_probability ?? DEFAULT_REMOTE_PROBABILITIES.draw),
+    awayProbability:
+      previous?.awayProbability ??
+      clampProbability(remote.away_probability ?? DEFAULT_REMOTE_PROBABILITIES.away),
     note,
     createdAt: previous?.createdAt ?? Date.now()
   };
@@ -285,4 +295,13 @@ function resolveRemoteLeague(leagueId: string | null, primaryClub: string, secon
 
 function buildRemoteMatchId(matchId: number): string {
   return `${REMOTE_MATCH_PREFIX}${matchId}`;
+}
+
+function deriveClubSlug(value: string | null | undefined, fallbackName: string): string {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (trimmed) {
+    return trimmed;
+  }
+  const normalized = normalizeTeamSlugValue(fallbackName);
+  return normalized || fallbackName;
 }

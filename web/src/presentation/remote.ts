@@ -1,4 +1,5 @@
 import type { PresentationRemoteMatch } from "./presentation/storage";
+import { getKyivDateString } from "../formatters/dates";
 
 export async function fetchPresentationMatches(apiBase: string): Promise<PresentationRemoteMatch[]> {
   if (!apiBase) {
@@ -6,7 +7,10 @@ export async function fetchPresentationMatches(apiBase: string): Promise<Present
   }
 
   try {
-    const response = await fetch(`${apiBase}/api/presentation/matches`);
+    const dateParam = getKyivDateString();
+    const response = await fetch(
+      `${apiBase}/api/presentation/matches?date=${encodeURIComponent(dateParam)}`
+    );
     if (!response.ok) {
       return [];
     }

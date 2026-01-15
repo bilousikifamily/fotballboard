@@ -546,7 +546,26 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      return jsonResponse({ ok: true, matches }, 200, corsHeaders());
+      const probabilities = await aggregatePresentationPredictionPercentages(
+        supabase,
+        matches.map((match) => match.id)
+      );
+      const scheduledMatches = matches.filter((match) => match.status === "scheduled");
+      const payload = scheduledMatches.map((match) => {
+        const prediction = probabilities.get(match.id);
+        const homeClub = normalizeTeamSlug(match.home_club_id ?? match.home_team) ?? match.home_team;
+        const awayClub = normalizeTeamSlug(match.away_club_id ?? match.away_team) ?? match.away_team;
+        return {
+          ...match,
+          home_club_id: homeClub,
+          away_club_id: awayClub,
+          home_probability: prediction?.home ?? DEFAULT_PRESENTATION_PROBABILITIES.home,
+          draw_probability: prediction?.draw ?? DEFAULT_PRESENTATION_PROBABILITIES.draw,
+          away_probability: prediction?.away ?? DEFAULT_PRESENTATION_PROBABILITIES.away
+        };
+      });
+
+      return jsonResponse({ ok: true, matches: payload }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/matches") {
@@ -4420,6 +4439,65 @@ function getPredictionCloseAt(kickoffAt?: string | null): string | null {
     return null;
   }
   return new Date(kickoffMs - PREDICTION_CUTOFF_MS).toISOString();
+}
+
+const DEFAULT_PRESENTATION_PROBABILITIES = { home: 50, draw: 25, away: 25 };
+
+async function aggregatePresentationPredictionPercentages(
+  supabase: SupabaseClient,
+  matchIds: number[]
+): Promise<Map<number, { home: number; draw: number; away: number }>> {
+  if (!matchIds.length) {
+    return new Map();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("match_id, home_pred, away_pred")
+      .in("match_id", matchIds);
+    if (error) {
+      console.error("Failed to fetch predictions for presentation", error);
+      return new Map();
+    }
+
+    const counter = new Map<number, { home: number; draw: number; away: number }>();
+    for (const entry of (data as DbPrediction[]) ?? []) {
+      if (!entry.match_id) {
+        continue;
+      }
+      const tally = counter.get(entry.match_id) ?? { home: 0, draw: 0, away: 0 };
+      const outcome = getOutcome(entry.home_pred, entry.away_pred);
+      if (outcome === "home") {
+        tally.home++;
+      } else if (outcome === "away") {
+        tally.away++;
+      } else {
+        tally.draw++;
+      }
+      counter.set(entry.match_id, tally);
+    }
+
+    const result = new Map<number, { home: number; draw: number; away: number }>();
+    for (const [matchId, totals] of counter.entries()) {
+      const totalCount = totals.home + totals.draw + totals.away;
+      if (!totalCount) {
+        continue;
+      }
+      const homePercent = Math.round((totals.home / totalCount) * 100);
+      const drawPercent = Math.round((totals.draw / totalCount) * 100);
+      let awayPercent = 100 - homePercent - drawPercent;
+      if (awayPercent < 0) {
+        awayPercent = 0;
+      }
+      result.set(matchId, { home: homePercent, draw: drawPercent, away: awayPercent });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Failed to aggregate presentation predictions", error);
+    return new Map();
+  }
 }
 
 async function findPrediction(
