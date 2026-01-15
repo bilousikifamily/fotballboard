@@ -201,5 +201,5 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 ## Presentation & admin pages
 
 - `presentation.html` renders the match cards that should appear on the visual screen. It reads the stored forecasts from `localStorage` (key `presentation.matches`) and listens for updates from the admin page.
-- `admin.html` is the control room. Log in with **artur2026 / Qwe123Asd321**, update or reorder matches, and the presentation page will react to the changes immediately (the admin page also exposes a reset button and a quick link to open `presentation.html` in a new tab).
+- `admin.html` is the control room. Log in with the configured credentials, update or reorder matches, and the presentation page will react to the changes immediately (the admin page also exposes a reset button and a quick link to open `presentation.html` in a new tab).
 - The new pages are built by Vite alongside the Telegram WebApp entry, so run `npm run build` or `npm run dev` from the `web/` folder as usual.
