@@ -1,0 +1,146 @@
+
+.admin-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.admin-actions .button {
+  width: 100%;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+.admin-pending {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-users {
+  display: none;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-users.is-open {
+  display: grid;
+}
+
+.admin-users-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.admin-user-info {
+  display: flex;
+  align-items: center;
+}
+
+.admin-user-name {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-user-session {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.admin-pending-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-pending-card {
+  --match-card-width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.admin-pending-card .match-item {
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+
+.admin-pending-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-pending-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.admin-pending-info {
+  display: grid;
+  gap: 4px;
+}
+
+.status-pending {
+  color: var(--muted);
+}
+
+.admin-form {
+  display: none;
+  gap: 10px;
+}
+
+.admin-form.is-open {
+  display: grid;
+}
+
+.admin-debug {
+  display: none;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(12, 13, 16, 0.7);
+}
+
+.admin-debug.is-open {
+  display: grid;
+}
+
+.admin-debug-input {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid var(--outline-light);
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 10px 12px;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+}
+
+.admin-analytics {
+  gap: 12px;
+}
