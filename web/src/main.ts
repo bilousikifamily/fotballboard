@@ -1870,6 +1870,7 @@ async function loadMatches(date: string): Promise<void> {
       matchesById.set(match.id, match);
     });
     container.innerHTML = renderMatchesList(data.matches);
+    centerMatchList(container);
     bindMatchActions();
     setupMatchAnalitikaFilters();
     renderAdminMatchOptions(data.matches);
@@ -1921,6 +1922,25 @@ async function loadPendingMatches(): Promise<void> {
       status.textContent = "Не вдалося завантажити матчі.";
     }
   }
+}
+
+function centerMatchList(container: HTMLElement): void {
+  const firstItem = container.querySelector<HTMLElement>(".match-item");
+  if (!firstItem) {
+    container.scrollLeft = 0;
+    return;
+  }
+  const containerWidth = container.clientWidth;
+  if (containerWidth === 0) {
+    return;
+  }
+  const containerRect = container.getBoundingClientRect();
+  const itemRect = firstItem.getBoundingClientRect();
+  const relativeLeft = itemRect.left - containerRect.left + container.scrollLeft;
+  const itemWidth = itemRect.width;
+  const targetScrollLeft = relativeLeft - (containerWidth - itemWidth) / 2;
+  const maxScrollLeft = Math.max(0, container.scrollWidth - containerWidth);
+  container.scrollLeft = Math.min(Math.max(targetScrollLeft, 0), maxScrollLeft);
 }
 
 async function loadAdminUserSessions(): Promise<void> {
