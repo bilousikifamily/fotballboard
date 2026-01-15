@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
+    />
+    <title>Екран прогнозів</title>
+    <link rel="stylesheet" href="/src/styles/presentation.css" />
+  </head>
+  <body>
+    <main class="presentation-shell" id="presentation">
+      <header class="presentation-header">
+        <div>
+          <h1>Екран прогнозів</h1>
+          <p class="presentation-subtitle">Живі ставки, ефектно на будь-який екран</p>
+        </div>
+      </header>
+      <section class="presentation-grid" data-match-list></section>
+      <div class="presentation-empty is-hidden" data-empty-state>
+        <p>Тут з’являться матчі, коли макет наповниться прогнозами.</p>
+      </div>
+      <footer class="presentation-footer">
+        <span>Оновлюється в режимі реального часу</span>
+        <span data-last-updated>Оновлено --:--</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/presentation.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
+    />
+    <title>Адмінка екрану прогнозів</title>
+    <link rel="stylesheet" href="/src/styles/presentation.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <section class="admin-login" data-login-panel>
+        <h1>Адмінський доступ</h1>
+        <p class="admin-subtitle">Увійдіть, щоб керувати даними презентаційного екрану.</p>
+        <form data-login-form>
+          <div class="field">
+            <label>Логін</label>
+            <input name="username" type="text" required value="artur2026" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label>Пароль</label>
+            <input name="password" type="password" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="button primary">Увійти</button>
+        </form>
+        <p class="login-error" data-login-error></p>
+        <p class="admin-note">
+          Логін: <strong>artur2026</strong><br />
+          Пароль: <strong>Qwe123Asd321</strong>
+        </p>
+        <p class="admin-note">
+          Після входу панель дозволяє редагувати матчі та зберігати прогнози. Дані надсилаються в
+          локальне сховище щоб екран міг їх підхопити миттєво.
+        </p>
+      </section>
+
+      <section class="admin-panel is-hidden" data-admin-panel>
+        <header class="admin-header">
+          <div>
+            <h1>Керування презентаційним екраном</h1>
+            <p class="admin-subtitle">Зміни зберігаються локально та одразу потрапляють на екран.</p>
+          </div>
+          <div class="admin-header__controls">
+            <a class="button secondary" href="/presentation.html" target="_blank" rel="noreferrer">
+              Відкрити екран
+            </a>
+            <button class="button secondary" type="button" data-admin-reset>Скинути на приклад</button>
+            <button class="button secondary" type="button" data-logout>Вийти</button>
+          </div>
+        </header>
+
+        <form data-match-form>
+          <div class="field-grid">
+            <div class="field">
+              <label>Ліга (домашня)</label>
+              <select name="homeLeague" required></select>
+            </div>
+            <div class="field">
+              <label>Клуб (домашній)</label>
+              <select name="homeClub" required></select>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Ліга (гостьова)</label>
+              <select name="awayLeague" required></select>
+            </div>
+            <div class="field">
+              <label>Клуб (гостьовий)</label>
+              <select name="awayClub" required></select>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Дата та час</label>
+              <input name="kickoff" type="datetime-local" required />
+            </div>
+            <div class="field">
+              <label>Доповнення</label>
+              <input name="note" type="text" placeholder="Наприклад «Матч дня»" />
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>% Господарі</label>
+              <input name="homeProbability" type="number" min="0" max="100" required />
+            </div>
+            <div class="field">
+              <label>% Нічия</label>
+              <input name="drawProbability" type="number" min="0" max="100" required />
+            </div>
+            <div class="field">
+              <label>% Гості</label>
+              <input name="awayProbability" type="number" min="0" max="100" required />
+            </div>
+          </div>
+
+          <div class="admin-panel__tools">
+            <button class="button primary" type="submit">Зберегти матч</button>
+            <button class="button secondary is-hidden" type="button" data-form-cancel>Скасувати редагування</button>
+          </div>
+        </form>
+
+        <div class="admin-match-list" data-admin-match-list></div>
+      </section>
+    </main>
+    <script type="module" src="/src/admin-panel.ts"></script>
+  </body>
+</html>
