@@ -38,76 +38,14 @@
             <h1>Керування презентаційним екраном</h1>
             <p class="admin-subtitle">Зміни зберігаються локально та одразу потрапляють на екран.</p>
           </div>
-          <div class="admin-header__controls">
-            <a class="button secondary" href="/presentation.html" target="_blank" rel="noreferrer">
-              Відкрити екран
-            </a>
-            <button class="button secondary" type="button" data-admin-sync>
-              Синхронізувати матчі
-            </button>
-            <span class="muted small" data-admin-sync-status></span>
-            <button class="button primary" type="button" data-admin-next-match>Наступний матч</button>
-            <button class="button secondary" type="button" data-admin-reset>Скинути на приклад</button>
-            <button class="button secondary" type="button" data-logout>Вийти</button>
-          </div>
         </header>
 
-        <form data-match-form>
-          <div class="field-grid">
-            <div class="field">
-              <label>Ліга (домашня)</label>
-              <select name="homeLeague" required></select>
-            </div>
-            <div class="field">
-              <label>Клуб (домашній)</label>
-              <select name="homeClub" required></select>
-            </div>
-          </div>
-
-          <div class="field-grid">
-            <div class="field">
-              <label>Ліга (гостьова)</label>
-              <select name="awayLeague" required></select>
-            </div>
-            <div class="field">
-              <label>Клуб (гостьовий)</label>
-              <select name="awayClub" required></select>
-            </div>
-          </div>
-
-          <div class="field-grid">
-            <div class="field">
-              <label>Дата та час</label>
-              <input name="kickoff" type="datetime-local" required />
-            </div>
-            <div class="field">
-              <label>Доповнення</label>
-              <input name="note" type="text" placeholder="Наприклад «Матч дня»" />
-            </div>
-          </div>
-
-          <div class="field-grid">
-            <div class="field">
-              <label>% Господарі</label>
-              <input name="homeProbability" type="number" min="0" max="100" required />
-            </div>
-            <div class="field">
-              <label>% Нічия</label>
-              <input name="drawProbability" type="number" min="0" max="100" required />
-            </div>
-            <div class="field">
-              <label>% Гості</label>
-              <input name="awayProbability" type="number" min="0" max="100" required />
-            </div>
-          </div>
-
-          <div class="admin-panel__tools">
-            <button class="button primary" type="submit">Зберегти матч</button>
-            <button class="button secondary is-hidden" type="button" data-form-cancel>Скасувати редагування</button>
-          </div>
-        </form>
-
-        <div class="admin-match-list" data-admin-match-list></div>
+        <div class="admin-controls">
+          <button class="button primary" type="button" data-admin-next-match>Наступний матч</button>
+          <button class="button secondary" type="button" data-admin-show-average>Показати середній прогноз</button>
+          <button class="button secondary" type="button" data-admin-show-chart>Графік останніх 5 матчів</button>
+          <button class="button secondary" type="button" data-logout>Вийти</button>
+        </div>
       </section>
     </main>
     <script type="module" src="/src/admin-panel.ts"></script>

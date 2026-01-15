@@ -22,6 +22,9 @@ import type { PredictionUser, TeamMatchStat } from "./types";
 import { fetchPresentationMatches } from "./presentation/remote";
 
 const CURRENT_MATCH_INDEX_KEY = "presentation.currentMatchIndex";
+const PRESENTATION_VIEW_MODE_KEY = "presentation.viewMode";
+
+type PresentationViewMode = "normal" | "average" | "chart";
 
 const root = document.querySelector<HTMLElement>("#presentation");
 if (!root) {
@@ -46,6 +49,17 @@ function getCurrentMatchIndex(matchesLength: number): number {
   return Math.min(index, Math.max(0, matchesLength - 1));
 }
 
+function getViewMode(): PresentationViewMode {
+  if (typeof window === "undefined") {
+    return "normal";
+  }
+  const stored = window.localStorage.getItem(PRESENTATION_VIEW_MODE_KEY);
+  if (stored === "average" || stored === "chart") {
+    return stored;
+  }
+  return "normal";
+}
+
 function render(): void {
   const matches = loadPresentationMatches();
   if (!matchList || !updatedLabel || !emptyState) {
@@ -59,8 +73,17 @@ function render(): void {
     emptyState.classList.add("is-hidden");
     const currentIndex = getCurrentMatchIndex(matches.length);
     const currentMatch = matches[currentIndex];
+    const viewMode = getViewMode();
+    
     if (currentMatch) {
-      matchList.innerHTML = renderMatchCard(currentMatch);
+      matchList.innerHTML = renderMatchCard(currentMatch, viewMode);
+      // Trigger animation by adding class after a brief delay
+      requestAnimationFrame(() => {
+        const card = matchList.querySelector<HTMLElement>(".presentation-match-card");
+        if (card) {
+          card.classList.add("is-visible");
+        }
+      });
     } else {
       matchList.innerHTML = "";
       emptyState.classList.remove("is-hidden");
@@ -70,7 +93,7 @@ function render(): void {
   updatedLabel.textContent = `Оновлено ${formatter.format(getPresentationUpdatedAt())}`;
 }
 
-function renderMatchCard(match: PresentationMatch): string {
+function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMode = "normal"): string {
   const homeName = match.homeTeam || formatClubName(match.homeClub);
   const awayName = match.awayTeam || formatClubName(match.awayClub);
   const leagueForLogos = resolveLogoLeagueId(match.homeLeague ?? match.awayLeague ?? null);
@@ -96,60 +119,95 @@ function renderMatchCard(match: PresentationMatch): string {
     ? `<span class="presentation-note">${escapeHtml(match.note)}</span>`
     : `<span class="presentation-note">Прогноз</span>`;
 
+  const isChartMode = viewMode === "chart";
+  const isAverageMode = viewMode === "average";
+  const showNormalContent = viewMode === "normal";
+
+  // Extract average score for average mode
+  const averageScoreHtml = renderAveragePredictionScore(match.predictions);
+  const averageScoreText = averageScoreHtml.replace(/<[^>]*>/g, "").trim();
+
   return `
-    <article class="presentation-match-card">
-      <header class="presentation-match-card__header">
-        <div class="presentation-match-card__time">
-          <strong>${escapeHtml(formatKyivDateTime(match.kickoff))}</strong>
-        </div>
-        <div class="presentation-match-card__meta">
-          ${venueMarkup}
-          ${noteMarkup}
-        </div>
-      </header>
-      <div class="presentation-match-card__teams">
-        <div class="presentation-match-team">
-          ${renderTeamLogo(homeName, homeLogo)}
-          <strong>${escapeHtml(homeName)}</strong>
-        </div>
-        ${renderAveragePredictionScore(match.predictions)}
-        <div class="presentation-match-team">
-          ${renderTeamLogo(awayName, awayLogo)}
-          <strong>${escapeHtml(awayName)}</strong>
-        </div>
-      </div>
-      <div class="presentation-match-weather">
-        <div class="presentation-match-weather__temp">
-          <span>${escapeHtml(tempLabel)}</span>
-          ${match.weatherTimezone ? `<span>${escapeHtml(match.weatherTimezone.toUpperCase())}</span>` : match.venueCity ? `<span>${escapeHtml(match.venueCity.toUpperCase())}</span>` : ""}
-        </div>
-        <div class="presentation-match-weather__rain">
-          <span class="presentation-weather-icon" aria-hidden="true">${weatherIcon}</span>
-          <div class="presentation-match-weather__bar">
-            <span style="width: ${rainPercent ?? 0}%"></span>
+    <article class="presentation-match-card" data-view-mode="${viewMode}">
+      ${showNormalContent || isAverageMode ? `
+        <header class="presentation-match-card__header">
+          <div class="presentation-match-card__time">
+            <strong>${escapeHtml(formatKyivDateTime(match.kickoff))}</strong>
           </div>
-          <span>${escapeHtml(rainLabel)}</span>
+          <div class="presentation-match-card__meta">
+            ${venueMarkup}
+            ${noteMarkup}
+          </div>
+        </header>
+        <div class="presentation-match-card__teams">
+          <div class="presentation-match-team">
+            ${renderTeamLogo(homeName, homeLogo)}
+            <strong>${escapeHtml(homeName)}</strong>
+          </div>
+          ${averageScoreHtml}
+          <div class="presentation-match-team">
+            ${renderTeamLogo(awayName, awayLogo)}
+            <strong>${escapeHtml(awayName)}</strong>
+          </div>
         </div>
-      </div>
-      <div class="presentation-probabilities">
-        ${renderProbability("Господарі", match.homeProbability, "home")}
-        ${renderProbability("Нічия", match.drawProbability, "draw")}
-        ${renderProbability("Гості", match.awayProbability, "away")}
-      </div>
-      <div class="presentation-match-predictions">
-        <p class="presentation-section-title">Прогнози користувачів</p>
-        ${renderPredictions(match.predictions)}
-      </div>
-      <div class="presentation-match-history">
-        <div class="presentation-history-column">
-          <p class="presentation-section-title">Останні 5 — ${escapeHtml(homeName)}</p>
-          ${renderHistoryRows(match.homeRecentMatches)}
+      ` : ""}
+      ${isChartMode ? `
+        <header class="presentation-match-card__header">
+          <div class="presentation-match-card__teams">
+            <div class="presentation-match-team">
+              ${renderTeamLogo(homeName, homeLogo)}
+              <strong>${escapeHtml(homeName)}</strong>
+            </div>
+            <span class="presentation-match-card__vs">vs</span>
+            <div class="presentation-match-team">
+              ${renderTeamLogo(awayName, awayLogo)}
+              <strong>${escapeHtml(awayName)}</strong>
+            </div>
+          </div>
+        </header>
+      ` : ""}
+      ${showNormalContent ? `
+        <div class="presentation-match-weather">
+          <div class="presentation-match-weather__temp">
+            <span>${escapeHtml(tempLabel)}</span>
+            ${match.weatherTimezone ? `<span>${escapeHtml(match.weatherTimezone.toUpperCase())}</span>` : match.venueCity ? `<span>${escapeHtml(match.venueCity.toUpperCase())}</span>` : ""}
+          </div>
+          <div class="presentation-match-weather__rain">
+            <span class="presentation-weather-icon" aria-hidden="true">${weatherIcon}</span>
+            <div class="presentation-match-weather__bar">
+              <span style="width: ${rainPercent ?? 0}%"></span>
+            </div>
+            <span>${escapeHtml(rainLabel)}</span>
+          </div>
         </div>
-        <div class="presentation-history-column">
-          <p class="presentation-section-title">Останні 5 — ${escapeHtml(awayName)}</p>
-          ${renderHistoryRows(match.awayRecentMatches)}
+        <div class="presentation-probabilities">
+          ${renderProbability("Господарі", match.homeProbability, "home")}
+          ${renderProbability("Нічия", match.drawProbability, "draw")}
+          ${renderProbability("Гості", match.awayProbability, "away")}
         </div>
-      </div>
+        <div class="presentation-match-predictions">
+          <p class="presentation-section-title">Прогнози користувачів</p>
+          ${renderPredictions(match.predictions)}
+        </div>
+      ` : ""}
+      ${isAverageMode ? `
+        <div class="presentation-average-prediction-large">
+          <p class="presentation-section-title">Середній прогноз</p>
+          <div class="presentation-average-prediction-score">${averageScoreHtml}</div>
+        </div>
+      ` : ""}
+      ${showNormalContent || isChartMode ? `
+        <div class="presentation-match-history">
+          <div class="presentation-history-column">
+            <p class="presentation-section-title">Останні 5 — ${escapeHtml(homeName)}</p>
+            ${renderHistoryRows(match.homeRecentMatches)}
+          </div>
+          <div class="presentation-history-column">
+            <p class="presentation-section-title">Останні 5 — ${escapeHtml(awayName)}</p>
+            ${renderHistoryRows(match.awayRecentMatches)}
+          </div>
+        </div>
+      ` : ""}
     </article>
   `;
 }
@@ -309,7 +367,11 @@ function toPredictionUser(user: PresentationPredictionUser | null | undefined): 
 }
 
 window.addEventListener("storage", (event) => {
-  if (event.key === STORAGE_KEY || event.key === CURRENT_MATCH_INDEX_KEY) {
+  if (
+    event.key === STORAGE_KEY ||
+    event.key === CURRENT_MATCH_INDEX_KEY ||
+    event.key === PRESENTATION_VIEW_MODE_KEY
+  ) {
     render();
   }
 });
