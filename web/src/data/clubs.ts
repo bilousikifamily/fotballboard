@@ -77,6 +77,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "leganes",
     "mallorca",
     "osasuna",
+    "racing",
     "rayo-vallecano",
     "real-betis",
     "real-madrid",

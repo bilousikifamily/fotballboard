@@ -57,6 +57,7 @@ This table lists clubs found in the project with Ukrainian alternatives.
 | La Liga | Leganes | `leganes` | ЛЕГАНЕС |
 | La Liga | Mallorca | `mallorca` | МАЛЬОРКА |
 | La Liga | Osasuna | `osasuna` | ОСАСУНА |
+| La Liga | Racing | `racing` | РАСІНГ |
 | La Liga | Rayo Vallecano | `rayo-vallecano` | РАЙО |
 | La Liga | Real Betis | `real-betis` | БЕТІС |
 | La Liga | Real Madrid | `real-madrid` | МАДРИД |

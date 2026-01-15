@@ -86,6 +86,7 @@ export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "parma": "ПАРМА",
   "polissya": "ПОЛІССЯ",
   "portsmouth": "ПОРТСМУТ",
+  "racing": "РАСІНГ",
   "rayo-vallecano": "РАЙО",
   "rb-leipzig": "ЛЕЙПЦИГ",
   "rc-lens": "ЛАНС",
