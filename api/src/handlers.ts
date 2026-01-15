@@ -84,7 +84,10 @@ const ANALITIKA_HEAD_TO_HEAD_LIMIT = 10;
 const ANALITIKA_STATIC_TTL_DAYS = 365;
 const TEAM_SEARCH_ALIASES: Record<string, string> = {
   inter: "Inter Milan",
-  milan: "AC Milan"
+  milan: "AC Milan",
+  "como1907": "Como",
+  "como 1907": "Como",
+  "como-1907": "Como"
 };
 const TEAM_MATCH_ALIASES: Record<string, string> = {
   inter: "intermilan",
@@ -1010,6 +1013,7 @@ export default {
       if (message) {
         const supabase = createSupabaseClient(env);
         await handleFactionChatModeration(message, env, supabase);
+        await handleGeneralChatModeration(message, env, supabase);
       }
 
       await handleUpdate(update, env);
@@ -1234,6 +1238,52 @@ async function handleFactionChatModeration(
       return;
     }
     const generalText = `Порушення у чаті ${targetLabel}: ${userLabel} (${userFactionLabel}) написав у чужій гілці. Повідомлення видалено.`;
+    await sendMessage(env, generalChatTarget, generalText);
+  }
+}
+
+async function handleGeneralChatModeration(
+  message: TelegramMessage,
+  env: Env,
+  supabase: SupabaseClient | null
+): Promise<void> {
+  const from = message.from;
+  const chatId = message.chat?.id;
+  const messageId = message.message_id;
+  if (!from || !chatId || !messageId || from.is_bot) {
+    return;
+  }
+
+  const refs = getFactionChatRefs(env);
+  if (!refs.general) {
+    return;
+  }
+
+  const isGeneralChat = matchChatRef(message, refs.general);
+  if (!isGeneralChat) {
+    return;
+  }
+
+  if (!supabase) {
+    console.error("Failed to moderate general chat: missing_supabase");
+    return;
+  }
+
+  const userFaction = await getUserClassicoChoice(supabase, from.id);
+  if (userFaction) {
+    return;
+  }
+
+  await deleteMessage(env, chatId, messageId);
+
+  const userLabel = formatUserDisplay(from);
+  const directMessage = `Твоє повідомлення видалено: у груповому чаті можуть писати тільки користувачі з обраною фракцією. Оберіть фракцію у WebApp.`;
+  await sendMessage(env, from.id, directMessage);
+
+  const generalText = `Порушення у груповому чаті: ${userLabel} написав повідомлення без обраної фракції. Повідомлення видалено.`;
+  const generalChatTarget =
+    refs.general.chatId ?? (refs.general.chatUsername ? `@${refs.general.chatUsername}` : null);
+  if (generalChatTarget) {
     await sendMessage(env, generalChatTarget, generalText);
   }
 }
