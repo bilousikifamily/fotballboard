@@ -1106,6 +1106,7 @@ export default {
     return new Response("Not Found", { status: 404 });
   },
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(handleMatchStartDigests(env));
     ctx.waitUntil(handlePredictionReminders(env));
     ctx.waitUntil(handleWeatherRefresh(env));
   }
@@ -5684,6 +5685,204 @@ async function listMatchesForWeatherRefresh(
   } catch (error) {
     console.error("Failed to list matches for weather refresh", error);
     return null;
+  }
+}
+
+type ClassicoFaction = "real_madrid" | "barcelona";
+
+type MatchPredictionUser = {
+  id?: number | null;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null;
+  classico_choice?: string | null;
+};
+
+type MatchPredictionRecord = {
+  home_pred: number;
+  away_pred: number;
+  user: MatchPredictionUser | null;
+};
+
+type PredictionsByFaction = Record<ClassicoFaction, MatchPredictionRecord[]>;
+
+async function listMatchesAwaitingStartDigest(supabase: SupabaseClient): Promise<DbMatch[] | null> {
+  try {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, home_team, away_team, home_club_id, away_club_id, kickoff_at, status")
+      .eq("status", "scheduled")
+      .lte("kickoff_at", now)
+      .is("start_digest_sent_at", null)
+      .order("kickoff_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to list matches for start digest", error);
+      return null;
+    }
+
+    return (data as DbMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list matches for start digest", error);
+    return null;
+  }
+}
+
+async function listMatchPredictionsWithUsers(
+  supabase: SupabaseClient,
+  matchId: number
+): Promise<MatchPredictionRecord[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("home_pred, away_pred, users (id, username, first_name, last_name, nickname, classico_choice)")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch match predictions for start digest", error);
+      return null;
+    }
+
+    const rows = (data as Array<{
+      home_pred: number;
+      away_pred: number;
+      users?: {
+        id?: number | null;
+        username?: string | null;
+        first_name?: string | null;
+        last_name?: string | null;
+        nickname?: string | null;
+        classico_choice?: string | null;
+      } | null;
+    }>) ?? [];
+
+    return rows.map((row) => ({
+      home_pred: row.home_pred,
+      away_pred: row.away_pred,
+      user: row.users
+        ? {
+            id: row.users.id ?? null,
+            username: row.users.username ?? null,
+            first_name: row.users.first_name ?? null,
+            last_name: row.users.last_name ?? null,
+            nickname: row.users.nickname ?? null,
+            classico_choice: row.users.classico_choice ?? null
+          }
+        : null
+    }));
+  } catch (error) {
+    console.error("Failed to fetch match predictions for start digest", error);
+    return null;
+  }
+}
+
+function groupMatchPredictionsByFaction(predictions: MatchPredictionRecord[]): PredictionsByFaction {
+  const grouped: PredictionsByFaction = {
+    real_madrid: [],
+    barcelona: []
+  };
+  predictions.forEach((prediction) => {
+    const normalized = normalizeClassicoChoice(prediction.user?.classico_choice);
+    if (normalized === "real_madrid" || normalized === "barcelona") {
+      grouped[normalized].push(prediction);
+    }
+  });
+  return grouped;
+}
+
+function formatPredictionUserLabel(user: MatchPredictionUser | null): string {
+  if (!user) {
+    return "Невідомий";
+  }
+  const nickname = (user.nickname ?? "").trim();
+  if (nickname) {
+    return nickname;
+  }
+  const telegramUser: TelegramUser = {
+    id: user.id ?? 0,
+    username: user.username ?? undefined,
+    first_name: user.first_name ?? undefined,
+    last_name: user.last_name ?? undefined
+  };
+  const display = formatUserDisplay(telegramUser);
+  return display || "Невідомий";
+}
+
+function formatMatchPredictionLine(
+  homeName: string,
+  awayName: string,
+  prediction: MatchPredictionRecord
+): string {
+  const userLabel = formatPredictionUserLabel(prediction.user);
+  return `${homeName} ${prediction.home_pred}:${prediction.away_pred} ${awayName} (${userLabel})`;
+}
+
+async function sendFactionMatchStartDigest(
+  env: Env,
+  match: DbMatch,
+  faction: ClassicoFaction,
+  predictions: MatchPredictionRecord[],
+  chatRef?: FactionChatRef
+): Promise<void> {
+  if (!chatRef || !predictions.length) {
+    return;
+  }
+  const chatTarget =
+    chatRef.chatId ?? (chatRef.chatUsername ? `@${chatRef.chatUsername}` : null);
+  if (!chatTarget) {
+    return;
+  }
+  const homeName = resolveUkrainianClubName(match.home_team, match.home_club_id ?? null);
+  const awayName = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
+  const header = `Прогнози фракції ${formatFactionName(faction)} на матч ${homeName} — ${awayName}:`;
+  const lines = predictions.map((prediction) => formatMatchPredictionLine(homeName, awayName, prediction));
+  const message = [header, ...lines].join("\n");
+  try {
+    await sendMessage(env, chatTarget, message);
+  } catch (error) {
+    console.error("Failed to send match start digest", error);
+  }
+}
+
+async function handleMatchStartDigests(env: Env): Promise<void> {
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Failed to send match start digests: missing_supabase");
+    return;
+  }
+
+  const matches = await listMatchesAwaitingStartDigest(supabase);
+  if (!matches || matches.length === 0) {
+    return;
+  }
+
+  const refs = getFactionChatRefs(env);
+
+  for (const match of matches) {
+    const predictions = await listMatchPredictionsWithUsers(supabase, match.id);
+    if (!predictions) {
+      continue;
+    }
+
+    const grouped = groupMatchPredictionsByFaction(predictions);
+    await sendFactionMatchStartDigest(env, match, "real_madrid", grouped.real_madrid, refs.real);
+    await sendFactionMatchStartDigest(env, match, "barcelona", grouped.barcelona, refs.barca);
+
+    try {
+      const { error } = await supabase
+        .from("matches")
+        .update({ start_digest_sent_at: new Date().toISOString() })
+        .eq("id", match.id)
+        .is("start_digest_sent_at", null);
+      if (error) {
+        console.error("Failed to mark match start digest sent", error);
+      }
+    } catch (error) {
+      console.error("Failed to mark match start digest sent", error);
+    }
   }
 }
 

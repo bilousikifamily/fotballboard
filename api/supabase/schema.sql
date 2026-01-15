@@ -20,6 +20,7 @@ create table if not exists matches (
   home_score int,
   away_score int,
   created_by bigint references users(id),
+  start_digest_sent_at timestamptz,
   reminder_sent_at timestamptz,
   api_league_id int,
   api_fixture_id bigint,

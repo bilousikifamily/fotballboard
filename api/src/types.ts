@@ -370,6 +370,7 @@ export interface DbMatch {
   away_club_id?: string | null;
   kickoff_at: string;
   status: string;
+  start_digest_sent_at?: string | null;
   home_score?: number | null;
   away_score?: number | null;
   venue_name?: string | null;
