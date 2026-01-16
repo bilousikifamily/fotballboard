@@ -951,7 +951,9 @@ function renderFactionRecentMessage(message: FactionBranchMessage, index: number
   const nickname = message.nickname?.trim();
   const fallbackAuthor = message.author?.trim();
   const authorLabel = escapeHtml(nickname || fallbackAuthor || "Анонім");
-  const bubbleClass = index % 2 === 0 ? "message-chip--incoming" : "message-chip--outgoing";
+  const hasUserId = typeof message.authorId === "number";
+  const isSelf = hasUserId && message.authorId === currentUserId;
+  const bubbleClass = isSelf ? "message-chip--outgoing" : "message-chip--incoming";
   return `
     <article class="message-chip ${bubbleClass}" role="listitem">
       <span class="message-chip__author">${authorLabel}</span>

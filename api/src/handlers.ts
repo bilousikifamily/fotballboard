@@ -1721,6 +1721,7 @@ type FactionBranchMessageRow = {
   author: string | null;
   text: string | null;
   created_at: string | null;
+  author_id?: number | null;
   users?: { nickname?: string | null } | null;
 };
 
@@ -1747,7 +1748,8 @@ async function listFactionBranchMessages(
         author: row.author ?? null,
         text: row.text ?? "",
         created_at: row.created_at ?? new Date().toISOString(),
-        nickname: row.users?.nickname ?? null
+        nickname: row.users?.nickname ?? null,
+        authorId: row.author_id ?? null
       })) ?? []
     );
   } catch (error) {
