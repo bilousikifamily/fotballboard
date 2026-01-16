@@ -1400,6 +1400,7 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
     messageId,
     threadId: message.message_thread_id ?? null,
     author: formatUserDisplay(from),
+    authorId: from.id,
     text
   });
 }
@@ -1688,6 +1689,7 @@ async function insertFactionBranchMessage(
     messageId: number;
     threadId: number | null;
     author: string | null;
+    authorId?: number | null;
     text: string;
   }
 ): Promise<void> {
@@ -1698,6 +1700,7 @@ async function insertFactionBranchMessage(
       message_id: payload.messageId,
       thread_id: payload.threadId,
       author: payload.author?.trim() || null,
+      author_id: payload.authorId ?? null,
       text: payload.text,
       created_at: new Date().toISOString()
     };
@@ -1710,6 +1713,15 @@ async function insertFactionBranchMessage(
   }
 }
 
+type FactionBranchMessageRow = {
+  id: number;
+  faction: string;
+  author: string | null;
+  text: string | null;
+  created_at: string | null;
+  users?: { nickname?: string | null } | null;
+};
+
 async function listFactionBranchMessages(
   supabase: SupabaseClient,
   faction: "real_madrid" | "barcelona",
@@ -1718,7 +1730,7 @@ async function listFactionBranchMessages(
   try {
     const { data, error } = await supabase
       .from("faction_branch_messages")
-      .select("id, faction, author, text, created_at")
+      .select("id, faction, author, text, created_at, author_id, users (nickname)")
       .eq("faction", faction)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -1726,7 +1738,16 @@ async function listFactionBranchMessages(
       console.error("Failed to load faction branch messages", error);
       return [];
     }
-    return (data as FactionBranchMessage[]) ?? [];
+    return (
+      ((data as FactionBranchMessageRow[]) ?? []).map((row) => ({
+        id: row.id,
+        faction: row.faction as FactionBranchSlug,
+        author: row.author ?? null,
+        text: row.text ?? "",
+        created_at: row.created_at ?? new Date().toISOString(),
+        nickname: row.users?.nickname ?? null
+      })) ?? []
+    );
   } catch (error) {
     console.error("Failed to load faction branch messages", error);
     return [];

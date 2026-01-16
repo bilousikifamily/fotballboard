@@ -23,6 +23,7 @@ create table if not exists faction_branch_messages (
   message_id bigint not null,
   thread_id bigint,
   author text,
+  author_id bigint references users(id),
   text text not null,
   created_at timestamptz not null default now(),
   unique (chat_id, message_id)

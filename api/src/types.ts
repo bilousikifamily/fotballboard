@@ -275,6 +275,7 @@ export interface FactionBranchMessage {
   author?: string | null;
   text: string;
   created_at: string;
+  nickname?: string | null;
 }
 
 export type FactionMessagesResponse =
