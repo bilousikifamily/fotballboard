@@ -131,6 +131,8 @@ const FACTION_DISPLAY_NAMES: Record<FactionBranchSlug, string> = {
   milan: "Мілан"
 };
 
+const NO_FACTION_LABEL = "без фракції";
+
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
 const WEATHER_PROVIDER_PRIMARY = "open-meteo";
 const WEATHER_PROVIDER_FALLBACK = "weatherapi";
@@ -1526,10 +1528,10 @@ async function handleFactionChatModeration(
 
   const refs = getFactionChatRefs(env);
   const detected = identifyFactionFromMessage(message, refs);
-  if (!detected || !CLASSICO_FACTIONS.includes(detected as ClassicoFaction)) {
+  if (!detected) {
     return;
   }
-  const targetFaction = detected as ClassicoFaction;
+  const targetFaction = detected;
   if (!targetFaction) {
     return;
   }
@@ -1539,8 +1541,8 @@ async function handleFactionChatModeration(
     return;
   }
 
-  const userFaction = await getUserClassicoChoice(supabase, from.id);
-  if (!userFaction || userFaction === targetFaction) {
+  const userFaction = await getUserFactionSlug(supabase, from.id);
+  if (userFaction === targetFaction) {
     return;
   }
 
@@ -1548,9 +1550,11 @@ async function handleFactionChatModeration(
 
   const targetLabel = formatFactionName(targetFaction);
   const userLabel = formatUserDisplay(from);
-  const userFactionLabel = formatFactionName(userFaction);
+  const userFactionLabel = userFaction ? formatFactionName(userFaction) : NO_FACTION_LABEL;
 
-  const directMessage = `Твоє повідомлення видалено: це чат фракції ${targetLabel}. Твоя фракція: ${userFactionLabel}.`;
+  const directMessage = userFaction
+    ? `Твоє повідомлення видалено: це чат фракції ${targetLabel}. Твоя фракція: ${userFactionLabel}.`
+    : `Твоє повідомлення видалено: це чат фракції ${targetLabel}. Ти поки що ${NO_FACTION_LABEL} — обери фракцію в WebApp та заходь у відповідну гілку.`;
   await sendMessage(env, from.id, directMessage);
 
   if (refs.general) {
