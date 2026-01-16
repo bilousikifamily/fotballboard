@@ -2,6 +2,7 @@
 .panel.profile {
   padding: 28px 20px 32px;
   gap: 10px;
+  margin-bottom: 12px;
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.1), transparent 55%),
     linear-gradient(160deg, #17181d 0%, #101114 100%);
@@ -11,6 +12,10 @@
   position: relative;
   overflow: visible;
   z-index: 1;
+}
+
+.panel.profile + .panel.faction-members {
+  margin-top: 12px;
 }
 
 .panel.profile h1 {
@@ -796,10 +801,10 @@ h1 {
 }
 
 .panel.faction-members {
-  padding: 18px 16px 20px;
+  padding: 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -807,7 +812,7 @@ h1 {
 
 .faction-members-heading {
   margin: 0;
-  padding: 24px 0;
+  padding-block: 12px;
   text-align: center;
 }
 
@@ -816,6 +821,7 @@ h1 {
   font-size: 1.15rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  line-height: 1.05;
 }
 
 .faction-members-table {
