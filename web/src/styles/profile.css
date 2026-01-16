@@ -905,6 +905,7 @@ h1 {
 }
 
 .message-chip {
+  position: relative;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -913,6 +914,25 @@ h1 {
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     0 10px 24px rgba(0, 0, 0, 0.35);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-chip::before,
+.message-chip::after {
+  content: "";
+  position: absolute;
+  bottom: 6px;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.message-chip::before {
+  left: 14px;
+}
+
+.message-chip::after {
+  right: 14px;
 }
 
 .message-chip:hover {
@@ -945,22 +965,23 @@ h1 {
 }
 
 .faction-thread-link {
-  border-radius: 14px;
-  padding: 8px 16px;
-  letter-spacing: 0.12em;
-  font-size: 0.9rem;
+  border-radius: 22px;
+  padding: 0.7rem 2rem;
+  letter-spacing: 0.18em;
+  font-size: 0.95rem;
+  font-weight: 700;
   text-transform: uppercase;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #050404;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  border: 1px solid rgba(0, 0, 0, 0.3);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 10px 20px rgba(0, 0, 0, 0.35);
+    0 12px 28px rgba(255, 154, 31, 0.45);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  text-decoration: none;
 }
 
 .faction-thread-link.is-disabled {
@@ -977,8 +998,20 @@ h1 {
     0 12px 26px rgba(0, 0, 0, 0.45);
 }
 
+.faction-thread-link:hover,
+.faction-thread-link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 38px rgba(255, 154, 31, 0.55);
+}
+
+.faction-thread-link:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 6px 16px rgba(255, 154, 31, 0.35);
+}
+
 .faction-thread-link:focus-visible {
   outline: 2px solid rgba(255, 122, 26, 0.7);
   outline-offset: 4px;
-  border-radius: 14px;
 }
