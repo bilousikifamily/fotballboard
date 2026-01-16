@@ -125,14 +125,12 @@
   border: none;
 }
 
-.profile-metrics .section-header,
-.profile-factions .section-header {
+.profile-metrics .section-header {
   margin-bottom: 6px;
   justify-content: center;
 }
 
-.profile-metrics .section-header h2,
-.profile-factions .section-header h2 {
+.profile-metrics .section-header h2 {
   text-align: center;
 }
 
@@ -302,168 +300,6 @@
 
 .result-icon.is-empty {
   opacity: 0.45;
-}
-
-.faction-list {
-  display: grid;
-  gap: 10px;
-}
-
-.faction-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.faction-row--rada {
-  align-items: stretch;
-}
-
-.faction-row--rada .faction-chat {
-  height: 100%;
-  width: auto;
-  aspect-ratio: 1 / 1;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  display: grid;
-  place-items: center;
-}
-
-.faction-row--rada .faction-chat-icon {
-  width: 58%;
-  height: 58%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  box-shadow: 0 6px 18px rgba(255, 122, 26, 0.35);
-}
-
-.faction-card {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 16px;
-  border: none;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
-}
-
-.faction-row[data-faction-id] .faction-card {
-  cursor: pointer;
-}
-
-.faction-card.is-primary {
-  background: linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(255, 154, 31, 0.22));
-  border: 1px solid rgba(255, 154, 31, 0.55);
-  box-shadow:
-    0 0 0 1px var(--outline-dark) inset,
-    0 0 20px rgba(255, 122, 26, 0.35),
-    0 16px 34px rgba(0, 0, 0, 0.35);
-}
-
-.faction-logo-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  display: grid;
-  place-items: center;
-}
-
-.faction-logo {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-}
-
-.faction-logo-wrap img[src="/images/LOGO.png"] {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: inherit;
-  display: block;
-}
-
-.faction-chat {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  display: grid;
-  place-items: center;
-  padding: 0;
-  cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.faction-chat:active {
-  transform: scale(0.96);
-}
-
-.faction-chat-icon {
-  width: 18px;
-  height: 18px;
-  display: block;
-  background-color: var(--ink);
-  mask-image: url("/icons/chat.svg");
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-image: url("/icons/chat.svg");
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}
-
-.faction-members {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.faction-members-count {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1;
-}
-
-.faction-members-icon {
-  width: 16px;
-  height: 16px;
-  display: block;
-  background-color: #ffffff;
-  mask-image: url("/icons/person.svg");
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-image: url("/icons/person.svg");
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}
-
-.faction-logo.placeholder {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.faction-name {
-  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
-  font-weight: 300;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.faction-meta {
-  font-size: 0.8rem;
-  color: var(--muted);
 }
 
 .logo-stack {

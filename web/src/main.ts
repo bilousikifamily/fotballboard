@@ -902,134 +902,6 @@ function updateLeaderboardPrimaryFaction(logo: string | null): void {
   identity.insertAdjacentHTML("afterbegin", avatarMarkup);
 }
 
-function setupPrimaryFactionSelection(profile: ProfileStatsPayload | null): void {
-  if (!app || !profile?.factions?.length) {
-    return;
-  }
-  const list = app.querySelector<HTMLElement>(".profile-factions .faction-list");
-  if (!list) {
-    return;
-  }
-  const rows = Array.from(list.querySelectorAll<HTMLElement>(".faction-row[data-faction-id]"));
-  if (!rows.length) {
-    return;
-  }
-  rows.forEach((row) => {
-    const card = row.querySelector<HTMLElement>(".faction-card");
-    if (!card) {
-      return;
-    }
-    card.addEventListener("click", () => {
-      const factionId = row.dataset.factionId;
-      if (!factionId) {
-        return;
-      }
-      setPrimaryFactionId(factionId);
-      list.prepend(row);
-      rows.forEach((item) => {
-        const itemCard = item.querySelector<HTMLElement>(".faction-card");
-        if (!itemCard) {
-          return;
-        }
-        itemCard.classList.toggle("is-primary", item === row);
-      });
-      const logo = row.dataset.factionLogo || null;
-      updateLeaderboardPrimaryFaction(logo);
-    });
-  });
-}
-
-function setupFactionChatButtons(): void {
-  if (!app) {
-    return;
-  }
-  app.querySelectorAll<HTMLButtonElement>("[data-faction-chat]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const url = button.dataset.chatUrl;
-      if (!url) {
-        return;
-      }
-      openFactionChat(url);
-    });
-  });
-}
-
-function renderFactions(profile: ProfileStatsPayload | null, rank: number | null): string {
-  const factions = profile?.factions ?? [];
-  const rankLabel = typeof rank === "number" ? `№${rank} У СПИСКУ` : "№— У СПИСКУ";
-  const primaryId = getPrimaryFactionId();
-  const sortedFactions = primaryId
-    ? [...factions].sort((left, right) => {
-        const leftPrimary = getFactionId(left) === primaryId;
-        const rightPrimary = getFactionId(right) === primaryId;
-        if (leftPrimary === rightPrimary) {
-          return 0;
-        }
-        return leftPrimary ? -1 : 1;
-      })
-    : [...factions];
-  const cards = sortedFactions
-    .map((entry) => {
-      const display = getFactionDisplay(entry);
-      const factionId = getFactionId(entry);
-      const isPrimary = factionId === primaryId;
-      const membersCount = Number.isFinite(entry.members) ? entry.members : 0;
-      const name = escapeHtml(display.name);
-      const logo = display.logo
-        ? `<img class="faction-logo" src="${escapeAttribute(display.logo)}" alt="" />`
-        : `<div class="faction-logo placeholder" aria-hidden="true"></div>`;
-      const rankMeta = entry.rank ? `№${entry.rank} У СПИСКУ` : "№— У СПИСКУ";
-      return `
-        <div class="faction-row" data-faction-id="${escapeAttribute(
-          factionId
-        )}" data-faction-logo="${display.logo ? escapeAttribute(display.logo) : ""}">
-          <div class="faction-card${isPrimary ? " is-primary" : ""}">
-            <div class="faction-logo-wrap">${logo}</div>
-            <div class="faction-info">
-              <div class="faction-name">${name}</div>
-              <div class="faction-meta">${rankMeta}</div>
-            </div>
-          </div>
-          <div class="faction-members" aria-label="Кількість у фракції">
-            <span class="faction-members-icon" aria-hidden="true"></span>
-            <span class="faction-members-count">${membersCount}</span>
-          </div>
-        </div>
-      `;
-    })
-    .slice(0, 3)
-    .join("");
-  const content = cards ? cards : `<p class="muted small">Фракції ще не обрані.</p>`;
-  const radaCard = `
-    <div class="faction-row faction-row--rada">
-      <div class="faction-card">
-        <div class="faction-logo-wrap">
-          <img class="faction-logo" src="/images/LOGO.png" alt="" />
-        </div>
-        <div class="faction-info">
-          <div class="faction-name">ФУТБОЛЬНА РАДА</div>
-          <div class="faction-meta">${rankLabel}</div>
-        </div>
-      </div>
-      <button class="faction-chat" type="button" data-faction-chat data-chat-url="https://t.me/3415133128/19" aria-label="Чат ради">
-        <span class="faction-chat-icon" aria-hidden="true"></span>
-      </button>
-    </div>
-  `;
-  return `
-    <section class="panel profile-factions">
-      ${radaCard}
-      <div class="section-header">
-        <h2>ФРАКЦІЇ</h2>
-      </div>
-      <div class="faction-list">
-        ${content}
-      </div>
-    </section>
-  `;
-}
-
 function renderFactionMembersSection(profile: ProfileStatsPayload | null): string {
   const entry = selectBadgeFactionEntry(profile);
   const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
@@ -1234,7 +1106,6 @@ function renderUser(
   const totalPredictions = prediction?.total ?? 0;
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
-  const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
   const factionThreadMarkup = renderFactionThreadSection();
   const leagueOptions = MATCH_LEAGUES.map(
@@ -1364,11 +1235,9 @@ function renderUser(
             </div>
           </section>
 
-          ${factionsMarkup}
-
           ${factionMembersMarkup}
 
-        ${factionThreadMarkup}
+          ${factionThreadMarkup}
 
           <div class="notice-ticker" aria-live="polite">
             <span class="notice-ticker-text" data-notice-text>
@@ -1483,8 +1352,6 @@ function renderUser(
   setupTabs();
   setupNoticeTicker();
   setupLogoOrderControls();
-  setupPrimaryFactionSelection(currentProfileStats);
-  setupFactionChatButtons();
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
   const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
