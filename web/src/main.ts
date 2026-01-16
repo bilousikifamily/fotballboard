@@ -3,6 +3,7 @@ import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueI
 import type {
   AvatarOption,
   FactionEntry,
+  FactionMember,
   LogoPosition,
   Match,
   OddsRefreshDebug,
@@ -28,14 +29,14 @@ import {
   postResult
 } from "./api/matches";
 import { postPrediction, fetchPredictions } from "./api/predictions";
-import { postAvatarChoice, postLogoOrder, postNickname, postOnboarding } from "./api/profile";
+import { fetchFactionMembers, postAvatarChoice, postLogoOrder, postNickname, postOnboarding } from "./api/profile";
 import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, getMatchTeamInfo } from "./features/clubs";
 import { extractCorrectScoreProbability, formatProbability } from "./features/odds";
 import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
 import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
-import { formatPredictionName, formatTelegramName } from "./formatters/names";
+import { formatPredictionName, formatTelegramName, formatUserName } from "./formatters/names";
 import {
   formatRainProbability,
   formatTemperature,
@@ -85,6 +86,7 @@ let currentLogoOrder: string[] | null = null;
 let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let currentProfileStats: ProfileStatsPayload | null = null;
+let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
@@ -97,6 +99,7 @@ const matchWeatherTempCache = new Map<number, number | null>();
 const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
+const FACTION_MEMBERS_LIMIT = 6;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
 const LOGO_POSITION_LABELS: Record<LogoPosition, string> = {
   center: "1",
@@ -1018,6 +1021,85 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
   `;
 }
 
+function renderFactionMembersSection(profile: ProfileStatsPayload | null): string {
+  const entry = selectBadgeFactionEntry(profile);
+  const factionName = entry ? formatClubName(entry.value) : null;
+  const factionNameMarkup = factionName
+    ? `<p class="muted small">${escapeHtml(`Фракція ${factionName}`)}</p>`
+    : "";
+  const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
+  return `
+    <section class="panel faction-members">
+      <div class="section-header section-header--faction">
+        <h2>УЧАСНИКИ ФРАКЦІЇ</h2>
+        ${factionNameMarkup}
+      </div>
+      <div class="faction-members-table" data-faction-members>
+        <p class="muted small">${placeholderText}</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderFactionMembersRows(members: FactionMember[], highlightId: number | null): string {
+  if (!members.length) {
+    return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
+  }
+  const rows = members
+    .map((member, index) => {
+      const displayName = formatUserName(member) || "Гравець";
+      const safeName = escapeHtml(displayName);
+      const points = typeof member.points_total === "number" ? member.points_total : 0;
+      const safePoints = escapeHtml(String(points));
+      const isSelf = highlightId !== null && member.id === highlightId;
+      return `
+        <div class="leaderboard-row${isSelf ? " is-self" : ""}">
+          <div class="leaderboard-rank">${index + 1}</div>
+          <div class="leaderboard-identity">
+            <span class="leaderboard-name">${safeName}</span>
+          </div>
+          <div class="leaderboard-points">
+            <span class="leaderboard-points-value">${safePoints}</span>
+            <span class="leaderboard-points-label">голосів</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+  return `<div class="leaderboard-rows">${rows}</div>`;
+}
+
+async function loadFactionMembers(): Promise<void> {
+  const container = app.querySelector<HTMLElement>("[data-faction-members]");
+  if (!container || !apiBase) {
+    return;
+  }
+  const entry = selectBadgeFactionEntry(currentProfileStats);
+  if (!entry) {
+    container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
+    return;
+  }
+  container.innerHTML = `<p class="muted small">Завантаження...</p>`;
+  const requestId = ++factionMembersRequestVersion;
+  try {
+    const { response, data } = await fetchFactionMembers(apiBase, initData, FACTION_MEMBERS_LIMIT);
+    if (requestId !== factionMembersRequestVersion) {
+      return;
+    }
+    if (!response.ok || !data.ok) {
+      container.innerHTML = `<p class="muted small">Не вдалося завантажити список учасників.</p>`;
+      return;
+    }
+    const members = data.members ?? [];
+    container.innerHTML = renderFactionMembersRows(members, currentUserId);
+  } catch {
+    if (requestId !== factionMembersRequestVersion) {
+      return;
+    }
+    container.innerHTML = `<p class="muted small">Помилка завантаження учасників.</p>`;
+  }
+}
+
 function renderUser(
   user: TelegramWebAppUser | undefined,
   stats: UserStats,
@@ -1054,6 +1136,7 @@ function renderUser(
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
   const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
+  const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
@@ -1183,6 +1266,8 @@ function renderUser(
 
           ${factionsMarkup}
 
+          ${factionMembersMarkup}
+
           <div class="notice-ticker" aria-live="polite">
             <span class="notice-ticker-text" data-notice-text>
               ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
@@ -1262,6 +1347,8 @@ function renderUser(
       </nav>
     </div>
   `;
+
+  void loadFactionMembers();
 
   const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");

@@ -464,6 +464,43 @@ export default {
       return jsonResponse({ ok: true, users }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/faction-members") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const initData = getInitDataFromHeaders(request);
+      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+
+      const parsedLimit = parseLimit(url.searchParams.get("limit"), 6, 50);
+      const limit = parsedLimit ?? 6;
+
+      const factionId = await getUserFactionClubId(supabase, auth.user.id);
+      if (!factionId) {
+        return jsonResponse({ ok: true, faction: null, members: [] }, 200, corsHeaders());
+      }
+
+      const members = await listFactionMembers(supabase, factionId, limit);
+      if (!members) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, faction: factionId, members }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/analitika") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -1260,6 +1297,27 @@ async function getUserClassicoChoice(
   return null;
 }
 
+async function getUserFactionClubId(supabase: SupabaseClient, userId: number): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("faction_club_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to load user faction", error);
+      return null;
+    }
+
+    const factionId = (data?.faction_club_id ?? "").trim();
+    return factionId || null;
+  } catch (error) {
+    console.error("Failed to load user faction", error);
+    return null;
+  }
+}
+
 async function handleFactionChatModeration(
   message: TelegramMessage,
   env: Env,
@@ -1408,6 +1466,37 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
     return (data as StoredUser[]) ?? [];
   } catch (error) {
     console.error("Failed to fetch users", error);
+    return null;
+  }
+}
+
+async function listFactionMembers(
+  supabase: SupabaseClient,
+  factionId: string,
+  limit?: number | null
+): Promise<StoredUser[] | null> {
+  try {
+    let query = supabase
+      .from("users")
+      .select(
+        "id, username, first_name, last_name, photo_url, points_total, updated_at, last_seen_at, nickname, avatar_choice, faction_club_id"
+      )
+      .eq("faction_club_id", factionId)
+      .order("points_total", { ascending: false })
+      .order("updated_at", { ascending: false });
+    if (typeof limit === "number") {
+      query = query.limit(limit);
+    }
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Failed to fetch faction members", error);
+      return null;
+    }
+
+    return (data as StoredUser[]) ?? [];
+  } catch (error) {
+    console.error("Failed to fetch faction members", error);
     return null;
   }
 }

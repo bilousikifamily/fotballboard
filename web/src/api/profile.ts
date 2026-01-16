@@ -1,4 +1,5 @@
-import { requestJson } from "./client";
+import { authHeaders, requestJson } from "./client";
+import type { FactionMembersResponse } from "../types";
 
 type SimpleResponse = { ok: boolean; error?: string };
 
@@ -49,5 +50,16 @@ export function postNickname(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
+  });
+}
+
+export function fetchFactionMembers(
+  apiBase: string,
+  initData: string,
+  limit?: number
+): Promise<{ response: Response; data: FactionMembersResponse }> {
+  const params = typeof limit === "number" ? `?limit=${encodeURIComponent(limit)}` : "";
+  return requestJson<FactionMembersResponse>(`${apiBase}/api/faction-members${params}`, {
+    headers: authHeaders(initData)
   });
 }

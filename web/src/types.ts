@@ -188,6 +188,15 @@ export type LeaderboardUser = {
   last_seen_at?: string | null;
 };
 
+export type FactionMember = Pick<
+  LeaderboardUser,
+  "id" | "username" | "first_name" | "last_name" | "nickname" | "points_total"
+>;
+
+export type FactionMembersResponse =
+  | { ok: true; faction: string | null; members: FactionMember[] }
+  | { ok: false; error: string };
+
 export type Match = {
   id: number;
   home_team: string;

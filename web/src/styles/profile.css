@@ -957,3 +957,70 @@ h1 {
   margin: 0;
   font-size: 1.1rem;
 }
+
+.panel.faction-members {
+  padding: 18px 16px 20px;
+  border-radius: 18px;
+  background:
+    linear-gradient(160deg, rgba(255, 122, 26, 0.08), rgba(16, 17, 20, 0.95)),
+    var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 18px 36px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel.faction-members .section-header.section-header--faction {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.panel.faction-members .section-header.section-header--faction h2 {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.faction-members-table {
+  min-height: 120px;
+}
+
+.faction-members-table .leaderboard-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.faction-members-table .leaderboard-row {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.faction-members-table .leaderboard-row.is-self {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.18), rgba(255, 154, 31, 0.26));
+  border-color: rgba(255, 154, 31, 0.45);
+}
+
+.faction-members-table .leaderboard-points {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.faction-members-table .leaderboard-points-value {
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+}
+
+.faction-members-table .leaderboard-points-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.faction-members-table .muted {
+  text-align: center;
+}
