@@ -945,11 +945,12 @@ function renderFactionThreadSection(): string {
   `;
 }
 
-function renderFactionRecentMessage(message: FactionBranchMessage): string {
+function renderFactionRecentMessage(message: FactionBranchMessage, index: number): string {
   const safeText = escapeHtml((message.text ?? "").trim());
   const displayText = safeText || "—";
+  const bubbleClass = index % 2 === 0 ? "message-chip--incoming" : "message-chip--outgoing";
   return `
-    <article class="message-chip" role="listitem">
+    <article class="message-chip ${bubbleClass}" role="listitem">
       <p>${displayText}</p>
     </article>
   `;
@@ -959,7 +960,10 @@ function renderFactionRecentMessages(messages: FactionBranchMessage[]): string {
   if (!messages.length) {
     return `<p class="muted small faction-recent-empty">Поки що порожньо.</p>`;
   }
-  return messages.slice(0, 3).map(renderFactionRecentMessage).join("");
+  return messages
+    .slice(0, 3)
+    .map((message, index) => renderFactionRecentMessage(message, index))
+    .join("");
 }
 
 const MAX_FACTION_CARDS = 6;
