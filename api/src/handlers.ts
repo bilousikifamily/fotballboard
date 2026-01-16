@@ -323,9 +323,9 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      const classicoFaction = normalizeClassicoChoice(factionClubId);
-      if (!wasOnboarded && classicoFaction) {
-        await notifyFactionChatNewDeputy(env, auth.user, classicoFaction);
+      const factionSlug = normalizeFactionChoice(factionClubId);
+      if (!wasOnboarded && factionSlug) {
+        await notifyFactionChatNewDeputy(env, auth.user, factionSlug, { nickname });
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -1438,10 +1438,11 @@ function formatUserDisplay(user: TelegramUser): string {
 async function notifyFactionChatNewDeputy(
   env: Env,
   user: TelegramUser,
-  faction: "real_madrid" | "barcelona"
+  faction: FactionBranchSlug,
+  options?: { nickname?: string | null }
 ): Promise<void> {
   const refs = getFactionChatRefs(env);
-  const targetRef = refs.classico[faction];
+  const targetRef = refs.bySlug[faction];
   if (!targetRef) {
     return;
   }
@@ -1451,7 +1452,14 @@ async function notifyFactionChatNewDeputy(
   }
   const factionLabel = formatFactionName(faction);
   const userLabel = formatUserDisplay(user);
-  const message = `У НАШІЙ ФРАКЦІЇ ${factionLabel.toUpperCase()} НОВИЙ ДЕПУТАТ:\n${userLabel}`;
+  const nicknameCandidate = options?.nickname?.trim();
+  const mention =
+    user.username && user.username.trim()
+      ? `@${user.username.trim()}`
+      : nicknameCandidate && nicknameCandidate.length
+      ? nicknameCandidate
+      : userLabel;
+  const message = `У НАШІЙ ФРАКЦІЇ ${factionLabel.toUpperCase()} НОВИЙ ДЕПУТАТ:\n${mention}`;
   await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
 }
 
