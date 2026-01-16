@@ -1145,7 +1145,10 @@ function parseChatRef(value: string | undefined, label: string): FactionChatRef 
   }
 
   const normalized = raw.replace(/^https?:\/\//, "").replace(/^@/, "");
-  const numericThreadMatch = normalized.match(/^t\.me\/(-?\d+)\/(\d+)$/i) ?? normalized.match(/^(-?\d+)\/(\d+)$/);
+  const numericThreadMatch =
+    normalized.match(/^t\.me\/(-?\d+)\/(\d+)$/i) ??
+    normalized.match(/^(-?\d+)\/(\d+)$/) ??
+    normalized.match(/^(-?\d+):(\d+)$/);
   if (numericThreadMatch) {
     const rawChatId = numericThreadMatch[1];
     const threadId = Number(numericThreadMatch[2]);
