@@ -797,12 +797,6 @@ h1 {
 
 .panel.faction-members {
   padding: 18px 16px 20px;
-  border-radius: 24px;
-  background: var(--card);
-  border: 1px solid var(--outline-dark);
-  box-shadow:
-    0 0 0 1px var(--outline-dark) inset,
-    0 18px 36px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -837,6 +831,9 @@ h1 {
   width: 100%;
   margin: 0;
   justify-self: stretch;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .faction-members-table .leaderboard-points {
