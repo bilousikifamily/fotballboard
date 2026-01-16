@@ -149,6 +149,12 @@ export type TeamMatchStatsResponse =
   | { ok: true; items: TeamMatchStat[] }
   | { ok: false; error: string };
 
+export type OddsTeamSearchDetail = {
+  query: string;
+  status: number;
+  candidates: string[];
+};
+
 export type OddsRefreshResponse =
   | { ok: true; debug?: OddsRefreshDebug }
   | { ok: false; error: string; detail?: string; debug?: OddsRefreshDebug };
@@ -178,6 +184,8 @@ export type OddsRefreshDebug = {
   awayTeamSearchAttempts?: number[];
   homeTeamCandidates?: Array<{ id?: number; name?: string }>;
   awayTeamCandidates?: Array<{ id?: number; name?: string }>;
+  homeTeamSearchDetails?: OddsTeamSearchDetail[];
+  awayTeamSearchDetails?: OddsTeamSearchDetail[];
   headtoheadCount?: number;
   headtoheadStatus?: number;
   headtoheadSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;

@@ -30,6 +30,12 @@ export type OddsStoreFailure =
 
 export type OddsDebugFixture = { id?: number; home?: string; away?: string; homeId?: number; awayId?: number };
 
+export type OddsTeamSearchDetail = {
+  query: string;
+  status: number;
+  candidates: string[];
+};
+
 export type OddsDebugInfo = {
   leagueId?: string | null;
   apiLeagueId?: number | null;
@@ -55,6 +61,8 @@ export type OddsDebugInfo = {
   awayTeamSearchAttempts?: number[];
   homeTeamCandidates?: Array<{ id?: number; name?: string }>;
   awayTeamCandidates?: Array<{ id?: number; name?: string }>;
+  homeTeamSearchDetails?: OddsTeamSearchDetail[];
+  awayTeamSearchDetails?: OddsTeamSearchDetail[];
   headtoheadCount?: number;
   headtoheadStatus?: number;
   headtoheadSample?: OddsDebugFixture[];

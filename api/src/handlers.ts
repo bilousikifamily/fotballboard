@@ -29,6 +29,7 @@ import type {
   NicknamePayload,
   OddsDebugInfo,
   OddsDebugFixture,
+  OddsTeamSearchDetail,
   OddsFetchResult,
   OddsSaveResult,
   OddsStoreFailure,
@@ -2431,6 +2432,8 @@ async function fetchAndStoreOdds(
     debug.awayTeamSearchAttempts = awayTeamResult.searchAttempts;
     debug.homeTeamCandidates = homeTeamResult.candidates;
     debug.awayTeamCandidates = awayTeamResult.candidates;
+    debug.homeTeamSearchDetails = homeTeamResult.searchResponses;
+    debug.awayTeamSearchDetails = awayTeamResult.searchResponses;
   }
   if (!homeTeamResult.id || !awayTeamResult.id) {
     console.warn("Odds skipped: team id not found", { home: match.home_team, away: match.away_team });
@@ -3135,6 +3138,7 @@ async function resolveTeamId(
   matchScore?: number | null;
   queryAttempts?: string[];
   searchAttempts?: number[];
+  searchResponses: OddsTeamSearchDetail[];
 }> {
   const normalized = normalizeTeamKey(teamName);
   const queries = getTeamSearchQueries(teamName, slug);
@@ -3145,6 +3149,7 @@ async function resolveTeamId(
   let lastStatus = 0;
   let lastMatchName: string | null = null;
   let lastMatchScore: number | null = null;
+  const searchResponses: OddsTeamSearchDetail[] = [];
 
   for (const query of queries) {
     const searchResult = await fetchTeamsBySearch(env, query);
@@ -3153,6 +3158,23 @@ async function resolveTeamId(
       id: entry.team?.id,
       name: entry.team?.name
     }));
+    const candidateDescriptions = candidates
+      .map((entry) => {
+        const name = entry.name?.trim();
+        if (name) {
+          return entry.id !== undefined && entry.id !== null ? `${name} (${entry.id})` : name;
+        }
+        if (typeof entry.id === "number") {
+          return `#${entry.id}`;
+        }
+        return null;
+      })
+      .filter((entry): entry is string => Boolean(entry));
+    searchResponses.push({
+      query,
+      status: searchResult.status,
+      candidates: candidateDescriptions
+    });
     queryAttempts.push(query);
     searchAttempts.push(searchResult.status);
     lastCandidates = candidates;
@@ -3172,7 +3194,8 @@ async function resolveTeamId(
         matchedName: match.name ?? null,
         matchScore: match.score ?? null,
         queryAttempts,
-        searchAttempts
+        searchAttempts,
+        searchResponses
       };
     }
   }
@@ -3188,7 +3211,8 @@ async function resolveTeamId(
       matchedName: lastMatchName,
       matchScore: lastMatchScore,
       queryAttempts,
-      searchAttempts
+      searchAttempts,
+      searchResponses
     };
   }
 
@@ -3201,7 +3225,8 @@ async function resolveTeamId(
     matchedName: lastMatchName,
     matchScore: lastMatchScore,
     queryAttempts,
-    searchAttempts
+    searchAttempts,
+    searchResponses
   };
 }
 

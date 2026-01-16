@@ -2579,6 +2579,17 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     return "";
   }
   const parts: string[] = [];
+  const formatSearchDetails = (details?: OddsRefreshDebug["homeTeamSearchDetails"]): string => {
+    if (!details?.length) {
+      return "none";
+    }
+    return details
+      .map((item) => {
+        const candidates = item.candidates.length ? item.candidates.join(", ") : "none";
+        return `${item.query}(${item.status}):${candidates}`;
+      })
+      .join(" | ");
+  };
   if (debug.date) {
     parts.push(`date=${debug.date}`);
   }
@@ -2640,6 +2651,11 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
     const left = homeCandidates || "none";
     const right = awayCandidates || "none";
     parts.push(`team_candidates=${left}/${right}`);
+  }
+  if (debug.homeTeamSearchDetails?.length || debug.awayTeamSearchDetails?.length) {
+    const homeDetail = formatSearchDetails(debug.homeTeamSearchDetails);
+    const awayDetail = formatSearchDetails(debug.awayTeamSearchDetails);
+    parts.push(`team_search_details=${homeDetail}/${awayDetail}`);
   }
   if (debug.headtoheadCount !== undefined) {
     parts.push(`h2h=${debug.headtoheadCount}`);
