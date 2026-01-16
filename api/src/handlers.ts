@@ -91,13 +91,15 @@ const TEAM_SEARCH_ALIASES: Record<string, string> = {
   "como 1907": "Como",
   "como-1907": "Como",
   racing: "Real Racing Club de Santander",
-  racingsantander: "Real Racing Club de Santander"
+  racingsantander: "Real Racing Club de Santander",
+  parissaintgermain: "Paris SG"
 };
 const TEAM_MATCH_ALIASES: Record<string, string> = {
   inter: "intermilan",
   milan: "acmilan",
   racing: "realracingclubdesantander",
-  racingsantander: "realracingclubdesantander"
+  racingsantander: "realracingclubdesantander",
+  parisstgermain: "parissaintgermain"
 };
 
 type ClassicoFaction = "real_madrid" | "barcelona";
