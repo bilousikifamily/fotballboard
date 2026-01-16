@@ -983,6 +983,7 @@ h1 {
 }
 
 .faction-members-table {
+  width: 100%;
   min-height: 120px;
 }
 
@@ -990,11 +991,13 @@ h1 {
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1fr);
+  width: 100%;
 }
 
 .faction-members-table .leaderboard-row {
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
+  justify-self: stretch;
 }
 
 .faction-members-table .leaderboard-points {
