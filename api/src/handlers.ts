@@ -17,6 +17,7 @@ import type {
   DbTeamMatchStat,
   FactionKey,
   FactionStat,
+  FactionBranchSlug,
   FactionBranchMessage,
   FixturePayload,
   FixturesResult,
@@ -97,6 +98,29 @@ const TEAM_MATCH_ALIASES: Record<string, string> = {
   milan: "acmilan",
   racing: "realracingclubdesantander",
   racingsantander: "realracingclubdesantander"
+};
+
+type ClassicoFaction = "real_madrid" | "barcelona";
+const CLASSICO_FACTIONS: ClassicoFaction[] = ["real_madrid", "barcelona"];
+const CLASSICO_CHAT_ENV: Record<ClassicoFaction, keyof Env> = {
+  real_madrid: "FACTION_CHAT_REAL",
+  barcelona: "FACTION_CHAT_BARCA"
+};
+
+const EXTRA_FACTION_CHAT_CONFIG: Array<{ slug: Exclude<FactionBranchSlug, ClassicoFaction>; envKey: keyof Env }> = [
+  { slug: "liverpool", envKey: "FACTION_CHAT_LIVERPOOL" },
+  { slug: "arsenal", envKey: "FACTION_CHAT_ARSENAL" },
+  { slug: "chelsea", envKey: "FACTION_CHAT_CHELSEA" },
+  { slug: "milan", envKey: "FACTION_CHAT_MILAN" }
+];
+
+const FACTION_DISPLAY_NAMES: Record<FactionBranchSlug, string> = {
+  real_madrid: "Реал Мадрид",
+  barcelona: "Барселона",
+  liverpool: "Ліверпуль",
+  arsenal: "Арсенал",
+  chelsea: "Челсі",
+  milan: "Мілан"
 };
 
 const teamIdCache = new Map<string, { id: number; name: string; updatedAt: number }>();
@@ -531,8 +555,8 @@ export default {
 
       await storeUser(supabase, auth.user);
 
-      const requestedFaction = normalizeClassicoChoice(body.faction);
-      const userFaction = await getUserClassicoChoice(supabase, auth.user.id);
+      const requestedFaction = normalizeFactionChoice(body.faction);
+      const userFaction = await getUserFactionSlug(supabase, auth.user.id);
       const faction = requestedFaction ?? userFaction;
       if (!faction) {
         return jsonResponse({ ok: false, error: "faction_not_selected" }, 400, corsHeaders());
@@ -543,7 +567,7 @@ export default {
 
       const messages = await listFactionBranchMessages(supabase, faction, limit);
       const refs = getFactionChatRefs(env);
-      const chatRef = faction === "real_madrid" ? refs.real : refs.barca;
+      const chatRef = refs.bySlug[faction];
       const chatUrl = formatFactionChatUrl(chatRef);
 
       return jsonResponse({ ok: true, faction, chat_url: chatUrl, messages }, 200, corsHeaders());
@@ -1200,8 +1224,8 @@ type FactionChatRef = {
 };
 
 type FactionChatRefs = {
-  real?: FactionChatRef;
-  barca?: FactionChatRef;
+  classico: Partial<Record<ClassicoFaction, FactionChatRef>>;
+  bySlug: Partial<Record<FactionBranchSlug, FactionChatRef>>;
   general?: FactionChatRef;
 };
 
@@ -1262,9 +1286,24 @@ function parseChatRef(value: string | undefined, label: string): FactionChatRef 
 }
 
 function getFactionChatRefs(env: Env): FactionChatRefs {
+  const classico: Partial<Record<ClassicoFaction, FactionChatRef>> = {};
+  const bySlug: Partial<Record<FactionBranchSlug, FactionChatRef>> = {};
+  CLASSICO_FACTIONS.forEach((slug) => {
+    const ref = parseChatRef(env[CLASSICO_CHAT_ENV[slug]], slug);
+    if (ref) {
+      classico[slug] = ref;
+      bySlug[slug] = ref;
+    }
+  });
+  EXTRA_FACTION_CHAT_CONFIG.forEach((config) => {
+    const ref = parseChatRef(env[config.envKey], config.slug);
+    if (ref) {
+      bySlug[config.slug] = ref;
+    }
+  });
   return {
-    real: parseChatRef(env.FACTION_CHAT_REAL, "real_madrid"),
-    barca: parseChatRef(env.FACTION_CHAT_BARCA, "barcelona"),
+    classico,
+    bySlug,
     general: parseChatRef(env.FACTION_CHAT_GENERAL, "general")
   };
 }
@@ -1291,12 +1330,11 @@ function formatFactionChatUrl(ref: FactionChatRef | undefined | null): string | 
 function identifyFactionFromMessage(
   message: TelegramMessage,
   refs: FactionChatRefs
-): "real_madrid" | "barcelona" | null {
-  if (refs.real && matchChatRef(message, refs.real)) {
-    return "real_madrid";
-  }
-  if (refs.barca && matchChatRef(message, refs.barca)) {
-    return "barcelona";
+): FactionBranchSlug | null {
+  for (const [slug, ref] of Object.entries(refs.bySlug)) {
+    if (ref && matchChatRef(message, ref)) {
+      return slug as FactionBranchSlug;
+    }
   }
   return null;
 }
@@ -1346,7 +1384,7 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
     return;
   }
 
-  const userFaction = await getUserClassicoChoice(supabase, from.id);
+  const userFaction = await getUserFactionSlug(supabase, from.id);
   if (userFaction !== faction) {
     return;
   }
@@ -1366,8 +1404,11 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
   });
 }
 
-function formatFactionName(faction: "real_madrid" | "barcelona"): string {
-  return faction === "real_madrid" ? "Реал" : "Барселона";
+function formatFactionName(faction: FactionBranchSlug | "general"): string {
+  if (faction === "general") {
+    return "Загальний чат";
+  }
+  return FACTION_DISPLAY_NAMES[faction] ?? faction;
 }
 
 function formatUserDisplay(user: TelegramUser): string {
@@ -1391,7 +1432,7 @@ async function notifyFactionChatNewDeputy(
   faction: "real_madrid" | "barcelona"
 ): Promise<void> {
   const refs = getFactionChatRefs(env);
-  const targetRef = faction === "real_madrid" ? refs.real : refs.barca;
+  const targetRef = refs.classico[faction];
   if (!targetRef) {
     return;
   }
@@ -1428,6 +1469,11 @@ async function getUserClassicoChoice(
   return null;
 }
 
+async function getUserFactionSlug(supabase: SupabaseClient, userId: number): Promise<FactionBranchSlug | null> {
+  const factionId = await getUserFactionClubId(supabase, userId);
+  return normalizeFactionChoice(factionId);
+}
+
 async function getUserFactionClubId(supabase: SupabaseClient, userId: number): Promise<string | null> {
   try {
     const { data, error } = await supabase
@@ -1462,9 +1508,11 @@ async function handleFactionChatModeration(
   }
 
   const refs = getFactionChatRefs(env);
-  const inReal = refs.real && matchChatRef(message, refs.real);
-  const inBarca = refs.barca && matchChatRef(message, refs.barca);
-  const targetFaction = inReal ? "real_madrid" : inBarca ? "barcelona" : null;
+  const detected = identifyFactionFromMessage(message, refs);
+  if (!detected || !CLASSICO_FACTIONS.includes(detected as ClassicoFaction)) {
+    return;
+  }
+  const targetFaction = detected as ClassicoFaction;
   if (!targetFaction) {
     return;
   }
@@ -5561,7 +5609,19 @@ function parseRating(value: unknown): number | null {
   return null;
 }
 
-function normalizeClassicoChoice(value: unknown): "real_madrid" | "barcelona" | null {
+const FACTION_SLUG_ALIASES: Record<string, FactionBranchSlug> = {
+  barcelona: "barcelona",
+  "barca": "barcelona",
+  "real_madrid": "real_madrid",
+  "real-madrid": "real_madrid",
+  realmadrid: "real_madrid",
+  liverpool: "liverpool",
+  arsenal: "arsenal",
+  chelsea: "chelsea",
+  milan: "milan"
+};
+
+function normalizeFactionChoice(value: unknown): FactionBranchSlug | null {
   if (value === null || value === undefined || value === "") {
     return null;
   }
@@ -5569,13 +5629,20 @@ function normalizeClassicoChoice(value: unknown): "real_madrid" | "barcelona" | 
     return null;
   }
   const normalized = value.trim().toLowerCase();
-  if (normalized === "barcelona") {
-    return "barcelona";
+  const direct = FACTION_SLUG_ALIASES[normalized];
+  if (direct) {
+    return direct;
   }
-  if (normalized === "real_madrid" || normalized === "real-madrid" || normalized === "realmadrid") {
-    return "real_madrid";
+  const replaced = normalized.replace(/[\s_-]+/g, "_");
+  return FACTION_SLUG_ALIASES[replaced] ?? null;
+}
+
+function normalizeClassicoChoice(value: unknown): ClassicoFaction | null {
+  const slug = normalizeFactionChoice(value);
+  if (!slug) {
+    return null;
   }
-  return null;
+  return CLASSICO_FACTIONS.includes(slug as ClassicoFaction) ? (slug as ClassicoFaction) : null;
 }
 
 function normalizeClubId(value: unknown): string | null {
@@ -6245,8 +6312,8 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
     }
 
     const grouped = groupMatchPredictionsByFaction(predictions);
-    await sendFactionMatchStartDigest(env, match, "real_madrid", grouped.real_madrid, refs.real);
-    await sendFactionMatchStartDigest(env, match, "barcelona", grouped.barcelona, refs.barca);
+    await sendFactionMatchStartDigest(env, match, "real_madrid", grouped.real_madrid, refs.classico.real_madrid);
+    await sendFactionMatchStartDigest(env, match, "barcelona", grouped.barcelona, refs.classico.barcelona);
 
     try {
       const { error } = await supabase

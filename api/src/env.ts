@@ -24,4 +24,8 @@ export interface Env {
   FACTION_CHAT_REAL?: string;
   FACTION_CHAT_BARCA?: string;
   FACTION_CHAT_GENERAL?: string;
+  FACTION_CHAT_LIVERPOOL?: string;
+  FACTION_CHAT_ARSENAL?: string;
+  FACTION_CHAT_CHELSEA?: string;
+  FACTION_CHAT_MILAN?: string;
 }

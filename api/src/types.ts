@@ -267,16 +267,18 @@ export interface ProfileStats {
   factions: FactionStat[];
 }
 
+export type FactionBranchSlug = "real_madrid" | "barcelona" | "liverpool" | "arsenal" | "chelsea" | "milan";
+
 export interface FactionBranchMessage {
   id: number;
-  faction: "real_madrid" | "barcelona";
+  faction: FactionBranchSlug;
   author?: string | null;
   text: string;
   created_at: string;
 }
 
 export type FactionMessagesResponse =
-  | { ok: true; faction: "real_madrid" | "barcelona"; chat_url: string | null; messages: FactionBranchMessage[] }
+  | { ok: true; faction: FactionBranchSlug; chat_url: string | null; messages: FactionBranchMessage[] }
   | { ok: false; error: string };
 
 export interface AnalitikaRefreshPayload {
