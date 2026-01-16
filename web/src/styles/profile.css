@@ -830,14 +830,24 @@ h1 {
   width: 100%;
 }
 
-.faction-members-table .leaderboard-row,
-.faction-members-table .leaderboard-row.is-self {
+.faction-members-table .leaderboard-row {
   width: 100%;
   margin: 0;
   justify-self: stretch;
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
+  border-radius: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 12px 32px rgba(0, 0, 0, 0.45);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.faction-members-table .leaderboard-row.is-self {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(255, 154, 31, 0.22));
+  border-color: rgba(255, 154, 31, 0.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
 .faction-members-table .leaderboard-points {
