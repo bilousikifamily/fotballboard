@@ -1459,7 +1459,7 @@ async function notifyFactionChatNewDeputy(
       : nicknameCandidate && nicknameCandidate.length
       ? nicknameCandidate
       : userLabel;
-  const message = `У НАШІЙ ФРАКЦІЇ ${factionLabel.toUpperCase()} НОВИЙ ДЕПУТАТ:\n${mention}`;
+  const message = `У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n${mention}`;
   await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
 }
 
