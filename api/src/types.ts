@@ -231,9 +231,7 @@ export interface StoredUser {
   points_total?: number | null;
   updated_at?: string | null;
   last_seen_at?: string | null;
-  classico_choice?: string | null;
-  ua_club_id?: string | null;
-  eu_club_id?: string | null;
+  faction_club_id?: string | null;
   onboarding_completed_at?: string | null;
 }
 
@@ -242,7 +240,7 @@ export interface UserStats {
   rank: number | null;
 }
 
-export type FactionKey = "classico_choice" | "eu_club_id" | "ua_club_id";
+export type FactionKey = "faction_club_id";
 
 export interface PredictionResult {
   hit: boolean;
@@ -460,9 +458,7 @@ export interface PredictionView {
 }
 
 export interface UserOnboarding {
-  classico_choice?: string | null;
-  ua_club_id?: string | null;
-  eu_club_id?: string | null;
+  faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
   logo_order?: string[] | null;
@@ -470,9 +466,7 @@ export interface UserOnboarding {
 }
 
 export interface UserOnboardingRow {
-  classico_choice?: string | null;
-  ua_club_id?: string | null;
-  eu_club_id?: string | null;
+  faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
   logo_order?: string[] | null;
@@ -481,9 +475,7 @@ export interface UserOnboardingRow {
 
 export interface OnboardingPayload {
   initData?: string;
-  classico_choice?: string | null;
-  ua_club_id?: string | null;
-  eu_club_id?: string | null;
+  faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
   logo_order?: string[] | null;

@@ -45,11 +45,10 @@ create table if not exists users (
   photo_url text,
   admin boolean not null default false,
   points_total int not null default 100,
-  classico_choice text,
-  ua_club_id text,
-  eu_club_id text,
+  faction_club_id text,
   nickname text,
   avatar_choice text,
+  logo_order text[],
   onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -98,11 +97,11 @@ If you already have a `users` table, run:
 alter table users add column if not exists admin boolean default false;
 alter table users add column if not exists points_total int default 100;
 alter table users add column if not exists created_at timestamptz default now();
-alter table users add column if not exists classico_choice text;
-alter table users add column if not exists ua_club_id text;
-alter table users add column if not exists eu_club_id text;
+alter table users add column if not exists faction_club_id text;
 alter table users add column if not exists nickname text;
 alter table users add column if not exists avatar_choice text;
+alter table users add column if not exists logo_order text[];
+alter table users add column if not exists onboarding_completed_at timestamptz;
 alter table users add column if not exists onboarding_completed_at timestamptz;
 alter table matches add column if not exists league_id text;
 alter table matches add column if not exists home_club_id text;

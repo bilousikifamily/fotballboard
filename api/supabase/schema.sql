@@ -6,6 +6,11 @@ create table if not exists users (
   photo_url text,
   admin boolean not null default false,
   points_total int not null default 100,
+  faction_club_id text,
+  nickname text,
+  avatar_choice text,
+  logo_order text[],
+  onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   last_seen_at timestamptz

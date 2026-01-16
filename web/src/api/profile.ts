@@ -6,9 +6,7 @@ export function postOnboarding(
   apiBase: string,
   payload: {
     initData: string;
-    classico_choice: string | null;
-    ua_club_id: string | null;
-    eu_club_id: string | null;
+    faction_club_id: string | null;
     nickname: string;
     avatar_choice: string | null;
     logo_order: string[];

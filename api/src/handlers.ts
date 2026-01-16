@@ -251,19 +251,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_nickname" }, 400, corsHeaders());
       }
 
-      const classicoChoice = normalizeClassicoChoice(body.classico_choice);
-      if (!classicoChoice) {
-        return jsonResponse({ ok: false, error: "bad_classico_choice" }, 400, corsHeaders());
-      }
-
-      const uaClubId = normalizeClubId(body.ua_club_id);
-      if (!uaClubId) {
-        return jsonResponse({ ok: false, error: "bad_ua_club" }, 400, corsHeaders());
-      }
-
-      const euClubId = normalizeClubId(body.eu_club_id);
-      if (!euClubId) {
-        return jsonResponse({ ok: false, error: "bad_eu_club" }, 400, corsHeaders());
+      const factionClubId = normalizeClubId(body.faction_club_id);
+      if (!factionClubId) {
+        return jsonResponse({ ok: false, error: "bad_faction_choice" }, 400, corsHeaders());
       }
 
       const avatarChoice = normalizeAvatarChoice(body.avatar_choice);
@@ -272,9 +262,9 @@ export default {
       }
 
       const existingOnboarding = await getUserOnboarding(supabase, auth.user.id);
-      const wasOnboarded = Boolean(existingOnboarding?.completedAt);
+      const wasOnboarded = Boolean(existingOnboarding?.completed);
 
-      const onboardingSelections = { classicoChoice, uaClubId, euClubId };
+      const onboardingSelections = { factionClubId };
       if (avatarChoice && !isAvatarChoiceAllowed(avatarChoice, onboardingSelections)) {
         return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
       }
@@ -291,9 +281,7 @@ export default {
       }
 
       const saved = await saveUserOnboarding(supabase, auth.user.id, {
-        classico_choice: classicoChoice,
-        ua_club_id: uaClubId,
-        eu_club_id: euClubId,
+        faction_club_id: factionClubId,
         nickname,
         avatar_choice: avatarChoice,
         logo_order: logoOrder
@@ -302,8 +290,9 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      if (!wasOnboarded && (classicoChoice === "real_madrid" || classicoChoice === "barcelona")) {
-        await notifyFactionChatNewDeputy(env, auth.user, classicoChoice);
+      const classicoFaction = normalizeClassicoChoice(factionClubId);
+      if (!wasOnboarded && classicoFaction) {
+        await notifyFactionChatNewDeputy(env, auth.user, classicoFaction);
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -343,13 +332,7 @@ export default {
           return jsonResponse({ ok: false, error: "user_not_found" }, 404, corsHeaders());
         }
 
-        if (
-          !isAvatarChoiceAllowed(avatarChoice, {
-            classicoChoice: onboarding.classico_choice ?? null,
-            uaClubId: onboarding.ua_club_id ?? null,
-            euClubId: onboarding.eu_club_id ?? null
-          })
-        ) {
+        if (!isAvatarChoiceAllowed(avatarChoice, { factionClubId: onboarding.faction_club_id ?? null })) {
           return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
         }
       }
@@ -393,9 +376,7 @@ export default {
       }
 
       const onboardingSelections = {
-        classicoChoice: onboarding.classico_choice ?? null,
-        uaClubId: onboarding.ua_club_id ?? null,
-        euClubId: onboarding.eu_club_id ?? null
+        factionClubId: onboarding.faction_club_id ?? null
       };
       const logoOrder = normalizeLogoOrder(body.logo_order, onboardingSelections);
       if (!logoOrder) {
@@ -1263,7 +1244,7 @@ async function getUserClassicoChoice(
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("classico_choice")
+      .select("faction_club_id")
       .eq("id", userId)
       .maybeSingle();
 
@@ -1272,9 +1253,7 @@ async function getUserClassicoChoice(
       return null;
     }
 
-    if (data?.classico_choice === "real_madrid" || data?.classico_choice === "barcelona") {
-      return data.classico_choice;
-    }
+    return normalizeClassicoChoice(data?.faction_club_id ?? null);
   } catch (error) {
     console.error("Failed to load user faction", error);
   }
@@ -1818,14 +1797,14 @@ async function getFactionStats(supabase: SupabaseClient, userId: number): Promis
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("classico_choice, eu_club_id, ua_club_id, points_total")
+      .select("faction_club_id, points_total")
       .eq("id", userId)
       .maybeSingle();
     if (error || !data) {
       return [];
     }
     const points = typeof data.points_total === "number" ? data.points_total : STARTING_POINTS;
-    const order: Array<FactionKey> = ["classico_choice", "eu_club_id", "ua_club_id"];
+    const order: Array<FactionKey> = ["faction_club_id"];
     const entries: FactionStat[] = [];
     for (const key of order) {
       const value = (data as Record<string, string | null | undefined>)[key];
@@ -1892,33 +1871,27 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("classico_choice, ua_club_id, eu_club_id, nickname, avatar_choice, logo_order, onboarding_completed_at")
+      .select("faction_club_id, nickname, avatar_choice, logo_order, onboarding_completed_at")
       .eq("id", userId)
       .maybeSingle();
     if (error || !data) {
       return null;
     }
     const completedAt = (data as UserOnboardingRow).onboarding_completed_at ?? null;
-    const classicoChoice = data.classico_choice ?? null;
-    const uaClubId = data.ua_club_id ?? null;
-    const euClubId = data.eu_club_id ?? null;
+    const factionClubId = data.faction_club_id ?? null;
     const nickname = (data.nickname ?? "").trim();
     const logoOrder = (data as UserOnboardingRow).logo_order ?? null;
 
     // Вважаємо онбординг повністю завершеним тільки коли заповнені всі кроки.
     const isFullyCompleted =
       Boolean(completedAt) &&
-      Boolean(classicoChoice) &&
-      Boolean(uaClubId) &&
-      Boolean(euClubId) &&
+      Boolean(factionClubId) &&
       nickname.length >= 2 &&
       Array.isArray(logoOrder) &&
       logoOrder.length > 0;
 
     return {
-      classico_choice: classicoChoice,
-      ua_club_id: uaClubId,
-      eu_club_id: euClubId,
+      faction_club_id: factionClubId,
       nickname: nickname || null,
       avatar_choice: data.avatar_choice ?? null,
       logo_order: logoOrder,
@@ -5172,9 +5145,7 @@ async function saveUserOnboarding(
     const { error } = await supabase
       .from("users")
       .update({
-        classico_choice: payload.classico_choice ?? null,
-        ua_club_id: payload.ua_club_id ?? null,
-        eu_club_id: payload.eu_club_id ?? null,
+        faction_club_id: payload.faction_club_id ?? null,
         nickname: payload.nickname ?? null,
         avatar_choice: payload.avatar_choice ?? null,
         logo_order: payload.logo_order ?? null,
@@ -5321,8 +5292,15 @@ function normalizeClassicoChoice(value: unknown): "real_madrid" | "barcelona" | 
   if (value === null || value === undefined || value === "") {
     return null;
   }
-  if (value === "real_madrid" || value === "barcelona") {
-    return value;
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "barcelona") {
+    return "barcelona";
+  }
+  if (normalized === "real_madrid" || normalized === "real-madrid" || normalized === "realmadrid") {
+    return "real_madrid";
   }
   return null;
 }
@@ -5496,7 +5474,7 @@ function getClassicoSlug(choice: string | null): string | null {
 
 function isAvatarChoiceAllowed(
   avatarChoice: string,
-  selections: { classicoChoice: string | null; uaClubId: string | null; euClubId: string | null }
+  selections: { factionClubId: string | null }
 ): boolean {
   const parts = avatarChoice.split("/");
   if (parts.length !== 2) {
@@ -5504,22 +5482,23 @@ function isAvatarChoiceAllowed(
   }
   const clubId = parts[1];
   const allowed = new Set<string>();
-  const classicoSlug = getClassicoSlug(selections.classicoChoice);
-  if (classicoSlug) {
-    allowed.add(classicoSlug);
-  }
-  if (selections.uaClubId) {
-    allowed.add(selections.uaClubId);
-  }
-  if (selections.euClubId) {
-    allowed.add(selections.euClubId);
+  if (selections.factionClubId) {
+    const normalized = selections.factionClubId.trim();
+    if (normalized) {
+      allowed.add(normalized);
+      const classico = normalizeClassicoChoice(normalized);
+      const slug = getClassicoSlug(classico);
+      if (slug) {
+        allowed.add(slug);
+      }
+    }
   }
   return allowed.has(clubId);
 }
 
 function normalizeLogoOrder(
   value: unknown,
-  selections: { classicoChoice: string | null; uaClubId: string | null; euClubId: string | null }
+  selections: { factionClubId: string | null }
 ): string[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -5548,22 +5527,8 @@ function normalizeLogoOrder(
   return result;
 }
 
-function getExpectedLogoCount(selections: {
-  classicoChoice: string | null;
-  uaClubId: string | null;
-  euClubId: string | null;
-}): number {
-  let count = 0;
-  if (selections.classicoChoice) {
-    count += 1;
-  }
-  if (selections.uaClubId) {
-    count += 1;
-  }
-  if (selections.euClubId) {
-    count += 1;
-  }
-  return count;
+function getExpectedLogoCount(selections: { factionClubId: string | null }): number {
+  return selections.factionClubId ? 1 : 0;
 }
 
 function normalizeNickname(value: unknown): string | null {
@@ -5835,7 +5800,7 @@ type MatchPredictionUser = {
   first_name?: string | null;
   last_name?: string | null;
   nickname?: string | null;
-  classico_choice?: string | null;
+  faction_club_id?: string | null;
 };
 
 type MatchPredictionRecord = {
@@ -5876,7 +5841,7 @@ async function listMatchPredictionsWithUsers(
   try {
     const { data, error } = await supabase
       .from("predictions")
-      .select("home_pred, away_pred, users (id, username, first_name, last_name, nickname, classico_choice)")
+      .select("home_pred, away_pred, users (id, username, first_name, last_name, nickname, faction_club_id)")
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
 
@@ -5894,7 +5859,7 @@ async function listMatchPredictionsWithUsers(
         first_name?: string | null;
         last_name?: string | null;
         nickname?: string | null;
-        classico_choice?: string | null;
+        faction_club_id?: string | null;
       } | null;
     }>) ?? [];
 
@@ -5908,7 +5873,7 @@ async function listMatchPredictionsWithUsers(
             first_name: row.users.first_name ?? null,
             last_name: row.users.last_name ?? null,
             nickname: row.users.nickname ?? null,
-            classico_choice: row.users.classico_choice ?? null
+            faction_club_id: row.users.faction_club_id ?? null
           }
         : null
     }));
@@ -5924,7 +5889,7 @@ function groupMatchPredictionsByFaction(predictions: MatchPredictionRecord[]): P
     barcelona: []
   };
   predictions.forEach((prediction) => {
-    const normalized = normalizeClassicoChoice(prediction.user?.classico_choice);
+    const normalized = normalizeClassicoChoice(prediction.user?.faction_club_id);
     if (normalized === "real_madrid" || normalized === "barcelona") {
       grouped[normalized].push(prediction);
     }

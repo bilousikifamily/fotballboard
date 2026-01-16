@@ -1,5 +1,5 @@
 import "./style.css";
-import { ALL_CLUBS, EU_CLUBS, UA_CLUBS, type LeagueId, type MatchLeagueId } from "./data/clubs";
+import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "./data/clubs";
 import type {
   AvatarOption,
   FactionEntry,
@@ -31,14 +31,7 @@ import { postPrediction, fetchPredictions } from "./api/predictions";
 import { postAvatarChoice, postLogoOrder, postNickname, postOnboarding } from "./api/profile";
 import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
-import {
-  findEuropeanClubLeague,
-  formatClubName,
-  getAvatarLogoPath,
-  getClassicoLogoSlug,
-  getClubLogoPath,
-  getMatchTeamInfo
-} from "./features/clubs";
+import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, getMatchTeamInfo } from "./features/clubs";
 import { extractCorrectScoreProbability, formatProbability } from "./features/odds";
 import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
 import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
@@ -117,6 +110,12 @@ const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "serie-a", label: "Серія A", flag: "🇮🇹" },
   { id: "bundesliga", label: "Бундесліга", flag: "🇩🇪" },
   { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
+];
+
+const DEFAULT_ONBOARDING_LEAGUE: AllLeagueId = "ukrainian-premier-league";
+const ONBOARDING_LEAGUES: Array<{ id: AllLeagueId; label: string; flag: string }> = [
+  { id: "ukrainian-premier-league", label: "УПЛ", flag: "🇺🇦" },
+  ...EUROPEAN_LEAGUES
 ];
 
 const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
@@ -316,27 +315,17 @@ function renderOnboarding(
   stats: UserStats,
   onboarding: OnboardingInfo
 ): void {
-  const detectedEuLeague = onboarding.eu_club_id
-    ? findEuropeanClubLeague(onboarding.eu_club_id)
-    : null;
-  const initialEuLeague = detectedEuLeague ?? ("english-premier-league" as LeagueId);
+  const resolvedLeague = findClubLeague(onboarding.faction_club_id ?? "") ?? DEFAULT_ONBOARDING_LEAGUE;
   const state = {
     step: 1,
-    classicoChoice:
-      onboarding.classico_choice === "real_madrid" || onboarding.classico_choice === "barcelona"
-        ? onboarding.classico_choice
-        : null,
-    uaClubId: onboarding.ua_club_id ?? null,
-    euClubId: onboarding.eu_club_id ?? null,
-    euLeague: initialEuLeague,
-    euClubLeague: detectedEuLeague,
+    factionClubId: onboarding.faction_club_id ?? null,
+    factionLeague: resolvedLeague,
+    activeLeague: resolvedLeague,
     nickname: onboarding.nickname ?? ""
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const blockedEuClubs = new Set(["barcelona", "real-madrid", "real_madrid"]);
-    const isBlockedEuClub = (clubId: string | null): boolean => (clubId ? blockedEuClubs.has(clubId) : false);
-    const stepTitle = `Крок ${state.step} з 4`;
+    const stepTitle = `Крок ${state.step} з 2`;
     const headerTitle = getOnboardingTitle(state.step);
     const header = `
       <div class="onboarding-header">
@@ -347,74 +336,28 @@ function renderOnboarding(
 
     let body = "";
     if (state.step === 1) {
-      body = `
-        <div class="logo-grid">
-          ${renderClubChoice({
-            id: "real_madrid",
-            name: "Реал Мадрид",
-            logo: getClubLogoPath("la-liga", "real-madrid"),
-            selected: state.classicoChoice === "real_madrid",
-            dataAttr: "data-classico-choice"
-          })}
-          ${renderClubChoice({
-            id: "barcelona",
-            name: "Барселона",
-            logo: getClubLogoPath("la-liga", "barcelona"),
-            selected: state.classicoChoice === "barcelona",
-            dataAttr: "data-classico-choice"
-          })}
-        </div>
-        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
-      `;
-    } else if (state.step === 2) {
-      body = `
-        <div class="logo-grid">
-          ${UA_CLUBS.map((clubId) =>
-            renderClubChoice({
-              id: clubId,
-              name: formatClubName(clubId),
-              logo: getClubLogoPath("ukrainian-premier-league", clubId),
-              selected: state.uaClubId === clubId,
-              dataAttr: "data-ua-choice"
-            })
-          ).join("")}
-        </div>
-        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
-      `;
-    } else if (state.step === 3) {
-      const leagueTabs = EUROPEAN_LEAGUES.map((league) => {
-        const isActive = league.id === state.euLeague;
+      const leagueTabs = ONBOARDING_LEAGUES.map((league) => {
+        const isActive = league.id === state.activeLeague;
         return `
-          <button class="flag-button ${isActive ? "is-active" : ""}" type="button" data-eu-league="${
-            league.id
-          }">
+          <button class="flag-button ${isActive ? "is-active" : ""}" type="button" data-onboarding-league="${league.id}">
             <span class="flag-icon">${league.flag}</span>
             <span>${escapeHtml(league.label)}</span>
           </button>
         `;
       }).join("");
-
-      if (isBlockedEuClub(state.euClubId)) {
-        state.euClubId = null;
-        state.euClubLeague = null;
-      }
-
-      const euChoices = EU_CLUBS[state.euLeague].filter(
-        (clubId) => !blockedEuClubs.has(clubId)
-      );
-
+      const clubs = (ALL_CLUBS[state.activeLeague] ?? []).map((clubId) =>
+        renderClubChoice({
+          id: clubId,
+          name: formatClubName(clubId),
+          logo: getClubLogoPath(state.activeLeague, clubId),
+          selected: state.factionClubId === clubId,
+          dataAttr: "data-faction-choice"
+        })
+      ).join("");
       body = `
         <div class="league-tabs">${leagueTabs}</div>
         <div class="logo-grid">
-          ${euChoices.map((clubId) =>
-            renderClubChoice({
-              id: clubId,
-              name: formatClubName(clubId),
-              logo: getClubLogoPath(state.euLeague, clubId),
-              selected: state.euClubId === clubId,
-              dataAttr: "data-eu-choice"
-            })
-          ).join("")}
+          ${clubs}
         </div>
         <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
@@ -438,7 +381,7 @@ function renderOnboarding(
           state.step === 1 ? "disabled" : ""
         }>Назад</button>
         ${
-          state.step < 4
+          state.step === 1
             ? `<button class="button" type="button" data-onboarding-next>Далі</button>`
             : ""
         }
@@ -458,19 +401,11 @@ function renderOnboarding(
     const nextButton = app.querySelector<HTMLButtonElement>("[data-onboarding-next]");
     if (nextButton) {
       nextButton.addEventListener("click", () => {
-        if (state.step === 1 && !state.classicoChoice) {
+        if (state.step === 1 && !state.factionClubId) {
           renderStep("Оберіть фракцію, щоб продовжити.");
           return;
         }
-        if (state.step === 2 && !state.uaClubId) {
-          renderStep("Оберіть українську фракцію, щоб продовжити.");
-          return;
-        }
-        if (state.step === 3 && !state.euClubId) {
-          renderStep("Оберіть європейську фракцію, щоб продовжити.");
-          return;
-        }
-        state.step = Math.min(4, state.step + 1);
+        state.step = 2;
         renderStep();
       });
     }
@@ -486,45 +421,24 @@ function renderOnboarding(
       });
     }
 
-    app.querySelectorAll<HTMLButtonElement>("[data-classico-choice]").forEach((button) => {
+    app.querySelectorAll<HTMLButtonElement>("[data-onboarding-league]").forEach((button) => {
       button.addEventListener("click", () => {
-        const choice = button.dataset.classicoChoice;
-        if (choice === "real_madrid" || choice === "barcelona") {
-          state.classicoChoice = choice;
-        }
-        renderStep();
-      });
-    });
-
-    app.querySelectorAll<HTMLButtonElement>("[data-ua-choice]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const clubId = button.dataset.uaChoice || null;
-        state.uaClubId = clubId;
-        renderStep();
-      });
-    });
-
-    app.querySelectorAll<HTMLButtonElement>("[data-eu-league]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextLeague = button.dataset.euLeague as LeagueId | undefined;
-        if (!nextLeague || nextLeague === state.euLeague) {
+        const nextLeague = button.dataset.onboardingLeague as AllLeagueId | undefined;
+        if (!nextLeague || nextLeague === state.activeLeague) {
           return;
         }
-        state.euLeague = nextLeague;
-        state.euClubId = null;
-        state.euClubLeague = null;
+        state.activeLeague = nextLeague;
         renderStep();
       });
     });
 
-    app.querySelectorAll<HTMLButtonElement>("[data-eu-choice]").forEach((button) => {
+    app.querySelectorAll<HTMLButtonElement>("[data-faction-choice]").forEach((button) => {
       button.addEventListener("click", () => {
-        const clubId = button.dataset.euChoice || null;
-        if (isBlockedEuClub(clubId)) {
-          return;
+        const clubId = button.dataset.factionChoice || null;
+        state.factionClubId = clubId;
+        if (clubId) {
+          state.factionLeague = state.activeLeague;
         }
-        state.euClubId = clubId;
-        state.euClubLeague = clubId ? state.euLeague : null;
         renderStep();
       });
     });
@@ -544,26 +458,13 @@ function renderOnboarding(
 }
 
 function getOnboardingTitle(step: number): string {
-  switch (step) {
-    case 1:
-      return "ЯКУ ФРАКЦІЮ ОБИРАЄШ?";
-    case 2:
-      return "ЯКУ УКРАЇНСЬКУ ФРАКЦІЮ ОБИРАЄШ?";
-    case 3:
-      return "ЯКУ ЄВРОПЕЙСЬКУ ФРАКЦІЮ ОБИРАЄШ?";
-    case 4:
-      return "НАПИШИ СВІЙ НІКНЕЙМ";
-    default:
-      return "ОБЕРИ ЄВРОПЕЙСЬКИЙ КЛУБ";
-  }
+  return step === 1 ? "ЯКУ ФРАКЦІЮ ОБИРАЄШ?" : "НАПИШИ СВІЙ НІКНЕЙМ";
 }
 
 async function submitOnboarding(
   state: {
-    classicoChoice: "real_madrid" | "barcelona" | null;
-    uaClubId: string | null;
-    euClubId: string | null;
-    euClubLeague: LeagueId | null;
+    factionClubId: string | null;
+    factionLeague: AllLeagueId | null;
     nickname: string;
   },
   user: TelegramWebAppUser | undefined,
@@ -590,20 +491,22 @@ async function submitOnboarding(
   }
 
   try {
+    if (!state.factionClubId) {
+      if (status) {
+        status.textContent = "Оберіть фракцію, щоб продовжити.";
+      }
+      return;
+    }
     const avatarChoice = getDefaultAvatarChoice(state);
     const logoOrder = getDefaultLogoOrder({
-      classico_choice: state.classicoChoice,
-      ua_club_id: state.uaClubId,
-      eu_club_id: state.euClubId,
+      faction_club_id: state.factionClubId,
       nickname,
       avatar_choice: avatarChoice,
       completed: true
     });
     const { response, data } = await postOnboarding(apiBase, {
       initData,
-      classico_choice: state.classicoChoice,
-      ua_club_id: state.uaClubId,
-      eu_club_id: state.euClubId,
+      faction_club_id: state.factionClubId,
       nickname,
       avatar_choice: avatarChoice,
       logo_order: logoOrder
@@ -620,9 +523,7 @@ async function submitOnboarding(
     currentLogoOrder = logoOrder.length ? logoOrder : null;
     currentUser = user;
     currentOnboarding = {
-      classico_choice: state.classicoChoice,
-      ua_club_id: state.uaClubId,
-      eu_club_id: state.euClubId,
+      faction_club_id: state.factionClubId,
       nickname,
       avatar_choice: avatarChoice,
       logo_order: currentLogoOrder,
@@ -721,71 +622,35 @@ function renderClubChoice(options: {
 }
 
 function buildAvatarOptions(onboarding: OnboardingInfo | null): AvatarOption[] {
-  if (!onboarding) {
+  if (!onboarding?.faction_club_id) {
     return [];
   }
-
-  const options: AvatarOption[] = [];
-  const seen = new Set<string>();
-  const pushOption = (option: AvatarOption) => {
-    if (seen.has(option.choice)) {
-      return;
+  const league = findClubLeague(onboarding.faction_club_id);
+  if (!league) {
+    return [];
+  }
+  return [
+    {
+      choice: `${league}/${onboarding.faction_club_id}`,
+      name: formatClubName(onboarding.faction_club_id),
+      logo: getClubLogoPath(league, onboarding.faction_club_id)
     }
-    seen.add(option.choice);
-    options.push(option);
-  };
-  const classicoSlug = getClassicoLogoSlug(
-    onboarding.classico_choice === "real_madrid" || onboarding.classico_choice === "barcelona"
-      ? onboarding.classico_choice
-      : null
-  );
-  if (classicoSlug) {
-    pushOption({
-      choice: `la-liga/${classicoSlug}`,
-      name: formatClubName(classicoSlug),
-      logo: getClubLogoPath("la-liga", classicoSlug)
-    });
-  }
-
-  if (onboarding.ua_club_id) {
-    pushOption({
-      choice: `ukrainian-premier-league/${onboarding.ua_club_id}`,
-      name: formatClubName(onboarding.ua_club_id),
-      logo: getClubLogoPath("ukrainian-premier-league", onboarding.ua_club_id)
-    });
-  }
-
-  if (onboarding.eu_club_id) {
-    const league = findEuropeanClubLeague(onboarding.eu_club_id);
-    if (league) {
-      pushOption({
-        choice: `${league}/${onboarding.eu_club_id}`,
-        name: formatClubName(onboarding.eu_club_id),
-        logo: getClubLogoPath(league, onboarding.eu_club_id)
-      });
-    }
-  }
-
-  return options;
+  ];
 }
 
 function getDefaultAvatarChoice(state: {
-  classicoChoice: "real_madrid" | "barcelona" | null;
-  uaClubId: string | null;
-  euClubId: string | null;
-  euClubLeague: LeagueId | null;
+  factionClubId: string | null;
+  factionLeague: AllLeagueId | null;
 }): string | null {
-  const classicoSlug = getClassicoLogoSlug(state.classicoChoice);
-  if (classicoSlug) {
-    return `la-liga/${classicoSlug}`;
+  const clubId = state.factionClubId;
+  if (!clubId) {
+    return null;
   }
-  if (state.uaClubId) {
-    return `ukrainian-premier-league/${state.uaClubId}`;
+  const league = state.factionLeague ?? findClubLeague(clubId);
+  if (!league) {
+    return null;
   }
-  if (state.euClubId && state.euClubLeague) {
-    return `${state.euClubLeague}/${state.euClubId}`;
-  }
-  return null;
+  return `${league}/${clubId}`;
 }
 
 function renderAvatarContent(
@@ -860,25 +725,10 @@ function formatUkrainianPoints(value: number): string {
 }
 
 function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | null } {
-  if (entry.key === "classico_choice") {
-    const classico =
-      entry.value === "real_madrid" || entry.value === "barcelona" ? entry.value : null;
-    const slug = getClassicoLogoSlug(classico);
-    return {
-      name: slug ? formatClubName(slug) : formatClubName(entry.value),
-      logo: slug ? getClubLogoPath("la-liga", slug) : null
-    };
-  }
-  if (entry.key === "eu_club_id") {
-    const league = findEuropeanClubLeague(entry.value);
-    return {
-      name: formatClubName(entry.value),
-      logo: league ? getClubLogoPath(league, entry.value) : null
-    };
-  }
+  const league = findClubLeague(entry.value);
   return {
     name: formatClubName(entry.value),
-    logo: getClubLogoPath("ukrainian-premier-league", entry.value)
+    logo: league ? getClubLogoPath(league, entry.value) : null
   };
 }
 
@@ -924,7 +774,7 @@ function normalizeTelegramThreadLink(url: string): string | null {
 }
 
 function getFactionId(entry: FactionEntry): string {
-  return `${entry.key}:${entry.value}`;
+  return entry.value;
 }
 
 function getPrimaryFactionId(): string | null {

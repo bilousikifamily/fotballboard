@@ -41,7 +41,7 @@ export type MatchWeatherResponse =
   | { ok: false; error: string };
 
 export type FactionEntry = {
-  key: "classico_choice" | "eu_club_id" | "ua_club_id";
+  key: "faction_club_id";
   value: string;
   members: number;
   rank: number | null;
@@ -241,9 +241,7 @@ export type UserStats = {
 };
 
 export type OnboardingInfo = {
-  classico_choice?: string | null;
-  ua_club_id?: string | null;
-  eu_club_id?: string | null;
+  faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
   logo_order?: string[] | null;
