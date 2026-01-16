@@ -52,6 +52,8 @@
   letter-spacing: 0.14em;
   font-size: 1.15rem;
   pointer-events: auto;
+  position: relative;
+  z-index: 3;
 }
 
 .profile-club-badge {
@@ -62,6 +64,9 @@
   display: grid;
   place-items: center;
   pointer-events: auto;
+  position: relative;
+  z-index: 2;
+  transform: translateY(10px);
 }
 
 .profile-club-badge img {
