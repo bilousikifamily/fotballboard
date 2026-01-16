@@ -55,9 +55,8 @@
 }
 
 .profile-club-badge {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 50px;
+  height: 50px;
   border: none;
   background: transparent;
   display: grid;
@@ -66,8 +65,8 @@
 }
 
 .profile-club-badge img {
-  width: 70%;
-  height: 70%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
 }
@@ -224,6 +223,8 @@
   justify-items: center;
   align-items: center;
   padding: 0 4px;
+  justify-content: start;
+  align-content: start;
 }
 
 .prediction-dot {
