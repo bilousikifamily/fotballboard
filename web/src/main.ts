@@ -2,6 +2,7 @@ import "./style.css";
 import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "./data/clubs";
 import type {
   AvatarOption,
+  FactionBranchMessage,
   FactionEntry,
   FactionMember,
   LogoPosition,
@@ -29,7 +30,14 @@ import {
   postResult
 } from "./api/matches";
 import { postPrediction, fetchPredictions } from "./api/predictions";
-import { fetchFactionMembers, postAvatarChoice, postLogoOrder, postNickname, postOnboarding } from "./api/profile";
+import {
+  fetchFactionMembers,
+  fetchFactionMessages,
+  postAvatarChoice,
+  postLogoOrder,
+  postNickname,
+  postOnboarding
+} from "./api/profile";
 import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, getMatchTeamInfo } from "./features/clubs";
@@ -100,6 +108,7 @@ const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
+const FACTION_THREAD_MESSAGE_LIMIT = 3;
 const LOGO_POSITIONS = ["center", "left", "right"] as const;
 const LOGO_POSITION_LABELS: Record<LogoPosition, string> = {
   center: "1",
@@ -1036,6 +1045,48 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
   `;
 }
 
+function renderFactionThreadSection(): string {
+  return `
+    <section class="panel faction-thread">
+      <div class="section-header">
+        <h2>Гілка фракції</h2>
+        <a
+          class="button secondary small-button faction-thread-link is-disabled"
+          data-faction-thread-link
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled="true"
+        >
+          В чат
+        </a>
+      </div>
+      <div class="faction-thread-list" data-faction-thread>
+        <p class="muted small">Завантаження...</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderFactionThreadItem(message: FactionBranchMessage): string {
+  const safeText = escapeHtml(message.text);
+  const authorLabel = escapeHtml(message.author ?? "Фракція");
+  const timeLabel = escapeHtml(formatKyivDateTime(message.created_at));
+  return `
+    <div class="faction-thread-item">
+      <p class="faction-thread-message">${safeText}</p>
+      <div class="faction-thread-meta">
+        <span class="faction-thread-author">${authorLabel}</span>
+        <span class="faction-thread-time">${timeLabel}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderFactionThreadMessages(messages: FactionBranchMessage[]): string {
+  return messages.map(renderFactionThreadItem).join("");
+}
+
 function renderFactionMembersRows(members: FactionMember[], highlightId: number | null): string {
   if (!members.length) {
     return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
@@ -1094,6 +1145,60 @@ async function loadFactionMembers(): Promise<void> {
   }
 }
 
+async function loadFactionThreadMessages(): Promise<void> {
+  if (!app || !apiBase || !initData) {
+    return;
+  }
+  const container = app.querySelector<HTMLElement>("[data-faction-thread]");
+  const link = app.querySelector<HTMLAnchorElement>("[data-faction-thread-link]");
+  if (!container) {
+    return;
+  }
+  const entry = selectBadgeFactionEntry(currentProfileStats);
+  if (!entry) {
+    container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
+    setFactionThreadLink(link, null);
+    return;
+  }
+
+  container.innerHTML = `<p class="muted small">Завантаження...</p>`;
+  setFactionThreadLink(link, null);
+
+  try {
+    const { response, data } = await fetchFactionMessages(apiBase, {
+      initData,
+      faction: entry.value,
+      limit: FACTION_THREAD_MESSAGE_LIMIT
+    });
+    if (!response.ok || !data.ok) {
+      throw new Error("failed to load faction thread");
+    }
+    const messages = data.messages ?? [];
+    container.innerHTML = messages.length
+      ? renderFactionThreadMessages(messages)
+      : `<p class="muted small">Повідомлень ще немає.</p>`;
+    setFactionThreadLink(link, data.chat_url ?? null);
+  } catch {
+    container.innerHTML = `<p class="muted small">Не вдалося завантажити повідомлення.</p>`;
+    setFactionThreadLink(link, null);
+  }
+}
+
+function setFactionThreadLink(link: HTMLAnchorElement | null, url: string | null): void {
+  if (!link) {
+    return;
+  }
+  if (url) {
+    link.href = url;
+    link.removeAttribute("aria-disabled");
+    link.classList.remove("is-disabled");
+  } else {
+    link.removeAttribute("href");
+    link.setAttribute("aria-disabled", "true");
+    link.classList.add("is-disabled");
+  }
+}
+
 function renderUser(
   user: TelegramWebAppUser | undefined,
   stats: UserStats,
@@ -1131,6 +1236,7 @@ function renderUser(
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
   const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
+  const factionThreadMarkup = renderFactionThreadSection();
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
@@ -1262,6 +1368,8 @@ function renderUser(
 
           ${factionMembersMarkup}
 
+        ${factionThreadMarkup}
+
           <div class="notice-ticker" aria-live="polite">
             <span class="notice-ticker-text" data-notice-text>
               ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
@@ -1343,6 +1451,7 @@ function renderUser(
   `;
 
   void loadFactionMembers();
+  void loadFactionThreadMessages();
 
   const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");

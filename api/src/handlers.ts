@@ -17,6 +17,7 @@ import type {
   DbTeamMatchStat,
   FactionKey,
   FactionStat,
+  FactionBranchMessage,
   FixturePayload,
   FixturesResult,
   GeocodeResult,
@@ -499,6 +500,53 @@ export default {
       }
 
       return jsonResponse({ ok: true, faction: factionId, members }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/faction-messages") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const body = await readJson<{ initData?: string; faction?: string; limit?: number }>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+      const initData = body.initData?.trim();
+      if (!initData) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+
+      const requestedFaction = normalizeClassicoChoice(body.faction);
+      const userFaction = await getUserClassicoChoice(supabase, auth.user.id);
+      const faction = requestedFaction ?? userFaction;
+      if (!faction) {
+        return jsonResponse({ ok: false, error: "faction_not_selected" }, 400, corsHeaders());
+      }
+
+      const rawLimit = typeof body.limit === "number" ? Math.floor(body.limit) : 3;
+      const limit = Math.min(Math.max(rawLimit, 1), 6);
+
+      const messages = await listFactionBranchMessages(supabase, faction, limit);
+      const refs = getFactionChatRefs(env);
+      const chatRef = faction === "real_madrid" ? refs.real : refs.barca;
+      const chatUrl = formatFactionChatUrl(chatRef);
+
+      return jsonResponse({ ok: true, faction, chat_url: chatUrl, messages }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/analitika") {
@@ -1115,6 +1163,7 @@ export default {
       const message = getUpdateMessage(update);
       if (message) {
         const supabase = createSupabaseClient(env);
+        await captureFactionBranchMessage(message, env, supabase);
         await handleFactionChatModeration(message, env, supabase);
         await handleGeneralChatModeration(message, env, supabase);
       }
@@ -1220,6 +1269,51 @@ function getFactionChatRefs(env: Env): FactionChatRefs {
   };
 }
 
+function formatFactionChatUrl(ref: FactionChatRef | undefined | null): string | null {
+  if (!ref) {
+    return null;
+  }
+  if (ref.chatUsername) {
+    const base = `https://t.me/${ref.chatUsername}`;
+    return ref.threadId ? `${base}/${ref.threadId}` : base;
+  }
+  if (typeof ref.chatId === "number") {
+    const normalized = String(ref.chatId).replace(/^-100/, "").replace(/^-/, "");
+    if (!normalized) {
+      return null;
+    }
+    const base = `https://t.me/c/${normalized}`;
+    return ref.threadId ? `${base}/${ref.threadId}` : base;
+  }
+  return null;
+}
+
+function identifyFactionFromMessage(
+  message: TelegramMessage,
+  refs: FactionChatRefs
+): "real_madrid" | "barcelona" | null {
+  if (refs.real && matchChatRef(message, refs.real)) {
+    return "real_madrid";
+  }
+  if (refs.barca && matchChatRef(message, refs.barca)) {
+    return "barcelona";
+  }
+  return null;
+}
+
+function normalizeFactionMessageText(message: TelegramMessage): string | null {
+  const candidate = message.text?.trim() || message.caption?.trim() || "";
+  const normalized = candidate.replace(/\s+/g, " ").trim();
+  if (!normalized || normalized.startsWith("/")) {
+    return null;
+  }
+  const limit = 280;
+  if (normalized.length <= limit) {
+    return normalized;
+  }
+  return `${normalized.slice(0, limit - 1)}…`;
+}
+
 function matchChatRef(message: TelegramMessage, ref: FactionChatRef): boolean {
   const chatId = message.chat?.id;
   const chatUsername = message.chat?.username?.toLowerCase();
@@ -1233,6 +1327,43 @@ function matchChatRef(message: TelegramMessage, ref: FactionChatRef): boolean {
     return message.message_thread_id === ref.threadId;
   }
   return true;
+}
+
+async function captureFactionBranchMessage(message: TelegramMessage, env: Env, supabase: SupabaseClient | null): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+  const from = message.from;
+  const chatId = message.chat?.id;
+  const messageId = message.message_id;
+  if (!from || from.is_bot || !chatId || !messageId) {
+    return;
+  }
+
+  const refs = getFactionChatRefs(env);
+  const faction = identifyFactionFromMessage(message, refs);
+  if (!faction) {
+    return;
+  }
+
+  const userFaction = await getUserClassicoChoice(supabase, from.id);
+  if (userFaction !== faction) {
+    return;
+  }
+
+  const text = normalizeFactionMessageText(message);
+  if (!text) {
+    return;
+  }
+
+  await insertFactionBranchMessage(supabase, {
+    faction,
+    chatId,
+    messageId,
+    threadId: message.message_thread_id ?? null,
+    author: formatUserDisplay(from),
+    text
+  });
 }
 
 function formatFactionName(faction: "real_madrid" | "barcelona"): string {
@@ -1498,6 +1629,59 @@ async function listFactionMembers(
   } catch (error) {
     console.error("Failed to fetch faction members", error);
     return null;
+  }
+}
+
+async function insertFactionBranchMessage(
+  supabase: SupabaseClient,
+  payload: {
+    faction: "real_madrid" | "barcelona";
+    chatId: number;
+    messageId: number;
+    threadId: number | null;
+    author: string | null;
+    text: string;
+  }
+): Promise<void> {
+  try {
+    const record = {
+      faction: payload.faction,
+      chat_id: payload.chatId,
+      message_id: payload.messageId,
+      thread_id: payload.threadId,
+      author: payload.author?.trim() || null,
+      text: payload.text,
+      created_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from("faction_branch_messages").insert(record);
+    if (error && error.code !== "23505") {
+      console.error("Failed to insert faction branch message", error);
+    }
+  } catch (error) {
+    console.error("Failed to insert faction branch message", error);
+  }
+}
+
+async function listFactionBranchMessages(
+  supabase: SupabaseClient,
+  faction: "real_madrid" | "barcelona",
+  limit: number
+): Promise<FactionBranchMessage[]> {
+  try {
+    const { data, error } = await supabase
+      .from("faction_branch_messages")
+      .select("id, faction, author, text, created_at")
+      .eq("faction", faction)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.error("Failed to load faction branch messages", error);
+      return [];
+    }
+    return (data as FactionBranchMessage[]) ?? [];
+  } catch (error) {
+    console.error("Failed to load faction branch messages", error);
+    return [];
   }
 }
 

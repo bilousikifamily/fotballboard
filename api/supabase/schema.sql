@@ -16,6 +16,20 @@ create table if not exists users (
   last_seen_at timestamptz
 );
 
+create table if not exists faction_branch_messages (
+  id bigserial primary key,
+  faction text not null,
+  chat_id bigint not null,
+  message_id bigint not null,
+  thread_id bigint,
+  author text,
+  text text not null,
+  created_at timestamptz not null default now(),
+  unique (chat_id, message_id)
+);
+
+create index if not exists faction_branch_messages_faction_idx on faction_branch_messages (faction, created_at desc);
+
 create table if not exists matches (
   id bigserial primary key,
   home_team text not null,

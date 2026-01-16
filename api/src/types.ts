@@ -267,6 +267,18 @@ export interface ProfileStats {
   factions: FactionStat[];
 }
 
+export interface FactionBranchMessage {
+  id: number;
+  faction: "real_madrid" | "barcelona";
+  author?: string | null;
+  text: string;
+  created_at: string;
+}
+
+export type FactionMessagesResponse =
+  | { ok: true; faction: "real_madrid" | "barcelona"; chat_url: string | null; messages: FactionBranchMessage[] }
+  | { ok: false; error: string };
+
 export interface AnalitikaRefreshPayload {
   initData?: string;
   team?: string;
