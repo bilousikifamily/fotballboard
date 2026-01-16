@@ -27,6 +27,17 @@
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
+  padding: 0;
+  border-radius: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.profile-nickname-chip {
   padding: 10px 18px;
   border-radius: 14px;
   background: rgba(255, 122, 26, 0.18);
@@ -35,36 +46,27 @@
     0 10px 24px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(0, 0, 0, 0.55) inset;
   backdrop-filter: blur(14px);
-  text-align: center;
-  font-size: 1.15rem;
-  letter-spacing: 0.14em;
   text-transform: uppercase;
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 600;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.profile-nickname-text {
-  font-size: 1.15rem;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 1.15rem;
+  pointer-events: auto;
 }
 
-.profile-nickname-badge {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
+.profile-club-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(12, 12, 14, 0.75);
   display: grid;
   place-items: center;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
-.profile-nickname-badge img {
+.profile-club-badge img {
   width: 70%;
   height: 70%;
   object-fit: contain;

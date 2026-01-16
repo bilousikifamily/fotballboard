@@ -696,18 +696,27 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   `;
 }
 
-const PREDICTION_GRID_SIZE = 20;
+const PREDICTION_GRID_MIN_CELLS = 20;
 
 function renderPredictionGrid(profile: ProfileStatsPayload | null): string {
   const lastResults = profile?.prediction?.last_results ?? [];
   const cells: string[] = [];
-  for (let index = 0; index < PREDICTION_GRID_SIZE; index += 1) {
-    const entry = lastResults[index];
+
+  lastResults.forEach((entry) => {
     const state = getPredictionDotState(entry);
     cells.push(
       `<span class="prediction-dot ${state.className}" aria-label="${escapeAttribute(state.label)}">${state.icon}</span>`
     );
+  });
+
+  const fillerCount = Math.max(0, PREDICTION_GRID_MIN_CELLS - cells.length);
+  for (let index = 0; index < fillerCount; index += 1) {
+    const state = getPredictionDotState();
+    cells.push(
+      `<span class="prediction-dot ${state.className}" aria-label="${escapeAttribute(state.label)}">${state.icon}</span>`
+    );
   }
+
   return `<div class="profile-prediction-grid">${cells.join("")}</div>`;
 }
 
@@ -717,7 +726,7 @@ function renderFactionBadge(profile: ProfileStatsPayload | null, fallback: Avata
     return "";
   }
   return `
-    <span class="profile-nickname-badge" aria-label="${escapeAttribute(badge.name)}" role="img">
+    <span class="profile-club-badge" aria-label="${escapeAttribute(badge.name)}" role="img">
       <img src="${escapeAttribute(badge.logo)}" alt="${escapeAttribute(badge.name)}" />
     </span>
   `;
@@ -1073,7 +1082,7 @@ function renderUser(
   const nicknameMarkup = safeName
     ? `
       <div class="profile-nickname" data-profile-name>
-        <span class="profile-nickname-text">${safeName}</span>
+        <span class="profile-nickname-chip">${safeName}</span>
         ${factionBadgeMarkup}
       </div>
     `
