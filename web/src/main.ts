@@ -671,31 +671,6 @@ function renderAvatarContent(
   return `<div class="avatar placeholder"></div>`;
 }
 
-function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
-  const prediction = profile?.prediction;
-  const total = prediction?.total ?? 0;
-  const hits = prediction?.hits ?? 0;
-  const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
-  const timesLabel = formatUkrainianTimes(total);
-  const lastResults = prediction?.last_results ?? [];
-  const icons = lastResults.map((entry) => {
-    if (entry.points === 5) {
-      return `<span class="result-icon is-perfect" aria-hidden="true">5</span>`;
-    }
-    if (entry.points > 0) {
-      return `<span class="result-icon is-hit" aria-hidden="true">✓</span>`;
-    }
-    return `<span class="result-icon is-miss" aria-hidden="true">✕</span>`;
-  }).join("");
-  return `
-    <section class="profile-metrics" aria-label="Прогнози">
-      <div class="recent-results">
-        <div class="result-icons">${icons}</div>
-      </div>
-    </section>
-  `;
-}
-
 const PREDICTION_GRID_MIN_CELLS = 20;
 
 function renderPredictionGrid(profile: ProfileStatsPayload | null): string {
@@ -791,22 +766,6 @@ function getPredictionDotState(entry?: { hit: boolean; points: number }) {
     className: "is-miss",
     label: "Прогноз невдалий"
   };
-}
-
-function formatUkrainianTimes(value: number): string {
-  const absValue = Math.abs(Math.trunc(value));
-  const mod10 = absValue % 10;
-  const mod100 = absValue % 100;
-  if (mod100 >= 11 && mod100 <= 14) {
-    return "РАЗІВ";
-  }
-  if (mod10 === 1) {
-    return "РАЗ";
-  }
-  if (mod10 >= 2 && mod10 <= 4) {
-    return "РАЗИ";
-  }
-  return "РАЗІВ";
 }
 
 function formatUkrainianPoints(value: number): string {
@@ -1094,7 +1053,6 @@ function renderUser(
   const totalPredictions = prediction?.total ?? 0;
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
-  const predictionQualityMarkup = renderPredictionQuality(profile ?? null);
   const factionsMarkup = renderFactions(profile ?? null, stats.rank ?? null);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
@@ -1223,7 +1181,6 @@ function renderUser(
             </div>
           </section>
 
-          ${predictionQualityMarkup}
           ${factionsMarkup}
 
           <div class="notice-ticker" aria-live="polite">
