@@ -948,9 +948,11 @@ function renderFactionThreadSection(): string {
 function renderFactionRecentMessage(message: FactionBranchMessage, index: number): string {
   const safeText = escapeHtml((message.text ?? "").trim());
   const displayText = safeText || "—";
+  const authorLabel = escapeHtml((message.author ?? "").trim()) || "Анонім";
   const bubbleClass = index % 2 === 0 ? "message-chip--incoming" : "message-chip--outgoing";
   return `
     <article class="message-chip ${bubbleClass}" role="listitem">
+      <span class="message-chip__author">${authorLabel}</span>
       <p>${displayText}</p>
     </article>
   `;

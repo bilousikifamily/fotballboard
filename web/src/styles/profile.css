@@ -904,36 +904,39 @@ h1 {
 
 .message-chip {
   display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
   align-self: flex-start;
-  padding: 12px 18px;
-  border-radius: 20px;
-  border: 1px solid transparent;
-  max-width: min(100%, 320px);
+  padding: 14px 20px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  max-width: min(100%, 360px);
   width: fit-content;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 8px 18px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(32, 35, 46, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   color: rgba(247, 241, 230, 0.95);
   font-size: 0.95rem;
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .message-chip--incoming {
-  align-self: flex-start;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .message-chip--outgoing {
-  align-self: flex-end;
-  background: linear-gradient(135deg, rgba(255, 122, 26, 0.95), rgba(255, 154, 31, 0.85));
-  border-color: rgba(0, 0, 0, 0.25);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.22),
-    0 12px 24px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 122, 26, 0.8);
+  background: linear-gradient(180deg, rgba(255, 143, 53, 0.35), rgba(255, 109, 0, 0.85));
   color: #050404;
+}
+
+.message-chip__author {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .message-chip:hover {
@@ -965,12 +968,13 @@ h1 {
   font-weight: 700;
   text-transform: uppercase;
   color: #050404;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, #ff8c42, #ff5f00);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: block;
   text-align: center;
   text-decoration: none;
   transition: border-color 120ms ease, background 120ms ease;
+  box-shadow: none;
 }
 
 .faction-thread-link.is-disabled {
