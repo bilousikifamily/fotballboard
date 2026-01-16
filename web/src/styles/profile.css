@@ -992,6 +992,11 @@ h1 {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.faction-members-table .leaderboard-row {
+  width: 90%;
+  margin: 0 auto;
+}
+
 .faction-members-table .leaderboard-points {
   display: flex;
   flex-direction: column;
