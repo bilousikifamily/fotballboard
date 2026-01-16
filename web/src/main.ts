@@ -907,7 +907,7 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
   const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
   return `
     <div class="faction-members-heading">
-      <h2>ТОП 5 ДЕПУТАТІВ</h2>
+      <h2>ТОП 5 ДЕПУТАТІВ ФРАКЦІЇ</h2>
     </div>
     <section class="panel faction-members">
       <div class="faction-members-table" data-faction-members>
