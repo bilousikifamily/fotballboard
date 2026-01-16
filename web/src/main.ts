@@ -959,20 +959,37 @@ function renderFactionThreadMessages(messages: FactionBranchMessage[]): string {
   return messages.map(renderFactionThreadItem).join("");
 }
 
+const MAX_FACTION_CARDS = 6;
+const MAX_TOP_FACTION_CARDS = 5;
+
 function renderFactionMembersRows(members: FactionMember[], highlightId: number | null): string {
   if (!members.length) {
     return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
   }
-  const rows = members
+  const topMembers = members.slice(0, Math.min(members.length, MAX_TOP_FACTION_CARDS));
+  const displayMembers = [...topMembers];
+  if (highlightId !== null) {
+    const userIndex = members.findIndex((member) => member.id === highlightId);
+    if (userIndex !== -1) {
+      const userInTop = topMembers.some((member) => member.id === highlightId);
+      if (!userInTop) {
+        displayMembers.push(members[userIndex]);
+      }
+    }
+  }
+  const rows = displayMembers
+    .slice(0, MAX_FACTION_CARDS)
     .map((member, index) => {
       const displayName = formatUserName(member) || "Гравець";
       const safeName = escapeHtml(displayName);
       const points = typeof member.points_total === "number" ? member.points_total : 0;
       const safePoints = escapeHtml(String(points));
       const isSelf = highlightId !== null && member.id === highlightId;
+      const rankIndex = members.indexOf(member);
+      const rankLabel = rankIndex >= 0 ? rankIndex + 1 : index + 1;
       return `
         <div class="leaderboard-row${isSelf ? " is-self" : ""}">
-          <div class="leaderboard-rank">${index + 1}</div>
+          <div class="leaderboard-rank">${rankLabel}</div>
           <div class="leaderboard-identity">
             <span class="leaderboard-name">${safeName}</span>
           </div>

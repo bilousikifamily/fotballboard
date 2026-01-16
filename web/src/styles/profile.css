@@ -823,7 +823,7 @@ h1 {
 
 .faction-members-table {
   width: 100%;
-  min-height: 120px;
+  min-height: 0;
 }
 
 .faction-members-table .leaderboard-rows {
