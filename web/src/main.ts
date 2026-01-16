@@ -1023,16 +1023,11 @@ function renderFactions(profile: ProfileStatsPayload | null, rank: number | null
 
 function renderFactionMembersSection(profile: ProfileStatsPayload | null): string {
   const entry = selectBadgeFactionEntry(profile);
-  const factionName = entry ? formatClubName(entry.value) : null;
-  const factionNameMarkup = factionName
-    ? `<p class="muted small">${escapeHtml(`Фракція ${factionName}`)}</p>`
-    : "";
   const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
   return `
     <section class="panel faction-members">
       <div class="section-header section-header--faction">
         <h2>УЧАСНИКИ ФРАКЦІЇ</h2>
-        ${factionNameMarkup}
       </div>
       <div class="faction-members-table" data-faction-members>
         <p class="muted small">${placeholderText}</p>
@@ -1060,7 +1055,6 @@ function renderFactionMembersRows(members: FactionMember[], highlightId: number 
           </div>
           <div class="leaderboard-points">
             <span class="leaderboard-points-value">${safePoints}</span>
-            <span class="leaderboard-points-label">голосів</span>
           </div>
         </div>
       `;

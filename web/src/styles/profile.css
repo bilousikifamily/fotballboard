@@ -986,10 +986,10 @@ h1 {
   min-height: 120px;
 }
 
-
 .faction-members-table .leaderboard-rows {
   display: grid;
   gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .faction-members-table .leaderboard-points {
