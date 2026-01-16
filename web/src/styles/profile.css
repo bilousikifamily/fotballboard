@@ -800,6 +800,9 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .faction-members-heading {
@@ -827,13 +830,14 @@ h1 {
   width: 100%;
 }
 
-.faction-members-table .leaderboard-row {
+.faction-members-table .leaderboard-row,
+.faction-members-table .leaderboard-row.is-self {
   width: 100%;
   margin: 0;
   justify-self: stretch;
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .faction-members-table .leaderboard-points {

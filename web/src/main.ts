@@ -796,11 +796,16 @@ function formatUkrainianPoints(value: number): string {
   return "БАЛІВ";
 }
 
+function normalizeFactionSlug(slug: string): string {
+  return slug.replace(/_/g, "-");
+}
+
 function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | null } {
-  const league = findClubLeague(entry.value);
+  const normalized = normalizeFactionSlug(entry.value);
+  const league = findClubLeague(normalized);
   return {
-    name: formatClubName(entry.value),
-    logo: league ? getClubLogoPath(league, entry.value) : null
+    name: formatClubName(normalized),
+    logo: league ? getClubLogoPath(league, normalized) : null
   };
 }
 
