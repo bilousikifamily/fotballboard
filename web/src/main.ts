@@ -906,10 +906,10 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
   const entry = selectBadgeFactionEntry(profile);
   const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
   return `
+    <div class="faction-members-heading">
+      <h2>ТОП 5 ДЕПУТАТІВ</h2>
+    </div>
     <section class="panel faction-members">
-      <div class="section-header section-header--faction">
-        <h2>УЧАСНИКИ ФРАКЦІЇ</h2>
-      </div>
       <div class="faction-members-table" data-faction-members>
         <p class="muted small">${placeholderText}</p>
       </div>

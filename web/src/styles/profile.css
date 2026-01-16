@@ -807,15 +807,17 @@ h1 {
   gap: 10px;
 }
 
-.panel.faction-members .section-header.section-header--faction {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+.faction-members-heading {
+  margin: 0 0 8px;
+  padding: 0 0 0;
+  text-align: center;
 }
 
-.panel.faction-members .section-header.section-header--faction h2 {
-  font-size: 1rem;
+.faction-members-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .faction-members-table {
