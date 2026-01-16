@@ -924,9 +924,14 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
 
 function renderFactionThreadSection(): string {
   return `
-    <section class="panel faction-thread">
-      <div class="section-header">
-        <h2>Гілка фракції</h2>
+    <section class="panel faction-recent-messages">
+      <div class="faction-recent-header">
+        <h2>Останні повідомлення</h2>
+      </div>
+      <div class="faction-recent-list" data-faction-thread role="list" aria-live="polite">
+        <p class="muted small">Завантаження...</p>
+      </div>
+      <div class="faction-recent-cta">
         <a
           class="button secondary small-button faction-thread-link is-disabled"
           data-faction-thread-link
@@ -938,30 +943,25 @@ function renderFactionThreadSection(): string {
           В чат
         </a>
       </div>
-      <div class="faction-thread-list" data-faction-thread>
-        <p class="muted small">Завантаження...</p>
-      </div>
     </section>
   `;
 }
 
-function renderFactionThreadItem(message: FactionBranchMessage): string {
-  const safeText = escapeHtml(message.text);
-  const authorLabel = escapeHtml(message.author ?? "Фракція");
-  const timeLabel = escapeHtml(formatKyivDateTime(message.created_at));
+function renderFactionRecentMessage(message: FactionBranchMessage): string {
+  const safeText = escapeHtml((message.text ?? "").trim());
+  const displayText = safeText || "—";
   return `
-    <div class="faction-thread-item">
-      <p class="faction-thread-message">${safeText}</p>
-      <div class="faction-thread-meta">
-        <span class="faction-thread-author">${authorLabel}</span>
-        <span class="faction-thread-time">${timeLabel}</span>
-      </div>
-    </div>
+    <article class="message-chip" role="listitem">
+      <p>${displayText}</p>
+    </article>
   `;
 }
 
-function renderFactionThreadMessages(messages: FactionBranchMessage[]): string {
-  return messages.map(renderFactionThreadItem).join("");
+function renderFactionRecentMessages(messages: FactionBranchMessage[]): string {
+  if (!messages.length) {
+    return `<p class="muted small faction-recent-empty">Поки що порожньо.</p>`;
+  }
+  return messages.slice(0, 3).map(renderFactionRecentMessage).join("");
 }
 
 const MAX_FACTION_CARDS = 6;
@@ -1068,9 +1068,7 @@ async function loadFactionThreadMessages(): Promise<void> {
       throw new Error("failed to load faction thread");
     }
     const messages = data.messages ?? [];
-    container.innerHTML = messages.length
-      ? renderFactionThreadMessages(messages)
-      : `<p class="muted small">Повідомлень ще немає.</p>`;
+    container.innerHTML = renderFactionRecentMessages(messages);
     setFactionThreadLink(link, data.chat_url ?? null);
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити повідомлення.</p>`;
