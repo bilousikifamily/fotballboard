@@ -886,33 +886,29 @@ h1 {
   backdrop-filter: blur(18px);
   display: grid;
   gap: 12px;
+  cursor: pointer;
 }
 
 .faction-recent-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 10px;
-}
-
-.faction-recent-header h2 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  width: 100%;
 }
 
 .faction-recent-list {
   display: grid;
   gap: 10px;
   min-height: 72px;
+  text-align: center;
 }
 
 .message-chip {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 10px 14px;
+  padding: 12px 14px;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     0 10px 24px rgba(0, 0, 0, 0.35);
@@ -938,30 +934,47 @@ h1 {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
 }
 
 .faction-recent-empty {
   margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
-  text-align: left;
-}
-
-.faction-recent-cta {
-  display: flex;
-  justify-content: flex-end;
+  text-align: center;
 }
 
 .faction-thread-link {
   border-radius: 14px;
   padding: 8px 16px;
   letter-spacing: 0.12em;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 20px rgba(0, 0, 0, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .faction-thread-link.is-disabled {
   opacity: 0.6;
   pointer-events: none;
   box-shadow: none;
+}
+
+.faction-thread-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 26px rgba(0, 0, 0, 0.45);
 }
 
 .faction-thread-link:focus-visible {

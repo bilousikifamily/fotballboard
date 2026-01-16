@@ -924,24 +924,22 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
 
 function renderFactionThreadSection(): string {
   return `
-    <section class="panel faction-recent-messages">
+    <section class="panel faction-recent-messages" data-faction-thread-card>
       <div class="faction-recent-header">
-        <h2>Останні повідомлення</h2>
-      </div>
-      <div class="faction-recent-list" data-faction-thread role="list" aria-live="polite">
-        <p class="muted small">Завантаження...</p>
-      </div>
-      <div class="faction-recent-cta">
         <a
-          class="button secondary small-button faction-thread-link is-disabled"
+          class="faction-thread-link"
           data-faction-thread-link
           href="#"
           target="_blank"
           rel="noopener noreferrer"
           aria-disabled="true"
+          role="button"
         >
-          В чат
+          Чат фракції
         </a>
+      </div>
+      <div class="faction-recent-list" data-faction-thread role="list" aria-live="polite">
+        <p class="muted small">Завантаження...</p>
       </div>
     </section>
   `;
@@ -1045,9 +1043,11 @@ async function loadFactionThreadMessages(): Promise<void> {
   }
   const container = app.querySelector<HTMLElement>("[data-faction-thread]");
   const link = app.querySelector<HTMLAnchorElement>("[data-faction-thread-link]");
+  const card = app.querySelector<HTMLElement>("[data-faction-thread-card]");
   if (!container) {
     return;
   }
+  setupFactionThreadCardClick(card, link);
   const entry = selectBadgeFactionEntry(currentProfileStats);
   if (!entry) {
     container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
@@ -1089,6 +1089,22 @@ function setFactionThreadLink(link: HTMLAnchorElement | null, url: string | null
     link.setAttribute("aria-disabled", "true");
     link.classList.add("is-disabled");
   }
+}
+
+function setupFactionThreadCardClick(card: HTMLElement | null, link: HTMLAnchorElement | null): void {
+  if (!card || !link || card.dataset.factionThreadClick === "1") {
+    return;
+  }
+  card.dataset.factionThreadClick = "1";
+  card.addEventListener("click", (event) => {
+    if (event.target instanceof HTMLElement && event.target.closest(".faction-thread-link")) {
+      return;
+    }
+    if (link.hasAttribute("aria-disabled")) {
+      return;
+    }
+    link.click();
+  });
 }
 
 function renderUser(
