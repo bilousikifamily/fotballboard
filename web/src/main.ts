@@ -696,6 +696,94 @@ function renderPredictionQuality(profile: ProfileStatsPayload | null): string {
   `;
 }
 
+const PREDICTION_GRID_SIZE = 20;
+
+function renderPredictionGrid(profile: ProfileStatsPayload | null): string {
+  const lastResults = profile?.prediction?.last_results ?? [];
+  const cells: string[] = [];
+  for (let index = 0; index < PREDICTION_GRID_SIZE; index += 1) {
+    const entry = lastResults[index];
+    const state = getPredictionDotState(entry);
+    cells.push(
+      `<span class="prediction-dot ${state.className}" aria-label="${escapeAttribute(state.label)}">${state.icon}</span>`
+    );
+  }
+  return `<div class="profile-prediction-grid">${cells.join("")}</div>`;
+}
+
+function renderFactionBadge(profile: ProfileStatsPayload | null, fallback: AvatarOption | null): string {
+  const badge = resolveFactionBadge(profile, fallback);
+  if (!badge) {
+    return "";
+  }
+  return `
+    <span class="profile-nickname-badge" aria-label="${escapeAttribute(badge.name)}" role="img">
+      <img src="${escapeAttribute(badge.logo)}" alt="${escapeAttribute(badge.name)}" />
+    </span>
+  `;
+}
+
+function resolveFactionBadge(
+  profile: ProfileStatsPayload | null,
+  fallback: AvatarOption | null
+): { name: string; logo: string } | null {
+  const entry = selectBadgeFactionEntry(profile);
+  if (entry) {
+    const display = getFactionDisplay(entry);
+    if (display.logo) {
+      return display;
+    }
+  }
+  if (fallback?.logo) {
+    return { name: fallback.name, logo: fallback.logo };
+  }
+  return null;
+}
+
+function selectBadgeFactionEntry(profile: ProfileStatsPayload | null): FactionEntry | null {
+  const factions = profile?.factions ?? [];
+  if (!factions.length) {
+    return null;
+  }
+  const primaryId = getPrimaryFactionId();
+  if (primaryId) {
+    const primary = factions.find((entry) => getFactionId(entry) === primaryId);
+    if (primary) {
+      return primary;
+    }
+  }
+  return factions[0] ?? null;
+}
+
+function getPredictionDotState(entry?: { hit: boolean; points: number }) {
+  if (!entry) {
+    return {
+      icon: "✓",
+      className: "is-empty",
+      label: "Прогноз ще не зроблено"
+    };
+  }
+  if (entry.points === 5) {
+    return {
+      icon: "5",
+      className: "is-perfect",
+      label: "Вгаданий точний рахунок"
+    };
+  }
+  if (entry.hit) {
+    return {
+      icon: "✓",
+      className: "is-hit",
+      label: "Вгаданий результат"
+    };
+  }
+  return {
+    icon: "✕",
+    className: "is-miss",
+    label: "Прогноз невдалий"
+  };
+}
+
 function formatUkrainianTimes(value: number): string {
   const absValue = Math.abs(Math.trunc(value));
   const mod10 = absValue % 10;
@@ -980,11 +1068,16 @@ function renderUser(
   if (currentOnboarding) {
     currentOnboarding.logo_order = currentLogoOrder;
   }
-  const logoStackMarkup = logoOptions.length
-    ? renderLogoStack(resolvedLogoOrder)
-    : renderAvatarContent(user, currentAvatarChoice);
-  const logoOrderMenuMarkup =
-    logoOptions.length > 1 ? renderLogoOrderMenu(resolvedLogoOrder, currentNickname ?? displayName) : "";
+  const factionBadgeMarkup = renderFactionBadge(profile ?? null, logoOptions[0] ?? null);
+  const predictionGridMarkup = renderPredictionGrid(profile ?? null);
+  const nicknameMarkup = safeName
+    ? `
+      <div class="profile-nickname" data-profile-name>
+        <span class="profile-nickname-text">${safeName}</span>
+        ${factionBadgeMarkup}
+      </div>
+    `
+    : "";
   const dateValue = date || getKyivDateString();
   const safeDateLabel = escapeHtml(formatKyivDateLabel(dateValue));
   const pointsLabel = formatUkrainianPoints(stats.points);
@@ -1111,9 +1204,10 @@ function renderUser(
       <main class="layout">
         <section class="screen" data-screen="profile">
           <section class="panel profile center">
-            ${safeName ? `<div class="profile-nickname" data-profile-name>${safeName}</div>` : ""}
-            ${logoStackMarkup}
-            ${logoOrderMenuMarkup}
+          ${nicknameMarkup}
+          <div class="profile-predictions" data-profile-predictions>
+            ${predictionGridMarkup}
+          </div>
             <div class="card-progress" style="--p:${accuracy}%;" role="img" aria-label="Точність прогнозів ${accuracy}%">
               <span class="card-progress__fill"></span>
               <span class="card-progress__label">${accuracy}%</span>
