@@ -93,9 +93,10 @@ const TEAM_SEARCH_ALIASES: Record<string, string> = {
   "como-1907": "Como",
   racing: "Real Racing Club de Santander",
   racingsantander: "Real Racing Club de Santander",
-  parissaintgermain: "Paris SG",
-  psg: "Paris Saint-Germain",
-  parissaintgermainfc: "Paris Saint-Germain"
+  parissaintgermain: "Paris Saint Germain",
+  psg: "Paris Saint Germain",
+  parissaintgermainfc: "Paris Saint Germain",
+  parissatgermain: "Paris Saint Germain"
 };
 const TEAM_MATCH_ALIASES: Record<string, string> = {
   inter: "intermilan",
