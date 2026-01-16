@@ -112,10 +112,14 @@ const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
 ];
 
-const DEFAULT_ONBOARDING_LEAGUE: AllLeagueId = "ukrainian-premier-league";
+const DEFAULT_ONBOARDING_LEAGUE: AllLeagueId = "english-premier-league";
 const ONBOARDING_LEAGUES: Array<{ id: AllLeagueId; label: string; flag: string }> = [
+  { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
+  { id: "la-liga", label: "Ла Ліга", flag: "🇪🇸" },
+  { id: "serie-a", label: "Серія A", flag: "🇮🇹" },
   { id: "ukrainian-premier-league", label: "УПЛ", flag: "🇺🇦" },
-  ...EUROPEAN_LEAGUES
+  { id: "bundesliga", label: "Бундесліга", flag: "🇩🇪" },
+  { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
 ];
 
 const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
