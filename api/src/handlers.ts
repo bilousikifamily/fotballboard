@@ -1154,11 +1154,18 @@ export default {
       if (scheduledMatches === null) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
-      if (scheduledMatches.length === 0) {
+
+      const kyivDay = getKyivDateString();
+      const kyivRange = getKyivDayRange(kyivDay);
+      const todayMatches =
+        kyivRange && scheduledMatches.length
+          ? filterMatchesByRange(scheduledMatches, kyivRange)
+          : scheduledMatches;
+      if (todayMatches.length === 0) {
         return jsonResponse({ ok: true }, 200, corsHeaders());
       }
 
-      const matchIds = scheduledMatches.map((match) => match.id);
+      const matchIds = todayMatches.map((match) => match.id);
 
       const users = await listAllUserIds(supabase);
       if (!users) {
@@ -1167,7 +1174,7 @@ export default {
 
       for (const user of users) {
         const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
-        const missingMatches = scheduledMatches.filter((match) => !predicted.has(match.id));
+        const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
         if (!missingMatches.length) {
           continue;
         }
@@ -5966,6 +5973,24 @@ function parseLimit(value: string | null, fallback: number, max: number): number
     return fallback;
   }
   return Math.min(parsed, max);
+}
+
+function filterMatchesByRange(matches: DbMatch[], range: { start: string; end: string }): DbMatch[] {
+  const startMs = new Date(range.start).getTime();
+  const endMs = new Date(range.end).getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return matches;
+  }
+  return matches.filter((match) => {
+    if (!match.kickoff_at) {
+      return false;
+    }
+    const kickoffMs = new Date(match.kickoff_at).getTime();
+    if (!Number.isFinite(kickoffMs)) {
+      return false;
+    }
+    return kickoffMs >= startMs && kickoffMs <= endMs;
+  });
 }
 
 function getKyivDayRange(dateStr: string): { start: string; end: string } | null {
