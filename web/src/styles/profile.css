@@ -206,7 +206,7 @@
   z-index: 1;
 }
 .screen.screen--profile {
-  padding: clamp(20px, 5vw, 32px) clamp(12px, 3vw, 20px) 0;
+  padding: clamp(20px, 5vw, 32px) clamp(12px, 3vw, 20px) var(--tabbar-offset);
   gap: 0;
   min-height: calc(100dvh - var(--tabbar-offset));
   height: auto;
@@ -1145,6 +1145,7 @@ h1 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.6);
+  text-align: center;
 }
 
 .message-chip:hover {
