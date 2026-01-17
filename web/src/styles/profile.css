@@ -257,9 +257,17 @@ body.profile-tab-active #app {
 }
 
 .screen.screen--profile .panel.profile,
-.screen.screen--profile .panel.faction-recent-messages,
 .screen.screen--profile .panel.faction-members {
   height: 100%;
+}
+
+.screen.screen--profile .panel.faction-recent-messages {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .screen.screen--profile .notice-ticker {
@@ -298,8 +306,8 @@ body.profile-tab-active #app {
 }
 
 .profile-predictions {
-  width: 100%;
-  margin: 12px 0 4px;
+  width: 95%;
+  margin: 12px auto 4px;
   display: grid;
   justify-items: center;
   padding: 8px 0;
@@ -307,6 +315,9 @@ body.profile-tab-active #app {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
+  position: relative;
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
 }
 
 .profile-predictions::-webkit-scrollbar {
@@ -944,8 +955,8 @@ h1 {
 }
 
 .faction-members-table .leaderboard-row.is-self {
-  background: linear-gradient(135deg, rgba(255, 121, 26, 0.855), rgba(255, 154, 31, 0.383));
-  border-color: rgba(255, 154, 31, 0.62);
+  background: var(--accent-gradient);
+  border-color: rgba(255, 255, 255, 0.25);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.55),
     0 12px 28px rgba(0, 0, 0, 0.45);
@@ -1077,7 +1088,7 @@ h1 {
 .faction-thread-link {
   width: 100%;
   border-radius: 999px;
-  padding: 0.9rem 1.1rem;
+  padding: 0.65rem 1.1rem;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
   font-weight: 800;
