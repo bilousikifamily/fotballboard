@@ -203,9 +203,9 @@
 .screen.screen--profile {
   padding: 0;
   gap: 0;
-  min-height: calc(100dvh - var(--tabbar-offset));
-  height: calc(100dvh - var(--tabbar-offset));
-  max-height: calc(100dvh - var(--tabbar-offset));
+  min-height: calc(90dvh - var(--tabbar-offset));
+  height: calc(90dvh - var(--tabbar-offset));
+  max-height: calc(90dvh - var(--tabbar-offset));
   overflow: hidden;
 }
 
@@ -223,7 +223,7 @@ body.profile-tab-active #app {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-rows: 25fr 10fr 35fr 30fr;
+  grid-template-rows: 24fr 12fr 34fr 30fr;
   row-gap: 6px;
 }
 
@@ -240,7 +240,7 @@ body.profile-tab-active #app {
 .profile-screen__row--results {
   align-items: flex-start;
   justify-items: center;
-  padding-top: 34px;
+  padding-top: 54px;
   padding-bottom: 8px;
   overflow: visible;
 }
@@ -267,7 +267,7 @@ body.profile-tab-active #app {
   box-shadow: none;
   padding: 0;
   display: grid;
-  gap: 6px;
+  gap: 12px;
 }
 
 .screen.screen--profile .notice-ticker {
@@ -306,7 +306,7 @@ body.profile-tab-active #app {
 }
 
 .profile-predictions {
-  width: 95%;
+  width: 98%;
   margin: 12px auto 4px;
   display: grid;
   justify-items: center;
@@ -1088,7 +1088,10 @@ h1 {
 .faction-thread-link {
   width: 100%;
   border-radius: 999px;
-  padding: 0.65rem 1.1rem;
+  padding: 0;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 20px;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
   font-weight: 800;
@@ -1100,6 +1103,7 @@ h1 {
   text-decoration: none;
   display: grid;
   place-items: center;
+  line-height: 1;
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
