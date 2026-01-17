@@ -199,15 +199,24 @@
   letter-spacing: 0.02em;
   z-index: 1;
 }
+.screen.screen--profile {
+  padding: 0;
+  gap: 0;
+  min-height: calc(100dvh - var(--tabbar-offset));
+  height: calc(100dvh - var(--tabbar-offset));
+  max-height: calc(100dvh - var(--tabbar-offset));
+  overflow: visible;
+}
 
-  .screen.screen--profile {
-    padding: 0;
-    gap: 0;
-    min-height: calc(100dvh - var(--tabbar-offset));
-    height: calc(100dvh - var(--tabbar-offset));
-    max-height: calc(100dvh - var(--tabbar-offset));
-    overflow: visible;
-  }
+body.profile-tab-active {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: 0;
+}
+
+body.profile-tab-active #app {
+  padding-top: 0;
+  padding-bottom: 0;
+}
 
 .screen.screen--profile .profile-screen__layout {
   height: 100%;
