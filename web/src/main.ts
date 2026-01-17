@@ -1270,26 +1270,41 @@ function renderUser(
   app.innerHTML = `
     <div class="app-shell">
       <main class="layout">
-        <section class="screen" data-screen="profile">
-          <section class="panel profile center">
-          ${nicknameMarkup}
-          <div class="profile-predictions" data-profile-predictions>
-            ${predictionGridMarkup}
-          </div>
-            <div class="card-progress" style="--p:${accuracy}%;" role="img" aria-label="Точність прогнозів ${accuracy}%">
-              <span class="card-progress__fill"></span>
-              <span class="card-progress__label">${accuracy}%</span>
+        <section class="screen screen--profile" data-screen="profile">
+          <div class="profile-screen__layout">
+            <div class="profile-screen__row profile-screen__row--results">
+              <section class="panel profile center">
+                ${nicknameMarkup}
+                <div class="profile-predictions" data-profile-predictions>
+                  ${predictionGridMarkup}
+                </div>
+                <div
+                  class="card-progress"
+                  style="--p:${accuracy}%;"
+                  role="img"
+                  aria-label="Точність прогнозів ${accuracy}%"
+                >
+                  <span class="card-progress__fill"></span>
+                  <span class="card-progress__label">${accuracy}%</span>
+                </div>
+              </section>
             </div>
-          </section>
 
-          ${factionMembersMarkup}
+            <div class="profile-screen__row profile-screen__row--animation">
+              <div class="notice-ticker" aria-live="polite">
+                <span class="notice-ticker-text" data-notice-text>
+                  ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
+                </span>
+              </div>
+            </div>
 
-          ${factionThreadMarkup}
+            <div class="profile-screen__row profile-screen__row--chat">
+              ${factionThreadMarkup}
+            </div>
 
-          <div class="notice-ticker" aria-live="polite">
-            <span class="notice-ticker-text" data-notice-text>
-              ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
-            </span>
+            <div class="profile-screen__row profile-screen__row--top">
+              ${factionMembersMarkup}
+            </div>
           </div>
         </section>
 

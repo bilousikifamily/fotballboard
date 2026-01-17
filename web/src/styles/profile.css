@@ -200,6 +200,56 @@
   z-index: 1;
 }
 
+.screen.screen--profile {
+  padding: 0;
+  gap: 0;
+  min-height: calc(100dvh - var(--tabbar-offset));
+  max-height: calc(100dvh - var(--tabbar-offset));
+  overflow: hidden;
+}
+
+.screen.screen--profile .profile-screen__layout {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 25fr 10fr 35fr 30fr;
+  row-gap: 12px;
+}
+
+.profile-screen__row {
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  display: grid;
+  align-items: stretch;
+  justify-items: stretch;
+  padding-inline: 12px;
+}
+
+.profile-screen__row--animation {
+  justify-items: center;
+  align-items: center;
+  padding-inline: 0;
+}
+
+.profile-screen__row--top {
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+}
+
+.screen.screen--profile .panel.profile,
+.screen.screen--profile .panel.faction-recent-messages,
+.screen.screen--profile .panel.faction-members {
+  height: 100%;
+}
+
+.screen.screen--profile .notice-ticker {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  padding: 0 12px;
+}
+
 .recent-results {
   display: flex;
   justify-content: center;
