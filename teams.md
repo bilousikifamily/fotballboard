@@ -55,6 +55,7 @@ This table lists clubs found in the project with Ukrainian alternatives.
 | La Liga | Girona | `girona` | ЖИРОНА |
 | La Liga | Las Palmas | `las-palmas` | ЛАС-ПАЛЬМАС |
 | La Liga | Leganes | `leganes` | ЛЕГАНЕС |
+| La Liga | Levante | `levante` | ЛЕВАНТЕ |
 | La Liga | Mallorca | `mallorca` | МАЛЬОРКА |
 | La Liga | Osasuna | `osasuna` | ОСАСУНА |
 | La Liga | Racing | `racing` | РАСІНГ |

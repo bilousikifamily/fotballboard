@@ -61,6 +61,7 @@ export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "leeds": "ЛІДС",
   "leeds-united": "ЛІДС",
   "leganes": "ЛЕГАНЕС",
+  "levante": "ЛЕВАНТЕ",
   "leicester": "ЛЕСТЕР",
   "lille": "ЛІЛЛЬ",
   "liverpool": "ЛІВЕРПУЛЬ",
