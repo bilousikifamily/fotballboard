@@ -260,7 +260,7 @@ body.profile-tab-active #app {
 .profile-screen__row--animation {
   justify-items: center;
   align-items: center;
-  padding-block: 20px;
+  padding-block: 0;
   padding-inline: 0;
 }
 
@@ -325,9 +325,9 @@ body.profile-tab-active #app {
   margin: 12px 0 4px;
   display: grid;
   justify-items: center;
-  padding: 8px 0;
-  max-height: calc(2 * var(--prediction-dot-size) + var(--prediction-dot-gap) + 18px);
-  overflow-y: auto;
+  padding: 0;
+  max-height: none;
+  overflow-y: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
   position: relative;
@@ -1099,7 +1099,7 @@ h1 {
 .message-chip {
   display: inline-flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   padding: 12px 14px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.10);
