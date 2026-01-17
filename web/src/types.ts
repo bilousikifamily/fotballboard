@@ -78,7 +78,13 @@ export type FactionBranchMessage = {
 };
 
 export type FactionMessagesResponse =
-  | { ok: true; faction: FactionBranchSlug; chat_url: string | null; messages: FactionBranchMessage[] }
+  | {
+      ok: true;
+      faction: FactionBranchSlug;
+      chat_url: string | null;
+      messages: FactionBranchMessage[];
+      debug?: { source: string; chat_id: number | null; thread_id: number | null; count: number };
+    }
   | { ok: false; error: string };
 
 export type CreateMatchResponse =

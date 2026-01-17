@@ -593,7 +593,22 @@ export default {
       const chatRef = refs.bySlug[faction];
       const chatUrl = formatFactionChatUrl(chatRef);
 
-      return jsonResponse({ ok: true, faction, chat_url: chatUrl, messages }, 200, corsHeaders());
+      return jsonResponse(
+        {
+          ok: true,
+          faction,
+          chat_url: chatUrl,
+          messages,
+          debug: {
+            source: "debug_updates",
+            chat_id: targetRef?.chatId ?? null,
+            thread_id: targetRef?.threadId ?? null,
+            count: messages.length
+          }
+        },
+        200,
+        corsHeaders()
+      );
     }
 
     if (url.pathname === "/api/analitika") {
