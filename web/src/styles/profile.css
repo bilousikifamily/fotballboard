@@ -261,8 +261,10 @@ body.profile-tab-active #app {
 .profile-screen__row--animation {
   justify-items: center;
   align-items: center;
-  padding-block: 10px;
-  margin: calc(-1 * var(--profile-row-gap)) 0;
+  padding-top: 0;
+  padding-bottom: 20px;
+  margin-top: calc(-1 * var(--profile-row-gap));
+  margin-bottom: 0;
 }
 
 .profile-screen__row--top {
