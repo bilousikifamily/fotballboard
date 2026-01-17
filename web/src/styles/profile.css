@@ -264,6 +264,10 @@ body.profile-tab-active #app {
   margin-bottom: 0;
 }
 
+.profile-screen__row--chat {
+  margin-top: 20px;
+}
+
 .profile-screen__row--top {
   grid-template-rows: auto 1fr;
   gap: 10px;
