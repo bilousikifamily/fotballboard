@@ -6611,7 +6611,8 @@ async function sendFactionMatchStartDigest(
   const lines = predictions.map((prediction) => formatMatchPredictionLine(homeName, awayName, prediction));
   const message = [header, ...lines].join("\n");
   try {
-    await sendMessage(env, chatTarget, message);
+    const threadId = typeof chatRef.threadId === "number" ? chatRef.threadId : undefined;
+    await sendMessage(env, chatTarget, message, undefined, undefined, threadId);
   } catch (error) {
     console.error("Failed to send match start digest", error);
   }
