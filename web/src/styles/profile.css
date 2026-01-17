@@ -232,6 +232,7 @@ body.profile-tab-active #app {
   height: auto;
   min-height: 0;
   display: grid;
+  align-content: start;
   grid-template-rows:
     minmax(150px, 0.32fr)
     auto
