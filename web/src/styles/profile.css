@@ -45,8 +45,8 @@
 .profile-nickname-chip {
   padding: 10px 18px;
   border-radius: 14px;
-  background: rgba(255, 122, 26, 0.18);
-  border: 1px solid rgba(255, 154, 31, 0.35);
+  background: var(--accent-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(0, 0, 0, 0.55) inset;
@@ -59,6 +59,7 @@
   pointer-events: auto;
   position: relative;
   z-index: 3;
+  color: #0b0b0d;
 }
 
 .profile-club-badge {
@@ -205,7 +206,7 @@
   min-height: calc(100dvh - var(--tabbar-offset));
   height: calc(100dvh - var(--tabbar-offset));
   max-height: calc(100dvh - var(--tabbar-offset));
-  overflow: visible;
+  overflow: hidden;
 }
 
 body.profile-tab-active {
@@ -214,8 +215,8 @@ body.profile-tab-active {
 }
 
 body.profile-tab-active #app {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0;
+  width: min(520px, 100vw);
 }
 
 .screen.screen--profile .profile-screen__layout {
@@ -223,7 +224,7 @@ body.profile-tab-active #app {
   min-height: 0;
   display: grid;
   grid-template-rows: 25fr 10fr 35fr 30fr;
-  row-gap: 12px;
+  row-gap: 6px;
 }
 
 .profile-screen__row {
@@ -233,7 +234,15 @@ body.profile-tab-active #app {
   display: grid;
   align-items: stretch;
   justify-items: stretch;
-  padding-inline: 12px;
+  padding-inline: 14px;
+}
+
+.profile-screen__row--results {
+  align-items: flex-start;
+  justify-items: center;
+  padding-top: 34px;
+  padding-bottom: 8px;
+  overflow: visible;
 }
 
 .profile-screen__row--animation {
@@ -247,10 +256,6 @@ body.profile-tab-active #app {
   gap: 10px;
 }
 
-.profile-screen__row--results {
-  overflow: visible;
-}
-
 .screen.screen--profile .panel.profile,
 .screen.screen--profile .panel.faction-recent-messages,
 .screen.screen--profile .panel.faction-members {
@@ -262,6 +267,18 @@ body.profile-tab-active #app {
   max-width: none;
   height: 100%;
   padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-screen__row--animation .notice-ticker-text {
+  width: 100%;
+  padding: 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  line-height: 1.3;
 }
 
 .recent-results {
@@ -285,14 +302,28 @@ body.profile-tab-active #app {
   margin: 12px 0 4px;
   display: grid;
   justify-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
+  max-height: calc(2 * var(--prediction-dot-size) + var(--prediction-dot-gap) + 18px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.profile-predictions::-webkit-scrollbar {
+  width: 4px;
+}
+
+.profile-predictions::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
 }
 
 .profile-prediction-grid {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--prediction-dot-gap);
+  grid-auto-rows: var(--prediction-dot-size);
   justify-items: center;
   align-items: center;
   padding: 0 4px;

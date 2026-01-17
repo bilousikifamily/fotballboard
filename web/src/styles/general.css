@@ -8,9 +8,12 @@
   --surface-strong: #232328;
   --ink: #f7f1e6;
   --muted: #b2a89b;
-  --accent: #ff7a1a;
-  --accent-strong: #ff9a1f;
-  --accent-soft: rgba(255, 122, 26, 0.2);
+  --accent: #ffb347;
+  --accent-strong: #d96a1d;
+  --accent-soft: rgba(255, 179, 71, 0.2);
+  --accent-gradient: linear-gradient(135deg, #ffb347, #ff7a1a);
+  --prediction-dot-size: 22px;
+  --prediction-dot-gap: 6px;
   --outline-light: rgba(255, 255, 255, 0.12);
   --outline-dark: rgba(0, 0, 0, 0.65);
   --tabbar-height: 72px;
