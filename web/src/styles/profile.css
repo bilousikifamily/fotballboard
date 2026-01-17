@@ -31,7 +31,7 @@
   position: absolute;
   top: clamp(-28px, -6vw, -16px);
   left: 50%;
-  transform: translate(calc(-50% + clamp(0px, 2vw, 8px)), 0);
+  transform: translate(-50%, 0);
   margin: 0;
   padding: 0;
   border-radius: 14px;
@@ -234,7 +234,7 @@ body.profile-tab-active #app {
   display: grid;
   grid-template-rows:
     minmax(150px, 0.32fr)
-    minmax(20px, 0.08fr)
+    auto
     minmax(150px, 0.30fr)
     minmax(130px, 0.26fr);
   row-gap: var(--profile-row-gap);
@@ -261,7 +261,7 @@ body.profile-tab-active #app {
 .profile-screen__row--animation {
   justify-items: center;
   align-items: center;
-  padding: 0;
+  padding-block: 10px;
   margin: 0;
   margin-block: calc(-1 * var(--profile-row-gap));
 }
@@ -332,13 +332,11 @@ body.profile-tab-active #app {
   display: grid;
   justify-items: center;
   padding: 0;
-  height: calc((var(--prediction-dot-size) * 2.35) + var(--prediction-dot-gap));
-  overflow-y: auto;
+  height: auto;
+  overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
   position: relative;
-  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
 }
 
 .profile-predictions::-webkit-scrollbar {
@@ -383,7 +381,7 @@ body.profile-tab-active #app {
 
 @media (max-width: 520px) {
   .screen.screen--profile .profile-screen__layout {
-    grid-template-rows: 24fr 8fr 34fr 34fr;
+    grid-template-rows: 24fr auto 34fr 34fr;
   }
 
   .profile-screen__row {
@@ -412,7 +410,7 @@ body.profile-tab-active #app {
     row-gap: var(--profile-row-gap);
     grid-template-rows:
       clamp(100px, 0.25fr, 180px)
-      clamp(20px, 0.08fr, 32px)
+      auto
       clamp(120px, 0.33fr, 200px)
       clamp(110px, 0.3fr, 170px);
   }
