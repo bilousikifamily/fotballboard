@@ -208,10 +208,9 @@
   padding: clamp(12px, 3vw, 20px) clamp(12px, 3vw, 20px) 0;
   gap: 0;
   min-height: calc(100dvh - var(--tabbar-offset));
-  height: calc(100dvh - var(--tabbar-offset));
-  max-height: calc(100dvh - var(--tabbar-offset));
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: auto;
+  max-height: none;
+  overflow: visible;
   overscroll-behavior: contain;
   --prediction-dot-size: clamp(16px, 4.8vw, 22px);
   --prediction-dot-gap: clamp(4px, 2.2vw, 6px);
@@ -228,7 +227,7 @@ body.profile-tab-active #app {
 }
 
 .screen.screen--profile .profile-screen__layout {
-  height: 100%;
+  height: auto;
   min-height: 0;
   display: grid;
   grid-template-rows:
@@ -396,8 +395,8 @@ body.profile-tab-active #app {
 @media (max-height: 640px) {
   .screen.screen--profile {
     min-height: calc(100dvh - var(--tabbar-offset));
-    height: calc(100dvh - var(--tabbar-offset));
-    max-height: calc(100dvh - var(--tabbar-offset));
+    height: auto;
+    max-height: none;
   }
 
   .screen.screen--profile .profile-screen__layout {
