@@ -78,7 +78,7 @@ import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 const STARTING_POINTS = 100;
 const PREDICTION_CUTOFF_MS = 0;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
-const PREDICTION_REMINDER_WINDOW_MS = 15 * 60 * 1000;
+const PREDICTION_REMINDER_WINDOW_MS = 5 * 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -1414,7 +1414,7 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
   }
 
   const userFaction = await getUserFactionSlug(supabase, from.id);
-  if (userFaction !== faction) {
+  if (userFaction && userFaction !== faction) {
     return;
   }
 
@@ -1723,7 +1723,7 @@ async function listFactionMembers(
 async function insertFactionBranchMessage(
   supabase: SupabaseClient,
   payload: {
-    faction: "real_madrid" | "barcelona";
+    faction: FactionBranchSlug;
     chatId: number;
     messageId: number;
     threadId: number | null;
@@ -1764,7 +1764,7 @@ type FactionBranchMessageRow = {
 
 async function listFactionBranchMessages(
   supabase: SupabaseClient,
-  faction: "real_madrid" | "barcelona",
+  faction: FactionBranchSlug,
   limit: number
 ): Promise<FactionBranchMessage[]> {
   try {
@@ -6177,9 +6177,10 @@ async function handleWeatherRefresh(env: Env): Promise<void> {
 }
 
 function getPredictionReminderWindow(now: Date): { start: Date; end: Date } {
-  const leadMs = PREDICTION_CUTOFF_MS + PREDICTION_REMINDER_BEFORE_CLOSE_MS;
-  const start = new Date(now.getTime() + leadMs);
-  const end = new Date(start.getTime() + PREDICTION_REMINDER_WINDOW_MS);
+  const targetMs = now.getTime() + PREDICTION_REMINDER_BEFORE_CLOSE_MS;
+  const halfWindow = Math.floor(PREDICTION_REMINDER_WINDOW_MS / 2);
+  const start = new Date(targetMs - halfWindow);
+  const end = new Date(targetMs + halfWindow);
   return { start, end };
 }
 
@@ -6506,7 +6507,7 @@ function formatPredictionReminderMessage(match: PredictionReminderMatch): string
   const away = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
   const homeLabel = escapeTelegramHtml(home);
   const awayLabel = escapeTelegramHtml(away);
-  return `До закриття прийому прогнозів на матч:\n${homeLabel} — ${awayLabel}\nзалишилась 1 година...`;
+  return `${homeLabel} — ${awayLabel}\nрозпочнеться через 1 годину.\nтвоя фракція розраховує на твій голос.`;
 }
 
 function formatAnnouncementMatchLine(match: DbMatch): string {
