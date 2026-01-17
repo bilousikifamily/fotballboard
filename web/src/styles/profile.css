@@ -3,6 +3,7 @@
   padding: clamp(20px, 4vw, 28px) clamp(16px, 4vw, 20px) clamp(24px, 5vw, 32px);
   gap: 10px;
   margin-bottom: 12px;
+  width: 100%;
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.1), transparent 55%),
     linear-gradient(160deg, #17181d 0%, #101114 100%);
@@ -250,7 +251,7 @@ body.profile-tab-active #app {
 
 .profile-screen__row--results {
   align-items: flex-start;
-  justify-items: center;
+  justify-items: stretch;
   padding-top: clamp(24px, 8vw, 64px);
   padding-bottom: 8px;
   overflow: visible;
@@ -259,6 +260,7 @@ body.profile-tab-active #app {
 .profile-screen__row--animation {
   justify-items: center;
   align-items: center;
+  padding-block: 20px;
   padding-inline: 0;
 }
 
@@ -280,7 +282,7 @@ body.profile-tab-active #app {
   display: grid;
   gap: 8px;
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .screen.screen--profile .notice-ticker {
@@ -1169,9 +1171,9 @@ h1 {
 .faction-thread-link {
   width: 100%;
   border-radius: 999px;
-  padding: 0;
-  height: 32px;
-  min-height: 32px;
+  padding: 12px 16px;
+  min-height: 44px;
+  height: auto;
   border-radius: 20px;
   margin: 0;
   letter-spacing: 0.14em;
