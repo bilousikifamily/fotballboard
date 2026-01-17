@@ -206,7 +206,7 @@
   z-index: 1;
 }
 .screen.screen--profile {
-  padding: clamp(12px, 3vw, 20px) clamp(12px, 3vw, 20px) 0;
+  padding: clamp(20px, 5vw, 32px) clamp(12px, 3vw, 20px) 0;
   gap: 0;
   min-height: calc(100dvh - var(--tabbar-offset));
   height: auto;
@@ -332,6 +332,7 @@ body.profile-tab-active #app {
   display: grid;
   justify-items: center;
   padding: 0;
+  padding-bottom: 8px;
   height: auto;
   overflow: visible;
   scrollbar-width: thin;
