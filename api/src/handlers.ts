@@ -1929,7 +1929,10 @@ async function listFactionDebugMessages(
   ref: FactionChatRef | undefined,
   limit: number
 ): Promise<FactionBranchMessage[]> {
-  if (!ref?.chatId) {
+  if (!ref) {
+    return [];
+  }
+  if (typeof ref.chatId !== "number" && typeof ref.threadId !== "number") {
     return [];
   }
   try {
@@ -1937,12 +1940,14 @@ async function listFactionDebugMessages(
       .from("debug_updates")
       .select("id, chat_id, thread_id, message_id, user_id, text, created_at")
       .eq("update_type", "message")
-      .eq("chat_id", ref.chatId)
       .order("created_at", { ascending: false })
       .limit(Math.min(limit, 20));
+    if (typeof ref.chatId === "number") {
+      query = query.eq("chat_id", ref.chatId);
+    }
     if (typeof ref.threadId === "number") {
       query = query.eq("thread_id", ref.threadId);
-    } else {
+    } else if (typeof ref.chatId === "number") {
       query = query.is("thread_id", null);
     }
     const { data, error } = await query;
