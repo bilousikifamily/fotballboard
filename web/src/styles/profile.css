@@ -262,8 +262,7 @@ body.profile-tab-active #app {
   justify-items: center;
   align-items: center;
   padding-block: 10px;
-  margin: 0;
-  margin-block: calc(-1 * var(--profile-row-gap));
+  margin: calc(-1 * var(--profile-row-gap)) 0;
 }
 
 .profile-screen__row--top {
@@ -331,9 +330,7 @@ body.profile-tab-active #app {
   margin: 8px 0 2px;
   display: grid;
   justify-items: center;
-  padding: 0;
-  padding-bottom: 8px;
-  height: auto;
+  padding: 0 0 8px;
   overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
