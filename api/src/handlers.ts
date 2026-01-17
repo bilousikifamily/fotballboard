@@ -5653,7 +5653,7 @@ async function applyMissingPredictionPenalties(
   try {
     const { data: users, error: usersError } = await supabase
       .from("users")
-      .select("id, points_total");
+      .select("id, points_total, faction_club_id");
     if (usersError) {
       console.error("Failed to fetch users for missing prediction penalties", usersError);
       return [];
@@ -5676,6 +5676,9 @@ async function applyMissingPredictionPenalties(
     const now = new Date().toISOString();
 
     for (const user of (users as StoredUser[]) ?? []) {
+      if (!user.faction_club_id) {
+        continue;
+      }
       if (predictedUserIds.has(user.id) || penalizedUserIds.has(user.id)) {
         continue;
       }
