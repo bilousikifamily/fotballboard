@@ -200,13 +200,14 @@
   z-index: 1;
 }
 
-.screen.screen--profile {
-  padding: 0;
-  gap: 0;
-  min-height: calc(100dvh - var(--tabbar-offset));
-  max-height: calc(100dvh - var(--tabbar-offset));
-  overflow: hidden;
-}
+  .screen.screen--profile {
+    padding: 0;
+    gap: 0;
+    min-height: calc(100dvh - var(--tabbar-offset));
+    height: calc(100dvh - var(--tabbar-offset));
+    max-height: calc(100dvh - var(--tabbar-offset));
+    overflow: visible;
+  }
 
 .screen.screen--profile .profile-screen__layout {
   height: 100%;
@@ -235,6 +236,10 @@
 .profile-screen__row--top {
   grid-template-rows: auto 1fr;
   gap: 10px;
+}
+
+.profile-screen__row--results {
+  overflow: visible;
 }
 
 .screen.screen--profile .panel.profile,

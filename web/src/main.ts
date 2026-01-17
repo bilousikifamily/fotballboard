@@ -2841,6 +2841,7 @@ function setupTabs(): void {
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-selected", isActive ? "true" : "false");
     });
+    document.body.classList.toggle("profile-tab-active", tab === "profile");
     if (tab === "leaderboard") {
       void loadLeaderboard();
     }
