@@ -115,6 +115,16 @@ const CLASSICO_CHAT_ENV: Record<ClassicoFaction, keyof Env> = {
   barcelona: "FACTION_CHAT_BARCA"
 };
 
+const ALL_FACTION_BRANCHES: FactionBranchSlug[] = [
+  "real_madrid",
+  "barcelona",
+  "liverpool",
+  "arsenal",
+  "chelsea",
+  "milan",
+  "manchester-united"
+];
+
 const EXTRA_FACTION_CHAT_CONFIG: Array<{ slug: Exclude<FactionBranchSlug, ClassicoFaction>; envKey: keyof Env }> = [
   { slug: "liverpool", envKey: "FACTION_CHAT_LIVERPOOL" },
   { slug: "arsenal", envKey: "FACTION_CHAT_ARSENAL" },
@@ -6249,7 +6259,7 @@ type MatchPredictionRecord = {
   user: MatchPredictionUser | null;
 };
 
-type PredictionsByFaction = Record<ClassicoFaction, MatchPredictionRecord[]>;
+type PredictionsByFaction = Record<FactionBranchSlug, MatchPredictionRecord[]>;
 
 async function listMatchesAwaitingStartDigest(supabase: SupabaseClient): Promise<DbMatch[] | null> {
   try {
@@ -6324,15 +6334,23 @@ async function listMatchPredictionsWithUsers(
 }
 
 function groupMatchPredictionsByFaction(predictions: MatchPredictionRecord[]): PredictionsByFaction {
-  const grouped: PredictionsByFaction = {
-    real_madrid: [],
-    barcelona: []
-  };
+  const grouped: PredictionsByFaction = ALL_FACTION_BRANCHES.reduce<PredictionsByFaction>(
+    (acc, slug) => {
+      acc[slug] = [];
+      return acc;
+    },
+    {} as PredictionsByFaction
+  );
   predictions.forEach((prediction) => {
-    const normalized = normalizeClassicoChoice(prediction.user?.faction_club_id);
-    if (normalized === "real_madrid" || normalized === "barcelona") {
-      grouped[normalized].push(prediction);
+    const normalized = normalizeFactionChoice(prediction.user?.faction_club_id);
+    if (!normalized) {
+      return;
     }
+    const bucket = grouped[normalized];
+    if (!bucket) {
+      return;
+    }
+    bucket.push(prediction);
   });
   return grouped;
 }
@@ -6367,7 +6385,7 @@ function formatMatchPredictionLine(
 async function sendFactionMatchStartDigest(
   env: Env,
   match: DbMatch,
-  faction: ClassicoFaction,
+  faction: FactionBranchSlug,
   predictions: MatchPredictionRecord[],
   chatRef?: FactionChatRef
 ): Promise<void> {
@@ -6412,8 +6430,14 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
     }
 
     const grouped = groupMatchPredictionsByFaction(predictions);
-    await sendFactionMatchStartDigest(env, match, "real_madrid", grouped.real_madrid, refs.classico.real_madrid);
-    await sendFactionMatchStartDigest(env, match, "barcelona", grouped.barcelona, refs.classico.barcelona);
+    for (const faction of ALL_FACTION_BRANCHES) {
+      const factionPredictions = grouped[faction];
+      if (!factionPredictions.length) {
+        continue;
+      }
+      const chatRef = refs.bySlug[faction];
+      await sendFactionMatchStartDigest(env, match, faction, factionPredictions, chatRef);
+    }
 
     try {
       const { error } = await supabase
