@@ -1696,29 +1696,7 @@ async function handleGeneralChatModeration(
   if (!isGeneralChat) {
     return;
   }
-
-  if (!supabase) {
-    console.error("Failed to moderate general chat: missing_supabase");
-    return;
-  }
-
-  const userFaction = await getUserClassicoChoice(supabase, from.id);
-  if (userFaction) {
-    return;
-  }
-
-  await deleteMessage(env, chatId, messageId);
-
-  const userLabel = formatUserDisplay(from);
-  const directMessage = `Твоє повідомлення видалено: у груповому чаті можуть писати тільки користувачі з обраною фракцією. Оберіть фракцію у WebApp.`;
-  await sendMessage(env, from.id, directMessage);
-
-  const generalText = `Порушення у груповому чаті: ${userLabel} написав повідомлення без обраної фракції. Повідомлення видалено.`;
-  const generalChatTarget =
-    refs.general.chatId ?? (refs.general.chatUsername ? `@${refs.general.chatUsername}` : null);
-  if (generalChatTarget) {
-    await sendMessage(env, generalChatTarget, generalText);
-  }
+  return;
 }
 
 async function storeUser(

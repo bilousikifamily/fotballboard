@@ -1,5 +1,7 @@
 # Faction branch chat links
 
+Terminology note: "гілка фракції" (faction branch) = the pinned Telegram forum thread for a specific faction inside the main group.
+
 Use this file to keep track of the Telegram branch/thread URLs you need for each faction.
 Once you know the link, copy it into your deployment configuration:
 `FACTION_CHAT_REAL`, `FACTION_CHAT_BARCA`, `FACTION_CHAT_GENERAL`, and `FACTION_CHAT_MANCHESTER_UNITED`.
