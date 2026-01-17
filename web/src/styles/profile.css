@@ -315,6 +315,9 @@ body.profile-tab-active #app {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .recent-results {
