@@ -119,7 +119,8 @@ const EXTRA_FACTION_CHAT_CONFIG: Array<{ slug: Exclude<FactionBranchSlug, Classi
   { slug: "liverpool", envKey: "FACTION_CHAT_LIVERPOOL" },
   { slug: "arsenal", envKey: "FACTION_CHAT_ARSENAL" },
   { slug: "chelsea", envKey: "FACTION_CHAT_CHELSEA" },
-  { slug: "milan", envKey: "FACTION_CHAT_MILAN" }
+  { slug: "milan", envKey: "FACTION_CHAT_MILAN" },
+  { slug: "manchester-united", envKey: "FACTION_CHAT_MANCHESTER_UNITED" }
 ];
 
 const FACTION_DISPLAY_NAMES: Record<FactionBranchSlug, string> = {
@@ -128,7 +129,8 @@ const FACTION_DISPLAY_NAMES: Record<FactionBranchSlug, string> = {
   liverpool: "Ліверпуль",
   arsenal: "Арсенал",
   chelsea: "Челсі",
-  milan: "Мілан"
+  milan: "Мілан",
+  "manchester-united": "Манчестер Юнайтед"
 };
 
 const NO_FACTION_LABEL = "без фракції";
@@ -5678,14 +5680,20 @@ function parseRating(value: unknown): number | null {
 
 const FACTION_SLUG_ALIASES: Record<string, FactionBranchSlug> = {
   barcelona: "barcelona",
-  "barca": "barcelona",
-  "real_madrid": "real_madrid",
+  barca: "barcelona",
+  real_madrid: "real_madrid",
   "real-madrid": "real_madrid",
   realmadrid: "real_madrid",
   liverpool: "liverpool",
   arsenal: "arsenal",
   chelsea: "chelsea",
-  milan: "milan"
+  milan: "milan",
+  "manchester-united": "manchester-united",
+  "manchester_united": "manchester-united",
+  "manchester united": "manchester-united",
+  "man-united": "manchester-united",
+  manutd: "manchester-united",
+  "man utd": "manchester-united"
 };
 
 function normalizeFactionChoice(value: unknown): FactionBranchSlug | null {

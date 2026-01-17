@@ -58,7 +58,14 @@ export type ProfileStatsPayload = {
   factions: FactionEntry[];
 };
 
-export type FactionBranchSlug = "real_madrid" | "barcelona" | "liverpool" | "arsenal" | "chelsea" | "milan";
+export type FactionBranchSlug =
+  | "real_madrid"
+  | "barcelona"
+  | "liverpool"
+  | "arsenal"
+  | "chelsea"
+  | "milan"
+  | "manchester-united";
 
 export type FactionBranchMessage = {
   id: number;

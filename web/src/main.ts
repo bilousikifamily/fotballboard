@@ -819,7 +819,8 @@ function getFactionChatLink(entry: FactionEntry): string | null {
     chelsea: `${base}/8`,
     dnipro: `${base}/6`,
     "dnipro-1": `${base}/6`,
-    dnipro_1: `${base}/6`
+    dnipro_1: `${base}/6`,
+    "manchester-united": `${base}/244`
   };
   return map[value] ?? null;
 }

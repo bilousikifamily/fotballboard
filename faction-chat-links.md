@@ -2,7 +2,7 @@
 
 Use this file to keep track of the Telegram branch/thread URLs you need for each faction.
 Once you know the link, copy it into your deployment configuration:
-`FACTION_CHAT_REAL`, `FACTION_CHAT_BARCA`, and `FACTION_CHAT_GENERAL`.
+`FACTION_CHAT_REAL`, `FACTION_CHAT_BARCA`, `FACTION_CHAT_GENERAL`, and `FACTION_CHAT_MANCHESTER_UNITED`.
 
 | Faction            | Telegram link or ID              | Notes                         |
 | ------------------ | -------------------------------- | ----------------------------- |
@@ -11,6 +11,7 @@ Once you know the link, copy it into your deployment configuration:
 | Chelsea            | `https://t.me/football_rada/183` | Фракція Челсі                 |
 | Barcelona          | `https://t.me/football_rada/4`   | Фракція Барселона             |
 | Real Madrid        | `https://t.me/football_rada/3`   | Фракція Реал Мадрид           |
+| Manchester United  | `https://t.me/c/3415133128/244`  | Фракція Манчестер Юнайтед     |
 | Milan              | `https://t.me/football_rada/186` | Фракція Мілан                 |
 | General (optional) | `https://t.me/football_rada/19`  | Загальний чат (якщо потрібен) |
 

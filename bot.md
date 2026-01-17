@@ -57,6 +57,7 @@
 - `WEATHER_*`, `WEATHERAPI_*`.
 - Чати для модерації:
   - `FACTION_CHAT_REAL`, `FACTION_CHAT_BARCA` (посилання на гілки/чати фракцій).
+- `FACTION_CHAT_MANCHESTER_UNITED` (посилання на гілку фракції Манчестер Юнайтед).
   - `FACTION_CHAT_GENERAL` (посилання на загальний чат).
 
 ## Де правити логіку бота

@@ -275,7 +275,14 @@ export interface ProfileStats {
   factions: FactionStat[];
 }
 
-export type FactionBranchSlug = "real_madrid" | "barcelona" | "liverpool" | "arsenal" | "chelsea" | "milan";
+export type FactionBranchSlug =
+  | "real_madrid"
+  | "barcelona"
+  | "liverpool"
+  | "arsenal"
+  | "chelsea"
+  | "milan"
+  | "manchester-united";
 
 export interface FactionBranchMessage {
   id: number;

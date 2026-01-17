@@ -8,6 +8,7 @@
 - **Фракційні чати** (гілки обговорень):
   - `FACTION_CHAT_REAL` — чат фракції Реал Мадрид
   - `FACTION_CHAT_BARCA` — чат фракції Барселона
+  - `FACTION_CHAT_MANCHESTER_UNITED` — чат фракції Манчестер Юнайтед
 - **Загальний груповий чат**:
   - `FACTION_CHAT_GENERAL` — основний груповий чат
 
@@ -64,6 +65,7 @@
 Налаштування чатів беруться з змінних середовища:
 - `FACTION_CHAT_REAL` — формат: `chat_id` або `@username` або `chat_id:thread_id`
 - `FACTION_CHAT_BARCA` — формат: `chat_id` або `@username` або `chat_id:thread_id`
+- `FACTION_CHAT_MANCHESTER_UNITED` — формат: `chat_id` або `@username` або `chat_id:thread_id`
 - `FACTION_CHAT_GENERAL` — формат: `chat_id` або `@username` або `chat_id:thread_id`
 
 ### Визначення фракції користувача
