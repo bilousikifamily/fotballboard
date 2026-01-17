@@ -1213,9 +1213,12 @@ export default {
         return new Response("Bad Request", { status: 400 });
       }
 
+      const supabase = createSupabaseClient(env);
+      if (supabase) {
+        await insertDebugUpdate(supabase, update);
+      }
       const message = getUpdateMessage(update);
       if (message) {
-        const supabase = createSupabaseClient(env);
         await captureFactionBranchMessage(message, env, supabase);
         await handleFactionChatModeration(message, env, supabase);
         await handleGeneralChatModeration(message, env, supabase);
@@ -1243,6 +1246,44 @@ function createSupabaseClient(env: Env): SupabaseClient | null {
     auth: { persistSession: false },
     global: { headers: { "X-Client-Info": "tg-webapp-worker" } }
   });
+}
+
+async function insertDebugUpdate(supabase: SupabaseClient, update: TelegramUpdate): Promise<void> {
+  const updateType = resolveUpdateType(update);
+  const message = getUpdateMessage(update);
+  const record = {
+    update_type: updateType,
+    chat_id: message?.chat?.id ?? null,
+    thread_id: message?.message_thread_id ?? null,
+    message_id: message?.message_id ?? null,
+    user_id: message?.from?.id ?? null,
+    text: message?.text ?? null,
+    created_at: new Date().toISOString()
+  };
+  try {
+    const { error } = await supabase.from("debug_updates").insert(record);
+    if (error) {
+      console.error("Failed to insert debug update", error);
+    }
+  } catch (error) {
+    console.error("Failed to insert debug update", error);
+  }
+}
+
+function resolveUpdateType(update: TelegramUpdate): string {
+  if (update.message) {
+    return "message";
+  }
+  if (update.edited_message) {
+    return "edited_message";
+  }
+  if (update.channel_post) {
+    return "channel_post";
+  }
+  if (update.edited_channel_post) {
+    return "edited_channel_post";
+  }
+  return "unknown";
 }
 
 type FactionChatRef = {

@@ -31,6 +31,19 @@ create table if not exists faction_branch_messages (
 
 create index if not exists faction_branch_messages_faction_idx on faction_branch_messages (faction, created_at desc);
 
+create table if not exists debug_updates (
+  id bigserial primary key,
+  update_type text not null,
+  chat_id bigint,
+  thread_id bigint,
+  message_id bigint,
+  user_id bigint,
+  text text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists debug_updates_created_at_idx on debug_updates (created_at desc);
+
 create table if not exists matches (
   id bigserial primary key,
   home_team text not null,
