@@ -201,11 +201,11 @@
   z-index: 1;
 }
 .screen.screen--profile {
-  padding: 0 20px;
+  padding: 20px 20px 0;
   gap: 0;
-  min-height: calc(90dvh - var(--tabbar-offset));
-  height: calc(90dvh - var(--tabbar-offset));
-  max-height: calc(90dvh - var(--tabbar-offset));
+  min-height: calc(80dvh - var(--tabbar-offset));
+  height: calc(80dvh - var(--tabbar-offset));
+  max-height: calc(80dvh - var(--tabbar-offset));
   overflow: hidden;
 }
 
@@ -224,10 +224,10 @@ body.profile-tab-active #app {
   min-height: 0;
   display: grid;
   grid-template-rows:
-    minmax(120px, 0.28fr)
-    minmax(34px, 0.12fr)
-    minmax(130px, 0.33fr)
-    minmax(120px, 0.27fr);
+    minmax(150px, 0.32fr)
+    minmax(36px, 0.12fr)
+    minmax(150px, 0.30fr)
+    minmax(130px, 0.26fr);
   row-gap: 10px;
 }
 
@@ -244,7 +244,7 @@ body.profile-tab-active #app {
 .profile-screen__row--results {
   align-items: flex-start;
   justify-items: center;
-  padding-top: 34px;
+  padding-top: 64px;
   padding-bottom: 8px;
   overflow: visible;
 }
@@ -312,8 +312,8 @@ body.profile-tab-active #app {
 }
 
 .profile-predictions {
-  width: clamp(260px, 98%, 520px);
-  margin: 12px auto 4px;
+  width: 100%;
+  margin: 12px 0 4px;
   display: grid;
   justify-items: center;
   padding: 8px 0;
@@ -324,7 +324,6 @@ body.profile-tab-active #app {
   position: relative;
   mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
-  max-width: 520px;
 }
 
 .profile-predictions::-webkit-scrollbar {
@@ -388,18 +387,18 @@ body.profile-tab-active #app {
 
 @media (max-height: 640px) {
   .screen.screen--profile {
-    min-height: calc(85dvh - var(--tabbar-offset));
-    height: calc(85dvh - var(--tabbar-offset));
-    max-height: calc(85dvh - var(--tabbar-offset));
+    min-height: calc(75dvh - var(--tabbar-offset));
+    height: calc(75dvh - var(--tabbar-offset));
+    max-height: calc(75dvh - var(--tabbar-offset));
   }
 
   .screen.screen--profile .profile-screen__layout {
     row-gap: 4px;
     grid-template-rows:
-      clamp(110px, 0.25fr, 200px)
-      clamp(32px, 0.12fr, 50px)
-      clamp(130px, 0.33fr, 220px)
-      clamp(100px, 0.3fr, 180px);
+      clamp(100px, 0.25fr, 180px)
+      clamp(34px, 0.12fr, 48px)
+      clamp(120px, 0.33fr, 200px)
+      clamp(110px, 0.3fr, 170px);
   }
 
   .profile-screen__row--results {
@@ -1161,9 +1160,7 @@ h1 {
   height: 32px;
   min-height: 32px;
   border-radius: 20px;
-  width: 98%;
-  max-width: 520px;
-  margin: 0 auto;
+  margin: 0;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
   font-weight: 800;
@@ -1171,7 +1168,6 @@ h1 {
   color: #0b0b0d;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 12px 26px rgba(255, 122, 26, 0.22);
   text-decoration: none;
   display: grid;
   place-items: center;
@@ -1188,7 +1184,6 @@ h1 {
 .faction-thread-link:hover {
   transform: translateY(-1px);
   filter: saturate(1.08);
-  box-shadow: 0 16px 34px rgba(255, 122, 26, 0.28);
 }
 
 .faction-thread-link:focus-visible {
