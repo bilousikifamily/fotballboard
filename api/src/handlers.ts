@@ -2327,24 +2327,76 @@ async function countPredictions(
 
 async function listRecentPredictionResults(supabase: SupabaseClient, userId: number): Promise<PredictionResult[]> {
   try {
-    const { data, error } = await supabase
-      .from("predictions")
-      .select("id, points, matches!inner(kickoff_at, status)")
-      .eq("user_id", userId)
-      .eq("matches.status", "finished")
-      .not("points", "is", null)
-      .order("kickoff_at", { foreignTable: "matches", ascending: true })
-      .order("id", { ascending: true });
-    if (error || !data) {
+    const [predictionsResult, missedResult] = await Promise.all([
+      supabase
+        .from("predictions")
+        .select("id, match_id, points, matches!inner(kickoff_at, status)")
+        .eq("user_id", userId)
+        .eq("matches.status", "finished")
+        .not("points", "is", null),
+      supabase
+        .from("missed_predictions")
+        .select("id, match_id, matches!inner(kickoff_at, status)")
+        .eq("user_id", userId)
+        .eq("matches.status", "finished")
+    ]);
+
+    if (predictionsResult.error || missedResult.error) {
       return [];
     }
-    return (data as Array<{ points?: number | null }>).map((row) => {
+
+    const resultsByMatch = new Map<number, { kickoffAt: string; points: number; hit: boolean; orderId: number }>();
+
+    const predictionRows =
+      (predictionsResult.data as Array<{
+        id?: number | null;
+        match_id?: number | null;
+        points?: number | null;
+        matches?: { kickoff_at?: string | null } | null;
+      }> | null | undefined) ?? [];
+    for (const row of predictionRows) {
+      const matchId = typeof row.match_id === "number" ? row.match_id : null;
+      const kickoffAt = row.matches?.kickoff_at ?? null;
+      if (!matchId || !kickoffAt) {
+        continue;
+      }
       const points = typeof row.points === "number" ? row.points : 0;
-      return {
+      resultsByMatch.set(matchId, {
+        kickoffAt,
+        points,
         hit: points > 0,
-        points
-      };
-    });
+        orderId: typeof row.id === "number" ? row.id : 0
+      });
+    }
+
+    const missedRows =
+      (missedResult.data as Array<{
+        id?: number | null;
+        match_id?: number | null;
+        matches?: { kickoff_at?: string | null } | null;
+      }> | null | undefined) ?? [];
+    for (const row of missedRows) {
+      const matchId = typeof row.match_id === "number" ? row.match_id : null;
+      const kickoffAt = row.matches?.kickoff_at ?? null;
+      if (!matchId || !kickoffAt || resultsByMatch.has(matchId)) {
+        continue;
+      }
+      resultsByMatch.set(matchId, {
+        kickoffAt,
+        points: MISSED_PREDICTION_PENALTY,
+        hit: false,
+        orderId: typeof row.id === "number" ? row.id : 0
+      });
+    }
+
+    return Array.from(resultsByMatch.values())
+      .sort((a, b) => {
+        if (a.kickoffAt === b.kickoffAt) {
+          return a.orderId - b.orderId;
+        }
+        return a.kickoffAt.localeCompare(b.kickoffAt);
+      })
+      .map((row) => ({ hit: row.hit, points: row.points }));
   } catch (error) {
     console.error("Failed to list recent prediction results", error);
     return [];
