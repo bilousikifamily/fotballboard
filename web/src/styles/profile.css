@@ -233,17 +233,13 @@ body.profile-tab-active #app {
   min-height: 0;
   display: grid;
   align-content: start;
-  grid-template-rows:
-    minmax(150px, 0.32fr)
-    auto
-    minmax(150px, 0.30fr)
-    minmax(130px, 0.26fr);
+  grid-template-rows: repeat(4, auto);
   row-gap: var(--profile-row-gap);
 }
 
 .profile-screen__row {
   min-height: 0;
-  height: 100%;
+  height: auto;
   width: 100%;
   display: grid;
   align-items: stretch;
