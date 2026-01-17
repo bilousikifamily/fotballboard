@@ -1444,20 +1444,20 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
   const from = message.from;
   const chatId = message.chat?.id;
   const messageId = message.message_id;
-  if (!from || from.is_bot || !chatId || !messageId) {
+  if (!chatId || !messageId) {
+    return;
+  }
+  if (from?.is_bot) {
     return;
   }
 
-  await storeUser(supabase, from);
+  if (from) {
+    await storeUser(supabase, from);
+  }
 
   const refs = getFactionChatRefs(env);
   const faction = identifyFactionFromMessage(message, refs);
   if (!faction) {
-    return;
-  }
-
-  const userFaction = await getUserFactionSlug(supabase, from.id);
-  if (userFaction && userFaction !== faction) {
     return;
   }
 
@@ -1471,8 +1471,8 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
     chatId,
     messageId,
     threadId: message.message_thread_id ?? null,
-    author: formatUserDisplay(from),
-    authorId: from.id,
+    author: from ? formatUserDisplay(from) : null,
+    authorId: from?.id ?? null,
     text
   });
 }
