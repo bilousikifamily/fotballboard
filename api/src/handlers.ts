@@ -1448,6 +1448,8 @@ async function captureFactionBranchMessage(message: TelegramMessage, env: Env, s
     return;
   }
 
+  await storeUser(supabase, from);
+
   const refs = getFactionChatRefs(env);
   const faction = identifyFactionFromMessage(message, refs);
   if (!faction) {
