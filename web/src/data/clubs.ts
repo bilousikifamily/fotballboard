@@ -75,6 +75,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "girona",
     "las-palmas",
     "leganes",
+    "levante",
     "mallorca",
     "osasuna",
     "racing",
