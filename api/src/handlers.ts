@@ -6565,7 +6565,7 @@ async function sendFactionMatchStartDigest(
   predictions: MatchPredictionRecord[],
   chatRef?: FactionChatRef
 ): Promise<void> {
-  if (!chatRef || !predictions.length) {
+  if (!chatRef) {
     return;
   }
   const chatTarget =
@@ -6576,7 +6576,9 @@ async function sendFactionMatchStartDigest(
   const homeName = resolveUkrainianClubName(match.home_team, match.home_club_id ?? null);
   const awayName = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
   const header = `Прогнози фракції ${formatFactionName(faction)} на матч ${homeName} — ${awayName}:`;
-  const lines = predictions.map((prediction) => formatMatchPredictionLine(homeName, awayName, prediction));
+  const lines = predictions.length
+    ? predictions.map((prediction) => formatMatchPredictionLine(homeName, awayName, prediction))
+    : ["Поки без прогнозів."];
   const message = [header, ...lines].join("\n");
   try {
     const threadId = typeof chatRef.threadId === "number" ? chatRef.threadId : undefined;
@@ -6609,9 +6611,6 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
     const grouped = groupMatchPredictionsByFaction(predictions);
     for (const faction of ALL_FACTION_BRANCHES) {
       const factionPredictions = grouped[faction];
-      if (!factionPredictions.length) {
-        continue;
-      }
       const chatRef = refs.bySlug[faction];
       await sendFactionMatchStartDigest(env, match, faction, factionPredictions, chatRef);
     }
