@@ -592,16 +592,6 @@ export default {
       const messages = await listFactionDebugMessages(supabase, faction, targetRef, limit);
       const chatRef = refs.bySlug[faction];
       const chatUrl = formatFactionChatUrl(chatRef);
-      if (supabase && auth.user) {
-        await insertDebugAudit(supabase, {
-          update_type: "api_faction_messages",
-          chat_id: targetRef?.chatId ?? null,
-          thread_id: targetRef?.threadId ?? null,
-          user_id: auth.user.id,
-          text: `count=${messages.length}`
-        });
-      }
-
       return jsonResponse(
         {
           ok: true,
