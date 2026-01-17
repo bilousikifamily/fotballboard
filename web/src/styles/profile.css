@@ -228,15 +228,16 @@ body.profile-tab-active #app {
 }
 
 .screen.screen--profile .profile-screen__layout {
+  --profile-row-gap: clamp(4px, 1.6vw, 8px);
   height: auto;
   min-height: 0;
   display: grid;
   grid-template-rows:
     minmax(150px, 0.32fr)
-    minmax(36px, 0.12fr)
+    minmax(20px, 0.08fr)
     minmax(150px, 0.30fr)
     minmax(130px, 0.26fr);
-  row-gap: clamp(6px, 2vw, 10px);
+  row-gap: var(--profile-row-gap);
 }
 
 .profile-screen__row {
@@ -246,22 +247,23 @@ body.profile-tab-active #app {
   display: grid;
   align-items: stretch;
   justify-items: stretch;
-  padding-inline: 0;
+  padding-inline: clamp(8px, 2.4vw, 16px);
 }
 
 .profile-screen__row--results {
   align-items: flex-start;
   justify-items: stretch;
-  padding-top: clamp(24px, 8vw, 64px);
-  padding-bottom: 8px;
+  padding-top: clamp(18px, 6vw, 44px);
+  padding-bottom: 0;
   overflow: visible;
 }
 
 .profile-screen__row--animation {
   justify-items: center;
   align-items: center;
-  padding-block: 0;
-  padding-inline: 0;
+  padding: 0;
+  margin: 0;
+  margin-block: calc(-1 * var(--profile-row-gap));
 }
 
 .profile-screen__row--top {
@@ -288,8 +290,8 @@ body.profile-tab-active #app {
 .screen.screen--profile .notice-ticker {
   width: 100%;
   max-width: none;
-  height: 100%;
-  padding: 0 12px;
+  height: auto;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -322,12 +324,12 @@ body.profile-tab-active #app {
 
 .profile-predictions {
   width: 100%;
-  margin: 12px 0 4px;
+  margin: 10px 0 6px;
   display: grid;
   justify-items: center;
   padding: 0;
-  max-height: none;
-  overflow-y: visible;
+  height: calc((var(--prediction-dot-size) * 2) + var(--prediction-dot-gap));
+  overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
   position: relative;
@@ -377,15 +379,15 @@ body.profile-tab-active #app {
 
 @media (max-width: 520px) {
   .screen.screen--profile .profile-screen__layout {
-    grid-template-rows: 23fr 13fr 32fr 32fr;
+    grid-template-rows: 24fr 8fr 34fr 34fr;
   }
 
   .profile-screen__row {
-    padding-inline: 10px;
+    padding-inline: 8px;
   }
 
   .profile-screen__row--results {
-    padding-top: 34px;
+    padding-top: 28px;
   }
 
   .profile-screen__row--chat .panel.faction-recent-messages,
@@ -402,10 +404,11 @@ body.profile-tab-active #app {
   }
 
   .screen.screen--profile .profile-screen__layout {
-    row-gap: 4px;
+    --profile-row-gap: 4px;
+    row-gap: var(--profile-row-gap);
     grid-template-rows:
       clamp(100px, 0.25fr, 180px)
-      clamp(34px, 0.12fr, 48px)
+      clamp(20px, 0.08fr, 32px)
       clamp(120px, 0.33fr, 200px)
       clamp(110px, 0.3fr, 170px);
   }

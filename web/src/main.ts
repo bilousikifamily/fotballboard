@@ -1107,14 +1107,36 @@ function setupFactionThreadCardClick(card: HTMLElement | null, link: HTMLAnchorE
     return;
   }
   card.dataset.factionThreadClick = "1";
+  const openThread = (): void => {
+    if (link.hasAttribute("aria-disabled")) {
+      return;
+    }
+    const url = link.getAttribute("href");
+    if (!url || url === "#") {
+      return;
+    }
+    openFactionChat(url);
+  };
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openThread();
+  });
   card.addEventListener("click", (event) => {
     if (event.target instanceof HTMLElement && event.target.closest(".faction-thread-link")) {
       return;
     }
-    if (link.hasAttribute("aria-disabled")) {
-      return;
-    }
-    link.click();
+    openThread();
+  });
+}
+
+function scrollProfilePredictionsToBottom(): void {
+  const container = app.querySelector<HTMLElement>("[data-profile-predictions]");
+  if (!container) {
+    return;
+  }
+  window.requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
   });
 }
 
@@ -1414,6 +1436,7 @@ function renderUser(
   setupTabs();
   setupNoticeTicker();
   setupLogoOrderControls();
+  scrollProfilePredictionsToBottom();
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
   const avatarPicker = app.querySelector<HTMLElement>("[data-avatar-picker]");
