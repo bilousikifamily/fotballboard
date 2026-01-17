@@ -1066,8 +1066,10 @@ async function loadFactionThreadMessages(): Promise<void> {
     return;
   }
 
+  const fallbackChatUrl = getFactionChatLink(entry);
+
   container.innerHTML = `<p class="muted small">Завантаження...</p>`;
-  setFactionThreadLink(link, null);
+  setFactionThreadLink(link, fallbackChatUrl);
 
   try {
     const { response, data } = await fetchFactionMessages(apiBase, {
@@ -1080,10 +1082,11 @@ async function loadFactionThreadMessages(): Promise<void> {
     }
     const messages = data.messages ?? [];
     container.innerHTML = renderFactionRecentMessages(messages);
-    setFactionThreadLink(link, data.chat_url ?? null);
+    const chatUrl = data.chat_url ?? fallbackChatUrl;
+    setFactionThreadLink(link, chatUrl);
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити повідомлення.</p>`;
-    setFactionThreadLink(link, null);
+    setFactionThreadLink(link, fallbackChatUrl);
   }
 }
 
