@@ -809,49 +809,6 @@ function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | 
   };
 }
 
-function getFactionChatLink(entry: FactionEntry): string | null {
-  const value = String(entry.value).trim().toLowerCase();
-  const normalized = value.replace(/_/g, "-");
-  const map: Record<string, string> = {
-    "real-madrid": "https://t.me/football_rada/3",
-    barcelona: "https://t.me/football_rada/4",
-    liverpool: "https://t.me/football_rada/185",
-    arsenal: "https://t.me/football_rada/184",
-    chelsea: "https://t.me/football_rada/183",
-    milan: "https://t.me/football_rada/186",
-    "manchester-united": "https://t.me/c/3415133128/244",
-    dnipro: "https://t.me/c/3415133128/6",
-    "dnipro-1": "https://t.me/c/3415133128/6"
-  };
-  return map[normalized] ?? map[value] ?? null;
-}
-
-function openFactionChat(url: string): void {
-  const normalizedUrl = normalizeTelegramThreadLink(url);
-  if (!normalizedUrl) {
-    return;
-  }
-  if (window.Telegram?.WebApp?.openTelegramLink) {
-    window.Telegram.WebApp.openTelegramLink(normalizedUrl);
-    window.Telegram.WebApp.close();
-    return;
-  }
-  window.open(normalizedUrl, "_blank", "noopener,noreferrer");
-  window.Telegram?.WebApp?.close?.();
-}
-
-function normalizeTelegramThreadLink(url: string): string | null {
-  const trimmed = url.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const match = trimmed.match(/^https?:\/\/t\.me\/(\d+)\/(\d+)$/i);
-  if (match) {
-    return `https://t.me/c/${match[1]}/${match[2]}`;
-  }
-  return trimmed;
-}
-
 function getFactionId(entry: FactionEntry): string {
   return entry.value;
 }
@@ -1055,11 +1012,9 @@ async function loadFactionThreadMessages(): Promise<void> {
   }
   const container = app.querySelector<HTMLElement>("[data-faction-thread]");
   const link = app.querySelector<HTMLAnchorElement>("[data-faction-thread-link]");
-  const card = app.querySelector<HTMLElement>("[data-faction-thread-card]");
   if (!container) {
     return;
   }
-  setupFactionThreadCardClick(card, link);
   const entry = selectBadgeFactionEntry(currentProfileStats);
   if (!entry) {
     container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
@@ -1067,10 +1022,8 @@ async function loadFactionThreadMessages(): Promise<void> {
     return;
   }
 
-  const fallbackChatUrl = getFactionChatLink(entry);
-
   container.innerHTML = `<p class="muted small">Завантаження...</p>`;
-  setFactionThreadLink(link, fallbackChatUrl);
+  setFactionThreadLink(link, null);
 
   try {
     const { response, data } = await fetchFactionMessages(apiBase, {
@@ -1083,11 +1036,11 @@ async function loadFactionThreadMessages(): Promise<void> {
     }
     const messages = data.messages ?? [];
     container.innerHTML = renderFactionRecentMessages(messages);
-    const chatUrl = data.chat_url ?? fallbackChatUrl;
+    const chatUrl = data.chat_url ?? null;
     setFactionThreadLink(link, chatUrl);
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити повідомлення.</p>`;
-    setFactionThreadLink(link, fallbackChatUrl);
+    setFactionThreadLink(link, null);
   }
 }
 
@@ -1104,34 +1057,6 @@ function setFactionThreadLink(link: HTMLAnchorElement | null, url: string | null
     link.setAttribute("aria-disabled", "true");
     link.classList.add("is-disabled");
   }
-}
-
-function setupFactionThreadCardClick(card: HTMLElement | null, link: HTMLAnchorElement | null): void {
-  if (!card || !link || card.dataset.factionThreadClick === "1") {
-    return;
-  }
-  card.dataset.factionThreadClick = "1";
-  const openThread = (): void => {
-    if (link.hasAttribute("aria-disabled")) {
-      return;
-    }
-    const url = link.getAttribute("href");
-    if (!url || url === "#") {
-      return;
-    }
-    openFactionChat(url);
-  };
-  link.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openThread();
-  });
-  card.addEventListener("click", (event) => {
-    if (event.target instanceof HTMLElement && event.target.closest(".faction-thread-link")) {
-      return;
-    }
-    openThread();
-  });
 }
 
 function scrollProfilePredictionsToBottom(): void {
