@@ -268,6 +268,8 @@ body.profile-tab-active #app {
   padding: 0;
   display: grid;
   gap: 12px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .screen.screen--profile .notice-ticker {
@@ -318,6 +320,7 @@ body.profile-tab-active #app {
   position: relative;
   mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.75) 12%, rgba(0, 0, 0, 0.75) 88%, transparent 100%);
+  max-width: 520px;
 }
 
 .profile-predictions::-webkit-scrollbar {
@@ -325,6 +328,24 @@ body.profile-tab-active #app {
 }
 
 .profile-predictions::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.profile-screen__row--chat .panel.faction-recent-messages,
+.profile-screen__row--top .panel.faction-members {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.profile-screen__row--chat .panel.faction-recent-messages::-webkit-scrollbar,
+.profile-screen__row--top .panel.faction-members::-webkit-scrollbar {
+  width: 4px;
+}
+
+.profile-screen__row--chat .panel.faction-recent-messages::-webkit-scrollbar-thumb,
+.profile-screen__row--top .panel.faction-members::-webkit-scrollbar-thumb {
   background: var(--accent);
   border-radius: 999px;
 }
@@ -340,6 +361,25 @@ body.profile-tab-active #app {
   padding: 0 4px;
   justify-content: start;
   align-content: start;
+}
+
+@media (max-width: 520px) {
+  .screen.screen--profile .profile-screen__layout {
+    grid-template-rows: 23fr 13fr 32fr 32fr;
+  }
+
+  .profile-screen__row {
+    padding-inline: 10px;
+  }
+
+  .profile-screen__row--results {
+    padding-top: 34px;
+  }
+
+  .profile-screen__row--chat .panel.faction-recent-messages,
+  .profile-screen__row--top .panel.faction-members {
+    padding-inline: 4px;
+  }
 }
 
 .prediction-dot {
@@ -1092,6 +1132,9 @@ h1 {
   height: 32px;
   min-height: 32px;
   border-radius: 20px;
+  width: 98%;
+  max-width: 520px;
+  margin: 0 auto;
   letter-spacing: 0.14em;
   font-size: 0.9rem;
   font-weight: 800;
