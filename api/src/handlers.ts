@@ -587,8 +587,9 @@ export default {
       const rawLimit = typeof body.limit === "number" ? Math.floor(body.limit) : 3;
       const limit = Math.min(Math.max(rawLimit, 1), 6);
 
-      const messages = await listFactionBranchMessages(supabase, faction, limit);
       const refs = getFactionChatRefs(env);
+      const targetRef = refs.bySlug[faction];
+      const messages = await listFactionDebugMessages(supabase, faction, targetRef, limit);
       const chatRef = refs.bySlug[faction];
       const chatUrl = formatFactionChatUrl(chatRef);
 
@@ -1805,6 +1806,16 @@ type FactionBranchMessageRow = {
   users?: { nickname?: string | null } | null;
 };
 
+type DebugUpdateRow = {
+  id: number;
+  chat_id: number | null;
+  thread_id: number | null;
+  message_id: number | null;
+  user_id: number | null;
+  text: string | null;
+  created_at: string | null;
+};
+
 async function listFactionBranchMessages(
   supabase: SupabaseClient,
   faction: FactionBranchSlug,
@@ -1834,6 +1845,100 @@ async function listFactionBranchMessages(
     );
   } catch (error) {
     console.error("Failed to load faction branch messages", error);
+    return [];
+  }
+}
+
+function formatStoredUserLabel(user: StoredUser | null, fallbackId: number | null): string | null {
+  if (user) {
+    const nickname = (user.nickname ?? "").trim();
+    if (nickname) {
+      return nickname;
+    }
+    const telegramUser: TelegramUser = {
+      id: user.id ?? 0,
+      username: user.username ?? undefined,
+      first_name: user.first_name ?? undefined,
+      last_name: user.last_name ?? undefined
+    };
+    const display = formatUserDisplay(telegramUser);
+    if (display) {
+      return display;
+    }
+  }
+  return typeof fallbackId === "number" ? `id:${fallbackId}` : null;
+}
+
+async function listFactionDebugMessages(
+  supabase: SupabaseClient,
+  faction: FactionBranchSlug,
+  ref: FactionChatRef | undefined,
+  limit: number
+): Promise<FactionBranchMessage[]> {
+  if (!ref?.chatId) {
+    return [];
+  }
+  try {
+    let query = supabase
+      .from("debug_updates")
+      .select("id, chat_id, thread_id, message_id, user_id, text, created_at")
+      .eq("update_type", "message")
+      .eq("chat_id", ref.chatId)
+      .order("created_at", { ascending: false })
+      .limit(Math.min(limit, 20));
+    if (typeof ref.threadId === "number") {
+      query = query.eq("thread_id", ref.threadId);
+    } else {
+      query = query.is("thread_id", null);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to load debug updates", error);
+      return [];
+    }
+    const rows = (data as DebugUpdateRow[]) ?? [];
+    const userIds = Array.from(
+      new Set(rows.map((row) => row.user_id).filter((id): id is number => typeof id === "number"))
+    );
+    const usersById = new Map<number, StoredUser>();
+    if (userIds.length) {
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, username, first_name, last_name, nickname")
+        .in("id", userIds);
+      if (usersError) {
+        console.error("Failed to load debug update users", usersError);
+      } else {
+        (users as StoredUser[]).forEach((user) => {
+          if (typeof user.id === "number") {
+            usersById.set(user.id, user);
+          }
+        });
+      }
+    }
+
+    return rows
+      .map((row) => {
+        const normalizedText = normalizeFactionMessageText({ text: row.text ?? "" });
+        if (!normalizedText) {
+          return null;
+        }
+        const user = typeof row.user_id === "number" ? usersById.get(row.user_id) ?? null : null;
+        const author = formatStoredUserLabel(user, row.user_id ?? null);
+        return {
+          id: row.id,
+          faction,
+          author,
+          text: normalizedText,
+          created_at: row.created_at ?? new Date().toISOString(),
+          nickname: user?.nickname ?? null,
+          authorId: row.user_id ?? null
+        } satisfies FactionBranchMessage;
+      })
+      .filter((message): message is FactionBranchMessage => Boolean(message))
+      .slice(0, limit);
+  } catch (error) {
+    console.error("Failed to load debug updates", error);
     return [];
   }
 }
