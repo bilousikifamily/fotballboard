@@ -592,6 +592,15 @@ export default {
       const messages = await listFactionDebugMessages(supabase, faction, targetRef, limit);
       const chatRef = refs.bySlug[faction];
       const chatUrl = formatFactionChatUrl(chatRef);
+      if (supabase && auth.user) {
+        await insertDebugAudit(supabase, {
+          update_type: "api_faction_messages",
+          chat_id: targetRef?.chatId ?? null,
+          thread_id: targetRef?.threadId ?? null,
+          user_id: auth.user.id,
+          text: `count=${messages.length}`
+        });
+      }
 
       return jsonResponse(
         {
@@ -1283,6 +1292,36 @@ async function insertDebugUpdate(supabase: SupabaseClient, update: TelegramUpdat
     }
   } catch (error) {
     console.error("Failed to insert debug update", error);
+  }
+}
+
+async function insertDebugAudit(
+  supabase: SupabaseClient,
+  payload: {
+    update_type: string;
+    chat_id?: number | null;
+    thread_id?: number | null;
+    message_id?: number | null;
+    user_id?: number | null;
+    text?: string | null;
+  }
+): Promise<void> {
+  const record = {
+    update_type: payload.update_type,
+    chat_id: payload.chat_id ?? null,
+    thread_id: payload.thread_id ?? null,
+    message_id: payload.message_id ?? null,
+    user_id: payload.user_id ?? null,
+    text: payload.text ?? null,
+    created_at: new Date().toISOString()
+  };
+  try {
+    const { error } = await supabase.from("debug_updates").insert(record);
+    if (error) {
+      console.error("Failed to insert debug audit", error);
+    }
+  } catch (error) {
+    console.error("Failed to insert debug audit", error);
   }
 }
 
