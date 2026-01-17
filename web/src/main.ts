@@ -810,19 +810,20 @@ function getFactionDisplay(entry: FactionEntry): { name: string; logo: string | 
 }
 
 function getFactionChatLink(entry: FactionEntry): string | null {
-  const value = String(entry.value).toLowerCase();
-  const base = "https://t.me/c/3415133128";
+  const value = String(entry.value).trim().toLowerCase();
+  const normalized = value.replace(/_/g, "-");
   const map: Record<string, string> = {
-    real_madrid: `${base}/3`,
-    barcelona: `${base}/4`,
-    liverpool: `${base}/7`,
-    chelsea: `${base}/8`,
-    dnipro: `${base}/6`,
-    "dnipro-1": `${base}/6`,
-    dnipro_1: `${base}/6`,
-    "manchester-united": `${base}/244`
+    "real-madrid": "https://t.me/football_rada/3",
+    barcelona: "https://t.me/football_rada/4",
+    liverpool: "https://t.me/football_rada/185",
+    arsenal: "https://t.me/football_rada/184",
+    chelsea: "https://t.me/football_rada/183",
+    milan: "https://t.me/football_rada/186",
+    "manchester-united": "https://t.me/c/3415133128/244",
+    dnipro: "https://t.me/c/3415133128/6",
+    "dnipro-1": "https://t.me/c/3415133128/6"
   };
-  return map[value] ?? null;
+  return map[normalized] ?? map[value] ?? null;
 }
 
 function openFactionChat(url: string): void {
