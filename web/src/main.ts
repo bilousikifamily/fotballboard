@@ -755,8 +755,8 @@ function getPredictionDotState(entry?: { hit: boolean; points: number }) {
   if (!entry) {
     return {
       icon: "✓",
-      className: "is-empty",
-      label: "Прогноз ще не зроблено"
+      className: "is-miss",
+      label: "Прогноз не зроблено"
     };
   }
   if (entry.points === 5) {
