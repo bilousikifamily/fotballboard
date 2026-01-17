@@ -228,13 +228,11 @@ body.profile-tab-active #app {
 }
 
 .screen.screen--profile .profile-screen__layout {
-  --profile-row-gap: clamp(4px, 1.6vw, 8px);
   height: auto;
   min-height: 0;
-  display: grid;
-  align-content: start;
-  grid-template-rows: repeat(4, auto);
-  row-gap: var(--profile-row-gap);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .profile-screen__row {
@@ -259,13 +257,9 @@ body.profile-tab-active #app {
   justify-items: center;
   align-items: center;
   padding-top: 0;
-  padding-bottom: 20px;
-  margin-top: calc(-1 * var(--profile-row-gap));
+  padding-bottom: 0;
+  margin-top: 0;
   margin-bottom: 0;
-}
-
-.profile-screen__row--chat {
-  margin-top: 20px;
 }
 
 .profile-screen__row--top {
@@ -390,7 +384,7 @@ body.profile-tab-active #app {
 
 @media (max-width: 520px) {
   .screen.screen--profile .profile-screen__layout {
-    grid-template-rows: 24fr auto 34fr 34fr;
+    gap: 20px;
   }
 
   .profile-screen__row {
@@ -415,13 +409,7 @@ body.profile-tab-active #app {
   }
 
   .screen.screen--profile .profile-screen__layout {
-    --profile-row-gap: 4px;
-    row-gap: var(--profile-row-gap);
-    grid-template-rows:
-      clamp(100px, 0.25fr, 180px)
-      auto
-      clamp(120px, 0.33fr, 200px)
-      clamp(110px, 0.3fr, 170px);
+    gap: 20px;
   }
 
   .profile-screen__row--results {

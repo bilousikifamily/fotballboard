@@ -1315,20 +1315,20 @@ function renderUser(
               </section>
             </div>
 
-            <div class="profile-screen__row profile-screen__row--animation">
-              <div class="notice-ticker" aria-live="polite">
-                <span class="notice-ticker-text" data-notice-text>
-                  ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
-                </span>
-              </div>
-            </div>
-
             <div class="profile-screen__row profile-screen__row--chat">
               ${factionThreadMarkup}
             </div>
 
             <div class="profile-screen__row profile-screen__row--top">
               ${factionMembersMarkup}
+            </div>
+
+            <div class="profile-screen__row profile-screen__row--animation">
+              <div class="notice-ticker" aria-live="polite">
+                <span class="notice-ticker-text" data-notice-text>
+                  ${escapeHtml(formatNoticeRule(NOTICE_RULES[0] ?? ""))}
+                </span>
+              </div>
             </div>
           </div>
         </section>
