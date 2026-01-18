@@ -16,6 +16,7 @@ import type {
   DbPrediction,
   DbTeamMatchStat,
   FactionKey,
+  MatchResultExactGuessUser,
   FactionStat,
   FactionBranchSlug,
   FactionBranchMessage,
@@ -25,6 +26,7 @@ import type {
   MatchResultNotification,
   MatchResultOutcome,
   MatchResultPayload,
+  MatchResultPredictionStats,
   MatchConfirmPayload,
   NicknamePayload,
   OddsDebugInfo,
@@ -5459,7 +5461,9 @@ async function applyMatchResult(
 
   const { data: predictions, error: predError } = await supabase
     .from("predictions")
-    .select("id, user_id, home_pred, away_pred, points")
+    .select(
+      "id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, faction_club_id)"
+    )
     .eq("match_id", matchId);
 
   if (predError) {
@@ -5467,11 +5471,13 @@ async function applyMatchResult(
     return { ok: false, notifications: [] };
   }
 
+  const predictionRows = (predictions as PredictionRow[]) ?? [];
+  const predictionStats = buildMatchResultPredictionStats(predictionRows, homeScore, awayScore);
   const deltas = new Map<number, number>();
   const updates: Array<{ id: number; points: number }> = [];
   const predictedUserIds = new Set<number>();
 
-  for (const prediction of (predictions as DbPrediction[]) ?? []) {
+  for (const prediction of predictionRows) {
     predictedUserIds.add(prediction.user_id);
     const currentPoints = prediction.points ?? 0;
     const newPoints = scorePrediction(
@@ -5529,7 +5535,8 @@ async function applyMatchResult(
         home_team: match.home_team,
         away_team: match.away_team,
         home_score: homeScore,
-        away_score: awayScore
+        away_score: awayScore,
+        prediction_stats: predictionStats
       });
     }
   }
@@ -5539,7 +5546,8 @@ async function applyMatchResult(
     match,
     predictedUserIds,
     homeScore,
-    awayScore
+    awayScore,
+    predictionStats
   );
   notifications.push(...penaltyNotifications);
 
@@ -5634,7 +5642,8 @@ async function applyMissingPredictionPenalties(
   match: DbMatch,
   predictedUserIds: Set<number>,
   homeScore: number,
-  awayScore: number
+  awayScore: number,
+  predictionStats: MatchResultPredictionStats
 ): Promise<MatchResultNotification[]> {
   try {
     const { data: users, error: usersError } = await supabase
@@ -5696,7 +5705,8 @@ async function applyMissingPredictionPenalties(
         home_team: match.home_team,
         away_team: match.away_team,
         home_score: homeScore,
-        away_score: awayScore
+        away_score: awayScore,
+        prediction_stats: predictionStats
       });
     }
 
@@ -5794,6 +5804,43 @@ function getOutcome(home: number, away: number): "home" | "away" | "draw" {
     return "draw";
   }
   return home > away ? "home" : "away";
+}
+
+function buildMatchResultPredictionStats(
+  predictions: PredictionRow[],
+  homeScore: number,
+  awayScore: number
+): MatchResultPredictionStats {
+  const totalPredictions = predictions.length;
+  const actualOutcome = getOutcome(homeScore, awayScore);
+  let resultSupportCount = 0;
+  const exactGuessers: MatchResultExactGuessUser[] = [];
+
+  for (const prediction of predictions) {
+    const predictionOutcome = getOutcome(prediction.home_pred, prediction.away_pred);
+    if (predictionOutcome === actualOutcome) {
+      resultSupportCount++;
+    }
+    if (prediction.home_pred === homeScore && prediction.away_pred === awayScore) {
+      exactGuessers.push({
+        user_id: prediction.user_id,
+        nickname: prediction.users?.nickname ?? null,
+        username: prediction.users?.username ?? null,
+        first_name: prediction.users?.first_name ?? null,
+        last_name: prediction.users?.last_name ?? null,
+        faction_club_id: prediction.users?.faction_club_id ?? null
+      });
+    }
+  }
+
+  const resultSupportPercent =
+    totalPredictions > 0 ? Math.round((resultSupportCount / totalPredictions) * 100) : 0;
+
+  return {
+    total_predictions: totalPredictions,
+    result_support_percent: resultSupportPercent,
+    exact_guessers: exactGuessers
+  };
 }
 
 function parseInteger(value: unknown): number | null {
@@ -6177,15 +6224,70 @@ function addDays(dateStr: string, days: number): string {
   return next.toISOString().slice(0, 10);
 }
 
+function buildMatchResultCaption(notification: MatchResultNotification): string {
+  const lines: string[] = [];
+  const resultLine = formatMatchResultLine(notification);
+  if (resultLine) {
+    lines.push(resultLine);
+  }
+  const messageLine = formatMatchResultMessage(notification);
+  if (messageLine) {
+    lines.push(messageLine);
+  }
+  const statsLines = buildMatchResultStatsLines(notification.prediction_stats);
+  if (statsLines.length > 0) {
+    lines.push(...statsLines);
+  }
+  return lines.join("\n");
+}
+
+function buildMatchResultStatsLines(stats: MatchResultPredictionStats | null | undefined): string[] {
+  if (!stats) {
+    return [];
+  }
+  const lines = [`Проголосували за результат ${stats.result_support_percent}% депутатів.`];
+  const guessers = stats.exact_guessers ?? [];
+  if (guessers.length > 0) {
+    const formattedGuessers = guessers.map(formatExactGuessLabel).join(", ");
+    const verb = guessers.length === 1 ? "Вгадав" : "Вгадали";
+    lines.push(`${verb} рахунок - ${formattedGuessers}`);
+  }
+  return lines;
+}
+
+function formatExactGuessLabel(user: MatchResultExactGuessUser): string {
+  const label = formatPredictionUserLabel({
+    id: user.user_id ?? null,
+    username: user.username ?? null,
+    first_name: user.first_name ?? null,
+    last_name: user.last_name ?? null,
+    nickname: user.nickname ?? null,
+    faction_club_id: user.faction_club_id ?? null
+  });
+  const safeLabel = escapeTelegramHtml(label);
+  const factionLabel = escapeTelegramHtml(buildFactionLabel(user.faction_club_id));
+  return `${safeLabel} (${factionLabel})`;
+}
+
+function buildFactionLabel(factionClubId?: string | null): string {
+  if (!factionClubId) {
+    return NO_FACTION_LABEL;
+  }
+  const normalized = normalizeFactionChoice(factionClubId);
+  if (normalized) {
+    return formatFactionName(normalized);
+  }
+  const trimmed = factionClubId.trim();
+  return trimmed.length ? trimmed : NO_FACTION_LABEL;
+}
+
 async function notifyUsersAboutMatchResult(
   env: Env,
   notifications: MatchResultNotification[]
 ): Promise<void> {
   for (const notification of notifications) {
-    const resultLine = formatMatchResultLine(notification);
-    const message = formatMatchResultMessage(notification);
     const imageFile = getMatchResultImageFile(notification.delta);
-    const caption = resultLine || message;
+    const caption = buildMatchResultCaption(notification) || formatMatchResultMessage(notification);
     if (imageFile) {
       await sendPhoto(
         env,

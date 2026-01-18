@@ -533,6 +533,22 @@ export interface MatchResultNotification {
   away_team: string;
   home_score: number;
   away_score: number;
+  prediction_stats: MatchResultPredictionStats;
+}
+
+export interface MatchResultExactGuessUser {
+  user_id: number;
+  nickname?: string | null;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  faction_club_id?: string | null;
+}
+
+export interface MatchResultPredictionStats {
+  total_predictions: number;
+  result_support_percent: number;
+  exact_guessers: MatchResultExactGuessUser[];
 }
 
 export interface MatchResultOutcome {
