@@ -6245,7 +6245,7 @@ function buildMatchResultStatsLines(stats: MatchResultPredictionStats | null | u
   if (!stats) {
     return [];
   }
-  const lines = [`Проголосували за результат ${stats.result_support_percent}% депутатів.`];
+  const lines = [`${stats.result_support_percent}% депутатів проголосували за цей результат.`];
   const guessers = stats.exact_guessers ?? [];
   if (guessers.length > 0) {
     const formattedGuessers = guessers.map(formatExactGuessLabel).join(", ");
