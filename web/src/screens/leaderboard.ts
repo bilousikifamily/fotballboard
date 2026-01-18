@@ -7,11 +7,27 @@ export function renderUsersError(container: HTMLElement): void {
   container.innerHTML = `<p class="muted small">Не вдалося завантажити таблицю.</p>`;
 }
 
+function collapseLeaderboardByFaction(users: LeaderboardUser[]): LeaderboardUser[] {
+  const seen = new Set<string>();
+  const collapsed: LeaderboardUser[] = [];
+  for (const user of users) {
+    const rawFaction = user.faction_club_id?.trim() ?? "";
+    const key = rawFaction ? rawFaction.toLowerCase() : "__no_faction__";
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    collapsed.push(user);
+  }
+  return collapsed;
+}
+
 export function renderLeaderboardList(
   users: LeaderboardUser[],
   options: { currentUserId: number | null; startingPoints: number; primaryFactionLogo?: string | null }
 ): string {
-  if (!users.length) {
+  const uniqueUsers = collapseLeaderboardByFaction(users);
+  if (!uniqueUsers.length) {
     return `<p class="muted small">Поки що немає користувачів.</p>`;
   }
 
@@ -25,7 +41,7 @@ export function renderLeaderboardList(
 
   let lastPoints: number | null = null;
   let currentRank = 0;
-  const rows = users
+  const rows = uniqueUsers
     .map((user) => {
       const factionLabel =
         user.faction_club_id && user.faction_club_id.trim()
