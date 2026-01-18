@@ -882,10 +882,29 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
   `;
 }
 
-function renderFactionThreadSection(): string {
+function renderFactionThreadBadge(entry: FactionEntry | null): string {
+  if (!entry) {
+    return "";
+  }
+  const display = getFactionDisplay(entry);
+  if (!display.logo) {
+    return "";
+  }
+  const label = escapeAttribute(display.name);
+  const logo = escapeAttribute(display.logo);
+  return `
+    <span class="faction-thread-badge" aria-label="${label}" role="img">
+      <img src="${logo}" alt="${label}" />
+    </span>
+  `;
+}
+
+function renderFactionThreadSection(entry: FactionEntry | null): string {
+  const badgeMarkup = renderFactionThreadBadge(entry);
   return `
     <section class="panel faction-recent-messages" data-faction-thread-card>
       <div class="faction-recent-header">
+        ${badgeMarkup}
         <a
           class="faction-thread-link"
           data-faction-thread-link
@@ -894,7 +913,7 @@ function renderFactionThreadSection(): string {
           rel="noopener noreferrer"
           aria-disabled="true"
           role="button"
-        >
+          >
           Чат фракції
         </a>
       </div>
@@ -1106,8 +1125,9 @@ function renderUser(
   const totalPredictions = prediction?.total ?? 0;
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
+  const primaryFactionEntry = selectBadgeFactionEntry(profile ?? null);
   const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
-  const factionThreadMarkup = renderFactionThreadSection();
+  const factionThreadMarkup = renderFactionThreadSection(primaryFactionEntry);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
