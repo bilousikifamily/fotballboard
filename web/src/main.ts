@@ -59,6 +59,7 @@ import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
+import { getFactionBranchChatUrl } from "./data/factionChatLinks";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
@@ -1022,8 +1023,9 @@ async function loadFactionThreadMessages(): Promise<void> {
     return;
   }
 
+  const fallbackUrl = getFactionBranchChatUrl(entry);
   container.innerHTML = `<p class="muted small">Завантаження...</p>`;
-  setFactionThreadLink(link, null);
+  setFactionThreadLink(link, fallbackUrl);
 
   try {
     const { response, data } = await fetchFactionMessages(apiBase, {
@@ -1037,10 +1039,10 @@ async function loadFactionThreadMessages(): Promise<void> {
     const messages = data.messages ?? [];
     container.innerHTML = renderFactionRecentMessages(messages);
     const chatUrl = data.chat_url ?? null;
-    setFactionThreadLink(link, chatUrl);
+    setFactionThreadLink(link, chatUrl ?? fallbackUrl);
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити повідомлення.</p>`;
-    setFactionThreadLink(link, null);
+    setFactionThreadLink(link, fallbackUrl);
   }
 }
 
