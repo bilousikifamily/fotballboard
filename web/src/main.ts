@@ -954,7 +954,11 @@ function renderFactionRecentMessages(messages: FactionBranchMessage[]): string {
 const MAX_FACTION_CARDS = 6;
 const MAX_TOP_FACTION_CARDS = 5;
 
-function renderFactionMembersRows(members: FactionMember[], highlightId: number | null): string {
+function renderFactionMembersRows(
+  members: FactionMember[],
+  highlightId: number | null,
+  factionLogo: string | null
+): string {
   if (!members.length) {
     return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
   }
@@ -979,10 +983,19 @@ function renderFactionMembersRows(members: FactionMember[], highlightId: number 
       const isSelf = highlightId !== null && member.id === highlightId;
       const rankIndex = members.indexOf(member);
       const rankLabel = rankIndex >= 0 ? rankIndex + 1 : index + 1;
+      const avatarLogo = getAvatarLogoPath(member.avatar_choice);
+      const avatar = factionLogo
+        ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(factionLogo)}" alt="" />`
+        : avatarLogo
+          ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
+          : member.photo_url
+            ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
+            : `<div class="table-avatar placeholder"></div>`;
       return `
         <div class="leaderboard-row${isSelf ? " is-self" : ""}">
           <div class="leaderboard-rank">${rankLabel}</div>
           <div class="leaderboard-identity">
+            ${avatar}
             <span class="leaderboard-name">${safeName}</span>
           </div>
           <div class="leaderboard-points">
@@ -1005,6 +1018,7 @@ async function loadFactionMembers(): Promise<void> {
     container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
     return;
   }
+  const factionLogo = getFactionDisplay(entry).logo;
   container.innerHTML = `<p class="muted small">Завантаження...</p>`;
   const requestId = ++factionMembersRequestVersion;
   try {
@@ -1017,7 +1031,7 @@ async function loadFactionMembers(): Promise<void> {
       return;
     }
     const members = data.members ?? [];
-    container.innerHTML = renderFactionMembersRows(members, currentUserId);
+    container.innerHTML = renderFactionMembersRows(members, currentUserId, factionLogo);
   } catch {
     if (requestId !== factionMembersRequestVersion) {
       return;

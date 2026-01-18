@@ -228,7 +228,7 @@ export type LeaderboardUser = {
 
 export type FactionMember = Pick<
   LeaderboardUser,
-  "id" | "username" | "first_name" | "last_name" | "nickname" | "points_total"
+  "id" | "username" | "first_name" | "last_name" | "nickname" | "points_total" | "photo_url" | "avatar_choice"
 >;
 
 export type FactionMembersResponse =
