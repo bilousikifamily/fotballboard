@@ -962,6 +962,13 @@ function renderFactionMembersRows(
   if (!members.length) {
     return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
   }
+  const prizeMap: Record<number, string> = {
+    1: "/images/500.png",
+    2: "/images/200.png",
+    3: "/images/100.png",
+    4: "/images/50.png",
+    5: "/images/20.png"
+  };
   const topMembers = members.slice(0, Math.min(members.length, MAX_TOP_FACTION_CARDS));
   const displayMembers = [...topMembers];
   if (highlightId !== null) {
@@ -989,11 +996,13 @@ function renderFactionMembersRows(
         : avatarLogo
           ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
           : member.photo_url
-            ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
-            : `<div class="table-avatar placeholder"></div>`;
+          ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
+          : `<div class="table-avatar placeholder"></div>`;
+      const prizeSrc = prizeMap[rankLabel];
+      const prizeIcon = prizeSrc ? `<img src="${escapeAttribute(prizeSrc)}" alt="" />` : "";
       return `
         <div class="leaderboard-row${isSelf ? " is-self" : ""}">
-          <div class="leaderboard-rank">${rankLabel}</div>
+          <div class="leaderboard-rank" aria-hidden="true"></div>
           <div class="leaderboard-identity">
             ${avatar}
             <span class="leaderboard-name">${safeName}</span>
@@ -1001,6 +1010,9 @@ function renderFactionMembersRows(
           <div class="leaderboard-points">
             <span class="leaderboard-points-value">${safePoints}</span>
           </div>
+          <span class="leaderboard-prize ${prizeIcon ? "is-visible" : ""}">
+            ${prizeIcon}
+          </span>
         </div>
       `;
     })
