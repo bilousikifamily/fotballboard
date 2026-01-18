@@ -220,6 +220,7 @@ export type LeaderboardUser = {
   photo_url?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
+  faction_club_id?: string | null;
   points_total?: number | null;
   updated_at?: string | null;
   last_seen_at?: string | null;

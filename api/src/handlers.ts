@@ -1734,7 +1734,7 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
     let query = supabase
       .from("users")
       .select(
-        "id, username, first_name, last_name, photo_url, points_total, updated_at, last_seen_at, nickname, avatar_choice"
+        "id, username, first_name, last_name, photo_url, points_total, updated_at, last_seen_at, nickname, avatar_choice, faction_club_id"
       )
       .order("points_total", { ascending: false })
       .order("updated_at", { ascending: false });

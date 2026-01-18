@@ -1,6 +1,6 @@
 import type { LeaderboardUser } from "../types";
 import { formatUserName } from "../formatters/names";
-import { getAvatarLogoPath } from "../features/clubs";
+import { formatClubName, getAvatarLogoPath } from "../features/clubs";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
 
 export function renderUsersError(container: HTMLElement): void {
@@ -27,7 +27,11 @@ export function renderLeaderboardList(
   let currentRank = 0;
   const rows = users
     .map((user) => {
-      const name = formatUserName(user);
+      const factionLabel =
+        user.faction_club_id && user.faction_club_id.trim()
+          ? formatClubName(user.faction_club_id)
+          : formatUserName(user);
+      const displayName = factionLabel || "Фракція не обрана";
       const points = typeof user.points_total === "number" ? user.points_total : options.startingPoints;
       if (lastPoints === null || points !== lastPoints) {
         currentRank += 1;
@@ -60,7 +64,7 @@ export function renderLeaderboardList(
           <span class="leaderboard-rank">${currentRank}</span>
           <div class="leaderboard-identity">
             ${avatar}
-            <span class="leaderboard-name">${escapeHtml(name)}</span>
+            <span class="leaderboard-name">${escapeHtml(displayName)}</span>
           </div>
           <span class="leaderboard-points">${points}</span>
           <span class="leaderboard-prize ${prizeIcon ? "is-visible" : ""}">
