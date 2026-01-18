@@ -31,7 +31,7 @@
       - `GET /api/matches`, `GET /api/matches/pending`;
       - `POST /api/matches`, `POST /api/matches/result`, `POST /api/matches/confirm`, `POST /api/matches/announcement`;
       - `POST /api/predictions`, `GET /api/predictions`;
-      - `POST /api/onboarding`, `POST /api/avatar`, `POST /api/logo-order`, `POST /api/nickname`;
+      - `POST /api/onboarding`, `POST /api/avatar`, `POST /api/nickname`;
       - `GET/POST /api/analitika*` та `GET/POST /api/odds*` (оновлення/читання аналітики, коефіцієнтів);
       - `POST /tg/webhook` – обробка оновлень Telegram.
     - зв’язок з Supabase (через HTTP‑запити до Supabase REST / RPC);
@@ -211,7 +211,7 @@
 - **Лідерборд та профіль**:
 
   - фронтенд викликає `GET /api/leaderboard`, рендерить таблицю (`renderLeaderboardList`);
-  - профіль/онбординг змінюється через `POST /api/onboarding`, `POST /api/avatar`, `POST /api/logo-order`, `POST /api/nickname`, а відповіді оновлюють локальний стан.
+  - профіль/онбординг змінюється через `POST /api/onboarding`, `POST /api/avatar`, `POST /api/nickname`, а відповіді оновлюють локальний стан.
 
 - **Аналітика, погода та коефіцієнти**:
   - бекенд через `apiFootball.ts` та окремі сервіси тягне дані з API‑Football;

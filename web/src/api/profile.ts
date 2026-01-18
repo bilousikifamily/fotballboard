@@ -10,7 +10,6 @@ export function postOnboarding(
     faction_club_id: string | null;
     nickname: string;
     avatar_choice: string | null;
-    logo_order: string[];
   }
 ): Promise<{ response: Response; data: SimpleResponse }> {
   return requestJson<SimpleResponse>(`${apiBase}/api/onboarding`, {
@@ -25,17 +24,6 @@ export function postAvatarChoice(
   payload: { initData: string; avatar_choice: string }
 ): Promise<{ response: Response; data: SimpleResponse }> {
   return requestJson<SimpleResponse>(`${apiBase}/api/avatar`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-}
-
-export function postLogoOrder(
-  apiBase: string,
-  payload: { initData: string; logo_order: string[] }
-): Promise<{ response: Response; data: SimpleResponse }> {
-  return requestJson<SimpleResponse>(`${apiBase}/api/logo-order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)

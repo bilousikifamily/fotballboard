@@ -5,7 +5,6 @@ import type {
   FactionBranchMessage,
   FactionEntry,
   FactionMember,
-  LogoPosition,
   Match,
   OddsRefreshDebug,
   OddsRefreshResponse,
@@ -34,7 +33,6 @@ import {
   fetchFactionMembers,
   fetchFactionMessages,
   postAvatarChoice,
-  postLogoOrder,
   postNickname,
   postOnboarding
 } from "./api/profile";
@@ -91,8 +89,6 @@ let currentUserId: number | null = null;
 let currentUser: TelegramWebAppUser | undefined;
 let currentNickname: string | null = null;
 let currentAvatarChoice: string | null = null;
-let currentLogoOrder: string[] | null = null;
-let currentLogoOptions: AvatarOption[] = [];
 let currentOnboarding: OnboardingInfo | null = null;
 let currentProfileStats: ProfileStatsPayload | null = null;
 let factionMembersRequestVersion = 0;
@@ -110,12 +106,6 @@ const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_THREAD_MESSAGE_LIMIT = 3;
-const LOGO_POSITIONS = ["center", "left", "right"] as const;
-const LOGO_POSITION_LABELS: Record<LogoPosition, string> = {
-  center: "1",
-  left: "2",
-  right: "3"
-};
 
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -286,7 +276,6 @@ async function bootstrap(data: string): Promise<void> {
     currentOnboarding = onboarding;
     currentNickname = onboarding.nickname ?? null;
     currentAvatarChoice = onboarding.avatar_choice ?? null;
-    currentLogoOrder = onboarding.logo_order ?? null;
 
     if (!onboarding.completed) {
       document.body.classList.add("onboarding-active");
@@ -515,18 +504,11 @@ async function submitOnboarding(
       return;
     }
     const avatarChoice = getDefaultAvatarChoice(state);
-    const logoOrder = getDefaultLogoOrder({
-      faction_club_id: state.factionClubId,
-      nickname,
-      avatar_choice: avatarChoice,
-      completed: true
-    });
     const { response, data } = await postOnboarding(apiBase, {
       initData,
       faction_club_id: state.factionClubId,
       nickname,
       avatar_choice: avatarChoice,
-      logo_order: logoOrder
     });
     if (!response.ok || !data.ok) {
       if (status) {
@@ -537,13 +519,11 @@ async function submitOnboarding(
 
     currentNickname = nickname;
     currentAvatarChoice = avatarChoice;
-    currentLogoOrder = logoOrder.length ? logoOrder : null;
     currentUser = user;
     currentOnboarding = {
       faction_club_id: state.factionClubId,
       nickname,
       avatar_choice: avatarChoice,
-      logo_order: currentLogoOrder,
       completed: true
     };
     renderUser(user, stats, isAdmin, currentDate, currentNickname, null);
@@ -1128,12 +1108,6 @@ function renderUser(
   const displayName = nickname?.trim() ? nickname.trim() : formatTelegramName(user);
   const safeName = escapeHtml(displayName);
   const logoOptions = buildAvatarOptions(currentOnboarding);
-  currentLogoOptions = logoOptions;
-  const resolvedLogoOrder = resolveLogoOrder(logoOptions, currentLogoOrder ?? currentOnboarding?.logo_order ?? null);
-  currentLogoOrder = resolvedLogoOrder.length ? resolvedLogoOrder.map((option) => option.choice) : null;
-  if (currentOnboarding) {
-    currentOnboarding.logo_order = currentLogoOrder;
-  }
   const factionBadgeMarkup = renderFactionBadge(profile ?? null, logoOptions[0] ?? null);
   const predictionGridMarkup = renderPredictionGrid(profile ?? null);
   const nicknameMarkup = safeName
@@ -1412,7 +1386,6 @@ function renderUser(
 
   setupTabs();
   setupNoticeTicker();
-  setupLogoOrderControls();
   scrollProfilePredictionsToBottom();
 
   const avatarToggle = app.querySelector<HTMLButtonElement>("[data-avatar-toggle]");
@@ -1533,283 +1506,6 @@ function renderUser(
 
   }
 
-}
-
-function setupLogoOrderControls(): void {
-  const stack = app.querySelector<HTMLElement>("[data-logo-stack]");
-  const menu = app.querySelector<HTMLElement>("[data-logo-order-menu]");
-  if (!stack || !menu) {
-    return;
-  }
-
-  let activeChoice: string | null = null;
-  const status = menu.querySelector<HTMLElement>("[data-logo-order-status]");
-  const nicknameStatus = menu.querySelector<HTMLElement>("[data-nickname-status]");
-  const nicknameInput = menu.querySelector<HTMLInputElement>("[data-nickname-input]");
-  const nicknameSave = menu.querySelector<HTMLButtonElement>("[data-nickname-save]");
-
-  const updateMenuState = (choice: string): void => {
-    const order = currentLogoOrder ?? [];
-    const currentIndex = order.indexOf(choice);
-    menu.querySelectorAll<HTMLButtonElement>("[data-logo-position]").forEach((button) => {
-      const position = button.dataset.logoPosition as LogoPosition | undefined;
-      if (!position) {
-        return;
-      }
-      const index = LOGO_POSITIONS.indexOf(position);
-      button.disabled = index >= order.length;
-      button.classList.toggle("is-selected", index === currentIndex);
-    });
-  };
-
-  const closeMenu = (): void => {
-    menu.classList.remove("is-open");
-    activeChoice = null;
-  };
-
-  const openMenu = (choice: string): void => {
-    activeChoice = choice;
-    if (status) {
-      status.textContent = "";
-    }
-    if (nicknameStatus) {
-      nicknameStatus.textContent = "";
-    }
-    updateMenuState(choice);
-    menu.classList.add("is-open");
-  };
-
-  stack.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-logo-choice]");
-    if (!target || !currentLogoOrder || currentLogoOrder.length < 2) {
-      return;
-    }
-    const choice = target.dataset.logoChoice;
-    if (!choice) {
-      return;
-    }
-    openMenu(choice);
-  });
-
-  menu.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-logo-position]");
-    if (!target || !activeChoice || !currentLogoOrder) {
-      return;
-    }
-    const position = target.dataset.logoPosition as LogoPosition | undefined;
-    if (!position) {
-      return;
-    }
-    const nextOrder = reorderLogoOrder(currentLogoOrder, activeChoice, position);
-    if (!nextOrder) {
-      return;
-    }
-    currentLogoOrder = nextOrder;
-    if (currentOnboarding) {
-      currentOnboarding.logo_order = nextOrder;
-    }
-    updateLogoStack();
-    closeMenu();
-    void submitLogoOrder(nextOrder, status);
-  });
-
-  if (nicknameSave && nicknameInput) {
-    const saveHandler = (): void => {
-      const nextNickname = normalizeLocalNickname(nicknameInput.value);
-      if (!nextNickname) {
-        if (nicknameStatus) {
-          nicknameStatus.textContent = "Нікнейм має містити від 2 до 24 символів.";
-        }
-        return;
-      }
-      if (nextNickname === currentNickname) {
-        if (nicknameStatus) {
-          nicknameStatus.textContent = "Нікнейм без змін.";
-        }
-        return;
-      }
-      if (nicknameStatus) {
-        nicknameStatus.textContent = "";
-      }
-      void submitNickname(nextNickname, nicknameStatus);
-    };
-
-    nicknameSave.addEventListener("click", saveHandler);
-    nicknameInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        saveHandler();
-      }
-    });
-  }
-
-  document.addEventListener("click", (event) => {
-    if (!menu.classList.contains("is-open")) {
-      return;
-    }
-    const target = event.target as Node;
-    if (menu.contains(target) || stack.contains(target)) {
-      return;
-    }
-    closeMenu();
-  });
-}
-
-function updateLogoStack(): void {
-  const stack = app.querySelector<HTMLElement>("[data-logo-stack]");
-  if (!stack || !currentLogoOrder || currentLogoOptions.length === 0) {
-    return;
-  }
-  const resolvedOrder = resolveLogoOrder(currentLogoOptions, currentLogoOrder);
-  stack.innerHTML = renderLogoStackContent(resolvedOrder);
-}
-
-function reorderLogoOrder(order: string[], choice: string, position: LogoPosition): string[] | null {
-  const targetIndex = LOGO_POSITIONS.indexOf(position);
-  const currentIndex = order.indexOf(choice);
-  if (targetIndex === -1 || currentIndex === -1 || targetIndex >= order.length) {
-    return null;
-  }
-  if (targetIndex === currentIndex) {
-    return order;
-  }
-  const nextOrder = [...order];
-  const swapped = nextOrder[targetIndex];
-  nextOrder[targetIndex] = choice;
-  nextOrder[currentIndex] = swapped;
-  return nextOrder;
-}
-
-function renderLogoStack(logoOrder: AvatarOption[]): string {
-  return `
-    <div class="logo-stack" data-logo-stack>
-      ${renderLogoStackContent(logoOrder)}
-    </div>
-  `;
-}
-
-function renderLogoStackContent(logoOrder: AvatarOption[]): string {
-  const center = logoOrder[0] ?? null;
-  const left = logoOrder[1] ?? null;
-  const right = logoOrder[2] ?? null;
-  return [
-    renderLogoSlot(left, "left"),
-    renderLogoSlot(center, "center"),
-    renderLogoSlot(right, "right")
-  ].join("");
-}
-
-function renderLogoSlot(option: AvatarOption | null, position: LogoPosition): string {
-  if (!option) {
-    return `<div class="logo-slot ${position} is-empty" aria-hidden="true"></div>`;
-  }
-  const safeLogo = escapeAttribute(option.logo);
-  const safeName = escapeAttribute(option.name);
-  return `
-    <button class="logo-slot ${position}" type="button" data-logo-choice="${escapeAttribute(
-      option.choice
-    )}" aria-label="${safeName}">
-      <img src="${safeLogo}" alt="${safeName}" />
-    </button>
-  `;
-}
-
-function renderLogoOrderMenu(logoOrder: AvatarOption[], nickname: string): string {
-  if (logoOrder.length < 2) {
-    return "";
-  }
-  const safeNickname = escapeAttribute(nickname);
-  const options = LOGO_POSITIONS.map(
-    (position) => `
-      <button class="logo-order-option" type="button" data-logo-position="${position}">
-        ${LOGO_POSITION_LABELS[position]}
-      </button>
-    `
-  ).join("");
-  return `
-    <div class="logo-order-menu" data-logo-order-menu>
-      <p class="logo-order-title">ОБЕРИ ПОЗИЦІЮ ЛОГОТИПІВ</p>
-      <div class="logo-order-options">
-        ${options}
-      </div>
-      <div class="logo-nickname-field">
-        <label class="logo-nickname-label" for="nickname-input">Нікнейм</label>
-        <input id="nickname-input" type="text" maxlength="24" value="${safeNickname}" data-nickname-input />
-        <button class="button secondary small-button logo-nickname-save" type="button" data-nickname-save>
-          Зберегти
-        </button>
-      </div>
-      <p class="muted small" data-logo-order-status></p>
-      <p class="muted small" data-nickname-status></p>
-    </div>
-  `;
-}
-
-function resolveLogoOrder(options: AvatarOption[], logoOrder: string[] | null): AvatarOption[] {
-  if (!options.length) {
-    return [];
-  }
-
-  const byChoice = new Map(options.map((option) => [option.choice, option]));
-  const ordered: AvatarOption[] = [];
-  const seen = new Set<string>();
-
-  if (Array.isArray(logoOrder)) {
-    for (const choice of logoOrder) {
-      const option = byChoice.get(choice);
-      if (option && !seen.has(choice)) {
-        ordered.push(option);
-        seen.add(choice);
-      }
-    }
-  }
-
-  for (const option of options) {
-    if (!seen.has(option.choice)) {
-      ordered.push(option);
-      seen.add(option.choice);
-    }
-  }
-
-  return ordered;
-}
-
-function getDefaultLogoOrder(onboarding: OnboardingInfo | null): string[] {
-  return buildAvatarOptions(onboarding).map((option) => option.choice);
-}
-
-async function submitLogoOrder(
-  logoOrder: string[],
-  statusEl?: HTMLElement | null
-): Promise<void> {
-  if (!apiBase) {
-    return;
-  }
-
-  if (statusEl) {
-    statusEl.textContent = "Збереження...";
-  }
-
-  try {
-    const { response, data } = await postLogoOrder(apiBase, {
-      initData,
-      logo_order: logoOrder
-    });
-    if (!response.ok || !data.ok) {
-      if (statusEl) {
-        statusEl.textContent = "Не вдалося зберегти порядок.";
-      }
-      return;
-    }
-
-    if (statusEl) {
-      statusEl.textContent = "Збережено ✅";
-    }
-  } catch {
-    if (statusEl) {
-      statusEl.textContent = "Не вдалося зберегти порядок.";
-    }
-  }
 }
 
 function normalizeLocalNickname(value: string): string | null {

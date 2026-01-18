@@ -9,7 +9,6 @@ create table if not exists users (
   faction_club_id text,
   nickname text,
   avatar_choice text,
-  logo_order text[],
   onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

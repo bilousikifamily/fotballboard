@@ -498,7 +498,6 @@ export interface UserOnboarding {
   faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
-  logo_order?: string[] | null;
   completed: boolean;
 }
 
@@ -506,7 +505,6 @@ export interface UserOnboardingRow {
   faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
-  logo_order?: string[] | null;
   onboarding_completed_at?: string | null;
 }
 
@@ -515,17 +513,11 @@ export interface OnboardingPayload {
   faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
-  logo_order?: string[] | null;
 }
 
 export interface AvatarPayload {
   initData?: string;
   avatar_choice?: string | null;
-}
-
-export interface LogoOrderPayload {
-  initData?: string;
-  logo_order?: string[] | null;
 }
 
 export interface NicknamePayload {

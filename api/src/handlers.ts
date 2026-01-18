@@ -316,22 +316,10 @@ export default {
         return jsonResponse({ ok: false, error: "bad_avatar_choice" }, 400, corsHeaders());
       }
 
-      let logoOrder: string[] | null = null;
-      if (body.logo_order !== undefined) {
-        logoOrder = normalizeLogoOrder(body.logo_order, onboardingSelections);
-        if (!logoOrder) {
-          return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
-        }
-        if (logoOrder.length !== getExpectedLogoCount(onboardingSelections)) {
-          return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
-        }
-      }
-
       const saved = await saveUserOnboarding(supabase, auth.user.id, {
         faction_club_id: factionClubId,
         nickname,
         avatar_choice: avatarChoice,
-        logo_order: logoOrder
       });
       if (!saved) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
@@ -385,55 +373,6 @@ export default {
       }
 
       const saved = await saveUserAvatarChoice(supabase, auth.user.id, avatarChoice);
-      if (!saved) {
-        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
-      }
-
-      return jsonResponse({ ok: true }, 200, corsHeaders());
-    }
-
-    if (url.pathname === "/api/logo-order") {
-      if (request.method === "OPTIONS") {
-        return corsResponse();
-      }
-      if (request.method !== "POST") {
-        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
-      }
-
-      const supabase = createSupabaseClient(env);
-      if (!supabase) {
-        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
-      }
-
-      const body = await readJson<LogoOrderPayload>(request);
-      if (!body) {
-        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
-      }
-
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-
-      const onboarding = await getUserOnboarding(supabase, auth.user.id);
-      if (!onboarding) {
-        return jsonResponse({ ok: false, error: "user_not_found" }, 404, corsHeaders());
-      }
-
-      const onboardingSelections = {
-        factionClubId: onboarding.faction_club_id ?? null
-      };
-      const logoOrder = normalizeLogoOrder(body.logo_order, onboardingSelections);
-      if (!logoOrder) {
-        return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
-      }
-      if (logoOrder.length !== getExpectedLogoCount(onboardingSelections)) {
-        return jsonResponse({ ok: false, error: "bad_logo_order" }, 400, corsHeaders());
-      }
-
-      const saved = await saveUserLogoOrder(supabase, auth.user.id, logoOrder);
       if (!saved) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -2481,7 +2420,7 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("faction_club_id, nickname, avatar_choice, logo_order, onboarding_completed_at")
+      .select("faction_club_id, nickname, avatar_choice, onboarding_completed_at")
       .eq("id", userId)
       .maybeSingle();
     if (error || !data) {
@@ -2490,21 +2429,16 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
     const completedAt = (data as UserOnboardingRow).onboarding_completed_at ?? null;
     const factionClubId = data.faction_club_id ?? null;
     const nickname = (data.nickname ?? "").trim();
-    const logoOrder = (data as UserOnboardingRow).logo_order ?? null;
-
     // Вважаємо онбординг повністю завершеним тільки коли заповнені всі кроки.
     const isFullyCompleted =
       Boolean(completedAt) &&
       Boolean(factionClubId) &&
-      nickname.length >= 2 &&
-      Array.isArray(logoOrder) &&
-      logoOrder.length > 0;
+      nickname.length >= 2;
 
     return {
       faction_club_id: factionClubId,
       nickname: nickname || null,
       avatar_choice: data.avatar_choice ?? null,
-      logo_order: logoOrder,
       completed: isFullyCompleted
     };
   } catch {
@@ -5785,7 +5719,6 @@ async function saveUserOnboarding(
         faction_club_id: payload.faction_club_id ?? null,
         nickname: payload.nickname ?? null,
         avatar_choice: payload.avatar_choice ?? null,
-        logo_order: payload.logo_order ?? null,
         onboarding_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -5821,30 +5754,6 @@ async function saveUserAvatarChoice(
     return true;
   } catch (error) {
     console.error("Failed to save avatar choice", error);
-    return false;
-  }
-}
-
-async function saveUserLogoOrder(
-  supabase: SupabaseClient,
-  userId: number,
-  logoOrder: string[]
-): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from("users")
-      .update({
-        logo_order: logoOrder,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", userId);
-    if (error) {
-      console.error("Failed to save logo order", error);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("Failed to save logo order", error);
     return false;
   }
 }
@@ -6156,41 +6065,6 @@ function isAvatarChoiceAllowed(
     }
   }
   return allowed.has(clubId);
-}
-
-function normalizeLogoOrder(
-  value: unknown,
-  selections: { factionClubId: string | null }
-): string[] | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  const result: string[] = [];
-  const seen = new Set<string>();
-  for (const item of value) {
-    if (typeof item !== "string") {
-      return null;
-    }
-    const normalized = normalizeAvatarChoice(item);
-    if (!normalized) {
-      return null;
-    }
-    if (!isAvatarChoiceAllowed(normalized, selections)) {
-      return null;
-    }
-    if (seen.has(normalized)) {
-      continue;
-    }
-    seen.add(normalized);
-    result.push(normalized);
-  }
-
-  return result;
-}
-
-function getExpectedLogoCount(selections: { factionClubId: string | null }): number {
-  return selections.factionClubId ? 1 : 0;
 }
 
 function normalizeNickname(value: unknown): string | null {

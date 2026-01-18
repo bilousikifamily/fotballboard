@@ -291,11 +291,8 @@ export type OnboardingInfo = {
   faction_club_id?: string | null;
   nickname?: string | null;
   avatar_choice?: string | null;
-  logo_order?: string[] | null;
   completed?: boolean;
 };
-
-export type LogoPosition = "center" | "left" | "right";
 
 export type AvatarOption = {
   choice: string;
