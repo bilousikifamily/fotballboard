@@ -12,7 +12,10 @@ function collapseLeaderboardByFaction(users: LeaderboardUser[]): LeaderboardUser
   const collapsed: LeaderboardUser[] = [];
   for (const user of users) {
     const rawFaction = user.faction_club_id?.trim() ?? "";
-    const key = rawFaction ? rawFaction.toLowerCase() : "__no_faction__";
+    if (!rawFaction) {
+      continue;
+    }
+    const key = rawFaction.toLowerCase();
     if (seen.has(key)) {
       continue;
     }
