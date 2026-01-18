@@ -351,20 +351,17 @@ body.profile-tab-active #app {
   border-radius: 999px;
 }
 
-.profile-screen__row--chat .panel.faction-recent-messages,
-.profile-screen__row--top .panel.faction-members {
+.profile-screen__row--chat .panel.faction-recent-messages {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
 }
 
-.profile-screen__row--chat .panel.faction-recent-messages::-webkit-scrollbar,
-.profile-screen__row--top .panel.faction-members::-webkit-scrollbar {
+.profile-screen__row--chat .panel.faction-recent-messages::-webkit-scrollbar {
   width: 4px;
 }
 
-.profile-screen__row--chat .panel.faction-recent-messages::-webkit-scrollbar-thumb,
-.profile-screen__row--top .panel.faction-members::-webkit-scrollbar-thumb {
+.profile-screen__row--chat .panel.faction-recent-messages::-webkit-scrollbar-thumb {
   background: var(--accent);
   border-radius: 999px;
 }
