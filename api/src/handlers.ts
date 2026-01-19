@@ -596,7 +596,8 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      return jsonResponse({ ok: true, faction: factionId, members }, 200, corsHeaders());
+      const factionRank = await getFactionRank(supabase, factionId);
+      return jsonResponse({ ok: true, faction: factionId, members, faction_rank: factionRank }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/faction-chat-preview") {
@@ -1551,6 +1552,47 @@ async function listFactionMembers(
     return (data as StoredUser[]) ?? [];
   } catch (error) {
     console.error("Failed to fetch faction members", error);
+    return null;
+  }
+}
+
+async function getFactionRank(supabase: SupabaseClient, factionId: string): Promise<number | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("faction_club_id, points_total")
+      .not("faction_club_id", "is", null)
+      .order("points_total", { ascending: false })
+      .order("updated_at", { ascending: false });
+    if (error) {
+      console.error("Failed to fetch faction rank", error);
+      return null;
+    }
+    const seen = new Set<string>();
+    let lastPoints: number | null = null;
+    let rank = 0;
+    for (const row of (data as Array<{ faction_club_id: string | null; points_total: number | null }>) ?? []) {
+      const rawFaction = row.faction_club_id?.trim();
+      if (!rawFaction) {
+        continue;
+      }
+      const normalized = rawFaction.toLowerCase();
+      if (seen.has(normalized)) {
+        continue;
+      }
+      const points = typeof row.points_total === "number" ? row.points_total : STARTING_POINTS;
+      if (lastPoints === null || points !== lastPoints) {
+        rank += 1;
+        lastPoints = points;
+      }
+      seen.add(normalized);
+      if (normalized === factionId.toLowerCase()) {
+        return rank;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to fetch faction rank", error);
     return null;
   }
 }

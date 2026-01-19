@@ -1033,7 +1033,7 @@ async function loadFactionMembers(): Promise<void> {
       currentUserId,
       factionLogo,
       entry.value,
-      entry.rank ?? null
+      data.faction_rank ?? entry.rank ?? null
     );
   } catch {
     if (requestId !== factionMembersRequestVersion) {

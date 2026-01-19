@@ -212,7 +212,7 @@ export type FactionMember = Pick<
 >;
 
 export type FactionMembersResponse =
-  | { ok: true; faction: string | null; members: FactionMember[] }
+  | { ok: true; faction: string | null; members: FactionMember[]; faction_rank?: number | null }
   | { ok: false; error: string };
 
 export type FactionChatPreviewMessage = {
