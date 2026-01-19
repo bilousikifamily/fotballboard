@@ -114,21 +114,41 @@ const CLASSICO_FACTIONS: ClassicoFaction[] = ["real_madrid", "barcelona"];
 const ALL_FACTION_BRANCHES: FactionBranchSlug[] = [
   "real_madrid",
   "barcelona",
+  "atletico-madrid",
+  "bayern-munchen",
+  "borussia-dortmund",
+  "chelsea",
+  "manchester-city",
   "liverpool",
   "arsenal",
-  "chelsea",
+  "manchester-united",
+  "paris-saint-germain",
   "milan",
-  "manchester-united"
+  "juventus",
+  "inter",
+  "napoli",
+  "dynamo-kyiv",
+  "shakhtar"
 ];
 
 const FACTION_DISPLAY_NAMES: Record<FactionBranchSlug, string> = {
   real_madrid: "Реал Мадрид",
   barcelona: "Барселона",
+  "atletico-madrid": "Атлетіко",
+  "bayern-munchen": "Баварія",
+  "borussia-dortmund": "Боруссія Дортмунд",
+  chelsea: "Челсі",
+  "manchester-city": "Манчестер Сіті",
   liverpool: "Ліверпуль",
   arsenal: "Арсенал",
-  chelsea: "Челсі",
+  "manchester-united": "Манчестер Юнайтед",
+  "paris-saint-germain": "ПСЖ",
   milan: "Мілан",
-  "manchester-united": "Манчестер Юнайтед"
+  juventus: "Ювентус",
+  inter: "Інтер",
+  napoli: "Наполі",
+  "dynamo-kyiv": "Динамо Київ",
+  shakhtar: "Шахтар"
 };
 
 const NO_FACTION_LABEL = "без фракції";
@@ -164,11 +184,21 @@ const CLASSICO_CHAT_ENV: Record<ClassicoFaction, keyof Env> = {
 };
 
 const EXTRA_FACTION_CHAT_CONFIG: Array<{ slug: Exclude<FactionBranchSlug, ClassicoFaction>; envKey: keyof Env }> = [
+  { slug: "atletico-madrid", envKey: "FACTION_CHAT_ATLETICO" },
+  { slug: "bayern-munchen", envKey: "FACTION_CHAT_BAYERN" },
+  { slug: "borussia-dortmund", envKey: "FACTION_CHAT_DORTMUND" },
+  { slug: "manchester-city", envKey: "FACTION_CHAT_MANCHESTER_CITY" },
+  { slug: "paris-saint-germain", envKey: "FACTION_CHAT_PSG" },
   { slug: "liverpool", envKey: "FACTION_CHAT_LIVERPOOL" },
   { slug: "arsenal", envKey: "FACTION_CHAT_ARSENAL" },
   { slug: "chelsea", envKey: "FACTION_CHAT_CHELSEA" },
   { slug: "milan", envKey: "FACTION_CHAT_MILAN" },
-  { slug: "manchester-united", envKey: "FACTION_CHAT_MANCHESTER_UNITED" }
+  { slug: "manchester-united", envKey: "FACTION_CHAT_MANCHESTER_UNITED" },
+  { slug: "juventus", envKey: "FACTION_CHAT_JUVENTUS" },
+  { slug: "inter", envKey: "FACTION_CHAT_INTER" },
+  { slug: "napoli", envKey: "FACTION_CHAT_NAPOLI" },
+  { slug: "dynamo-kyiv", envKey: "FACTION_CHAT_DYNAMO_KYIV" },
+  { slug: "shakhtar", envKey: "FACTION_CHAT_SHAKHTAR" }
 ];
 
 const weatherCache = new Map<string, WeatherCacheEntry>();
@@ -5679,6 +5709,24 @@ function parseRating(value: unknown): number | null {
 const FACTION_SLUG_ALIASES: Record<string, FactionBranchSlug> = {
   barcelona: "barcelona",
   barca: "barcelona",
+  "atletico-madrid": "atletico-madrid",
+  atletico: "atletico-madrid",
+  "atletico madrid": "atletico-madrid",
+  "atletico_madrid": "atletico-madrid",
+  "bayern-munchen": "bayern-munchen",
+  bayern: "bayern-munchen",
+  "bayern_munchen": "bayern-munchen",
+  "borussia-dortmund": "borussia-dortmund",
+  dortmund: "borussia-dortmund",
+  "borussia_dortmund": "borussia-dortmund",
+  "manchester-city": "manchester-city",
+  "manchester city": "manchester-city",
+  "manchester_city": "manchester-city",
+  "man-city": "manchester-city",
+  mancity: "manchester-city",
+  "paris-saint-germain": "paris-saint-germain",
+  "paris_saint_germain": "paris-saint-germain",
+  psg: "paris-saint-germain",
   real_madrid: "real_madrid",
   "real-madrid": "real_madrid",
   realmadrid: "real_madrid",
@@ -5686,6 +5734,18 @@ const FACTION_SLUG_ALIASES: Record<string, FactionBranchSlug> = {
   arsenal: "arsenal",
   chelsea: "chelsea",
   milan: "milan",
+  juventus: "juventus",
+  juve: "juventus",
+  inter: "inter",
+  "inter-milan": "inter",
+  intermilan: "inter",
+  napoli: "napoli",
+  "dynamo-kyiv": "dynamo-kyiv",
+  "dynamo_kyiv": "dynamo-kyiv",
+  dynamo: "dynamo-kyiv",
+  dinamo: "dynamo-kyiv",
+  shakhtar: "shakhtar",
+  "shakhtar-donetsk": "shakhtar",
   "manchester-united": "manchester-united",
   "manchester_united": "manchester-united",
   "manchester united": "manchester-united",

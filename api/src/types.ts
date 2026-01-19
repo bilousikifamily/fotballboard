@@ -278,11 +278,21 @@ export interface ProfileStats {
 export type FactionBranchSlug =
   | "real_madrid"
   | "barcelona"
+  | "atletico-madrid"
+  | "bayern-munchen"
+  | "borussia-dortmund"
+  | "chelsea"
+  | "manchester-city"
   | "liverpool"
   | "arsenal"
-  | "chelsea"
+  | "manchester-united"
+  | "paris-saint-germain"
   | "milan"
-  | "manchester-united";
+  | "juventus"
+  | "inter"
+  | "napoli"
+  | "dynamo-kyiv"
+  | "shakhtar";
 
 export interface AnalitikaRefreshPayload {
   initData?: string;
