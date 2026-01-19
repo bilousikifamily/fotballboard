@@ -21,4 +21,12 @@ export interface Env {
   WEATHER_DB_REFRESH_LIMIT?: string;
   WEATHERAPI_KEY?: string;
   WEATHERAPI_BASE?: string;
+  FACTION_CHAT_REAL?: string;
+  FACTION_CHAT_BARCA?: string;
+  FACTION_CHAT_GENERAL?: string;
+  FACTION_CHAT_LIVERPOOL?: string;
+  FACTION_CHAT_ARSENAL?: string;
+  FACTION_CHAT_CHELSEA?: string;
+  FACTION_CHAT_MILAN?: string;
+  FACTION_CHAT_MANCHESTER_UNITED?: string;
 }

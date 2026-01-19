@@ -1,5 +1,5 @@
 import { authHeaders, requestJson } from "./client";
-import type { FactionMembersResponse } from "../types";
+import type { FactionMembersResponse, FactionChatPreviewResponse } from "../types";
 
 type SimpleResponse = { ok: boolean; error?: string };
 
@@ -49,5 +49,16 @@ export function fetchFactionMembers(
   const params = typeof limit === "number" ? `?limit=${encodeURIComponent(limit)}` : "";
   return requestJson<FactionMembersResponse>(`${apiBase}/api/faction-members${params}`, {
     headers: authHeaders(initData)
+  });
+}
+
+export function fetchFactionChatPreview(
+  apiBase: string,
+  payload: { initData: string; limit?: number }
+): Promise<{ response: Response; data: FactionChatPreviewResponse }> {
+  return requestJson<FactionChatPreviewResponse>(`${apiBase}/api/faction-chat-preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   });
 }

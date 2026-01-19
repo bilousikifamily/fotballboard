@@ -215,6 +215,24 @@ export type FactionMembersResponse =
   | { ok: true; faction: string | null; members: FactionMember[] }
   | { ok: false; error: string };
 
+export type FactionChatPreviewMessage = {
+  id: number;
+  faction: FactionBranchSlug;
+  text: string;
+  nickname: string | null;
+  author: string | null;
+  created_at: string;
+};
+
+export type FactionChatPreviewResponse =
+  | {
+      ok: true;
+      faction: FactionBranchSlug;
+      chat_url: string | null;
+      messages: FactionChatPreviewMessage[];
+    }
+  | { ok: false; error: string };
+
 export type Match = {
   id: number;
   home_team: string;

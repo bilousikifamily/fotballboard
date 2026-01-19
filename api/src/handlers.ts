@@ -158,6 +158,19 @@ const ANALITIKA_TEAMS = [
   { slug: "real-madrid", name: "Real Madrid" }
 ];
 
+const CLASSICO_CHAT_ENV: Record<ClassicoFaction, keyof Env> = {
+  real_madrid: "FACTION_CHAT_REAL",
+  barcelona: "FACTION_CHAT_BARCA"
+};
+
+const EXTRA_FACTION_CHAT_CONFIG: Array<{ slug: Exclude<FactionBranchSlug, ClassicoFaction>; envKey: keyof Env }> = [
+  { slug: "liverpool", envKey: "FACTION_CHAT_LIVERPOOL" },
+  { slug: "arsenal", envKey: "FACTION_CHAT_ARSENAL" },
+  { slug: "chelsea", envKey: "FACTION_CHAT_CHELSEA" },
+  { slug: "milan", envKey: "FACTION_CHAT_MILAN" },
+  { slug: "manchester-united", envKey: "FACTION_CHAT_MANCHESTER_UNITED" }
+];
+
 const weatherCache = new Map<string, WeatherCacheEntry>();
 const weatherInFlight = new Map<string, Promise<WeatherFetchResult>>();
 const weatherRateLimiter = createRateLimiter();
@@ -193,6 +206,117 @@ function logFixturesFallback(reason: string, context: Record<string, string | nu
     .map(([key, value]) => `${key}=${value}`)
     .join(" ");
   console.info(`fixtures.fallback reason=${reason} ${details}`);
+}
+
+type FactionChatRef = {
+  chatId?: number;
+  chatUsername?: string;
+  threadId?: number | null;
+  label: string;
+};
+
+type FactionChatRefs = {
+  classico: Partial<Record<ClassicoFaction, FactionChatRef>>;
+  bySlug: Partial<Record<FactionBranchSlug, FactionChatRef>>;
+  general?: FactionChatRef;
+};
+
+function parseChatRef(value: string | undefined, label: string): FactionChatRef | null {
+  const raw = value?.trim();
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.replace(/^https?:\/\//, "").replace(/^@/, "");
+  const numericThreadMatch =
+    normalized.match(/^t\.me\/(-?\d+)\/(\d+)$/i) ??
+    normalized.match(/^(-?\d+)\/(\d+)$/) ??
+    normalized.match(/^(-?\d+):(\d+)$/);
+  if (numericThreadMatch) {
+    const rawChatId = numericThreadMatch[1];
+    const threadId = Number(numericThreadMatch[2]);
+    const chatId =
+      rawChatId.startsWith("-100") || rawChatId.startsWith("-")
+        ? Number(rawChatId)
+        : Number(`-100${rawChatId}`);
+    return {
+      chatId,
+      threadId: Number.isFinite(threadId) ? threadId : null,
+      label
+    };
+  }
+
+  if (/^-?\d+$/.test(normalized)) {
+    return { chatId: Number(normalized), threadId: null, label };
+  }
+  const privateMatch = normalized.match(/^t\.me\/c\/(\d+)(?:\/(\d+))?/i);
+  if (privateMatch) {
+    const internalId = privateMatch[1];
+    const threadId = privateMatch[2] ? Number(privateMatch[2]) : null;
+    return {
+      chatId: Number(`-100${internalId}`),
+      threadId: Number.isFinite(threadId ?? NaN) ? threadId : null,
+      label
+    };
+  }
+
+  const publicMatch = normalized.match(/^t\.me\/([a-z0-9_]{5,})(?:\/(\d+))?/i);
+  if (publicMatch) {
+    const threadId = publicMatch[2] ? Number(publicMatch[2]) : null;
+    return {
+      chatUsername: publicMatch[1].toLowerCase(),
+      threadId: Number.isFinite(threadId ?? NaN) ? threadId : null,
+      label
+    };
+  }
+
+  if (/^[a-z0-9_]{5,}$/i.test(normalized)) {
+    return { chatUsername: normalized.toLowerCase(), threadId: null, label };
+  }
+
+  return null;
+}
+
+function getFactionChatRefs(env: Env): FactionChatRefs {
+  const classico: Partial<Record<ClassicoFaction, FactionChatRef>> = {};
+  const bySlug: Partial<Record<FactionBranchSlug, FactionChatRef>> = {};
+  CLASSICO_FACTIONS.forEach((slug) => {
+    const ref = parseChatRef(env[CLASSICO_CHAT_ENV[slug]], slug);
+    if (ref) {
+      classico[slug] = ref;
+      bySlug[slug] = ref;
+    }
+  });
+  EXTRA_FACTION_CHAT_CONFIG.forEach((config) => {
+    const ref = parseChatRef(env[config.envKey], config.slug);
+    if (ref) {
+      bySlug[config.slug] = ref;
+    }
+  });
+  return {
+    classico,
+    bySlug,
+    general: parseChatRef(env.FACTION_CHAT_GENERAL, "general")
+  };
+}
+
+function formatFactionChatUrl(ref: FactionChatRef | undefined | null): string | null {
+  if (!ref) {
+    return null;
+  }
+  if (ref.chatUsername) {
+    const base = `https://t.me/${ref.chatUsername}`;
+    return ref.threadId ? `${base}/${ref.threadId}` : base;
+  }
+  if (typeof ref.chatId === "number") {
+    const normalized = String(ref.chatId).replace(/^-100/, "").replace(/^-/, "");
+    if (!normalized) {
+      return null;
+    }
+    const base = `https://t.me/c/${normalized}`;
+    return ref.threadId ? `${base}/${ref.threadId}` : base;
+  }
+  return null;
 }
 
 export default {
@@ -470,6 +594,62 @@ export default {
       }
 
       return jsonResponse({ ok: true, faction: factionId, members }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/faction-chat-preview") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const body = await readJson<{ initData?: string; limit?: number }>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+      const initData = body.initData?.trim();
+      if (!initData) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+
+      const userFaction = await getUserFactionSlug(supabase, auth.user.id);
+      if (!userFaction) {
+        return jsonResponse({ ok: false, error: "faction_not_selected" }, 400, corsHeaders());
+      }
+
+      const refs = getFactionChatRefs(env);
+      const chatRef = refs.bySlug[userFaction];
+      if (!chatRef || typeof chatRef.chatId !== "number") {
+        return jsonResponse({ ok: false, error: "chat_not_configured" }, 400, corsHeaders());
+      }
+
+      const rawLimit = typeof body.limit === "number" ? Math.floor(body.limit) : 2;
+      const limit = Math.min(Math.max(rawLimit, 1), 3);
+      const messages = await listFactionDebugMessages(supabase, userFaction, chatRef, limit);
+
+      return jsonResponse(
+        {
+          ok: true,
+          faction: userFaction,
+          chat_url: formatFactionChatUrl(chatRef),
+          messages
+        },
+        200,
+        corsHeaders()
+      );
     }
 
     if (url.pathname === "/api/analitika") {
@@ -1344,6 +1524,115 @@ async function listFactionMembers(
   } catch (error) {
     console.error("Failed to fetch faction members", error);
     return null;
+  }
+}
+
+type DebugUpdateRow = {
+  id: number;
+  chat_id: number | null;
+  thread_id: number | null;
+  user_id: number | null;
+  text: string | null;
+  created_at: string | null;
+};
+
+function formatStoredUserLabel(user: StoredUser | null, fallbackId: number | null): string | null {
+  if (user) {
+    const nickname = (user.nickname ?? "").trim();
+    if (nickname) {
+      return nickname;
+    }
+    const telegramUser: TelegramUser = {
+      id: user.id ?? 0,
+      username: user.username ?? undefined,
+      first_name: user.first_name ?? undefined,
+      last_name: user.last_name ?? undefined
+    };
+    const display = formatUserDisplay(telegramUser);
+    if (display) {
+      return display;
+    }
+  }
+  return typeof fallbackId === "number" ? `id:${fallbackId}` : null;
+}
+
+async function listFactionDebugMessages(
+  supabase: SupabaseClient,
+  faction: FactionBranchSlug,
+  ref: FactionChatRef,
+  limit: number
+): Promise<
+  Array<{
+    id: number;
+    text: string;
+    author: string | null;
+    nickname: string | null;
+    created_at: string;
+  }>
+> {
+  if (typeof ref.chatId !== "number") {
+    return [];
+  }
+  try {
+    let query = supabase
+      .from("debug_updates")
+      .select("id, chat_id, thread_id, user_id, text, created_at")
+      .eq("update_type", "message")
+      .eq("chat_id", ref.chatId)
+      .order("created_at", { ascending: false })
+      .limit(Math.min(limit, 5));
+    if (typeof ref.threadId === "number") {
+      query = query.eq("thread_id", ref.threadId);
+    } else {
+      query = query.is("thread_id", null);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to load debug updates", error);
+      return [];
+    }
+    const rows = (data as DebugUpdateRow[]) ?? [];
+    const userIds = Array.from(
+      new Set(rows.map((row) => row.user_id).filter((id): id is number => typeof id === "number"))
+    );
+    const usersById = new Map<number, StoredUser>();
+    if (userIds.length) {
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, username, first_name, last_name, nickname")
+        .in("id", userIds);
+      if (usersError) {
+        console.error("Failed to load debug update users", usersError);
+      } else {
+        (users as StoredUser[]).forEach((user) => {
+          if (typeof user.id === "number") {
+            usersById.set(user.id, user);
+          }
+        });
+      }
+    }
+
+    return rows
+      .map((row) => {
+        const normalizedText = (row.text ?? "").trim();
+        if (!normalizedText) {
+          return null;
+        }
+        const user = typeof row.user_id === "number" ? usersById.get(row.user_id) ?? null : null;
+        const author = formatStoredUserLabel(user, row.user_id ?? null);
+        return {
+          id: row.id,
+          text: normalizedText,
+          author,
+          nickname: user?.nickname ?? null,
+          created_at: row.created_at ?? new Date().toISOString()
+        };
+      })
+      .filter((item): item is { id: number; text: string; author: string | null; nickname: string | null; created_at: string } => Boolean(item))
+      .slice(0, limit);
+  } catch (error) {
+    console.error("Failed to load debug updates", error);
+    return [];
   }
 }
 

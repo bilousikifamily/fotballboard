@@ -4,6 +4,7 @@ import type {
   AvatarOption,
   FactionEntry,
   FactionMember,
+  FactionChatPreviewMessage,
   Match,
   OddsRefreshDebug,
   OddsRefreshResponse,
@@ -29,6 +30,7 @@ import {
 } from "./api/matches";
 import { postPrediction, fetchPredictions } from "./api/predictions";
 import {
+  fetchFactionChatPreview,
   fetchFactionMembers,
   postAvatarChoice,
   postNickname,
@@ -55,6 +57,7 @@ import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderLeaderboardList, renderUsersError, getFactionPrizeSrc } from "./screens/leaderboard";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
+import { getFactionBranchChatUrl } from "./data/factionChatLinks";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
@@ -102,6 +105,8 @@ const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
+const FACTION_CHAT_PREVIEW_LIMIT = 2;
+let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
   { id: "la-liga", label: "Ла Ліга", flag: "🇪🇸" },
@@ -934,6 +939,66 @@ function renderFactionMembersRows(
   return `<div class="leaderboard-rows">${rows}</div>`;
 }
 
+function renderFactionChatPreviewSection(entry: FactionEntry | null): string {
+  const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
+  const headerLabel = "Чат фракції";
+  return `
+    <section class="panel faction-chat-preview" data-faction-chat-panel>
+      <div class="faction-chat-preview__header">
+        <span>${escapeHtml(headerLabel)}</span>
+        <a
+          class="faction-chat-preview__link"
+          data-faction-chat-link
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled="true"
+        >
+          Відкрити чат
+        </a>
+      </div>
+      <div class="faction-chat-preview__messages" data-faction-chat-messages>
+        <p class="muted small">${placeholderText}</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderFactionChatPreviewMessages(messages: FactionChatPreviewMessage[]): string {
+  if (!messages.length) {
+    return `<p class="muted small">Поки що повідомлень немає.</p>`;
+  }
+  return messages.map((message, index) => renderFactionChatPreviewMessage(message, index)).join("");
+}
+
+function renderFactionChatPreviewMessage(message: FactionChatPreviewMessage, index: number): string {
+  const safeText = escapeHtml((message.text ?? "").trim());
+  const nickname = message.nickname?.trim();
+  const author = message.author?.trim();
+  const authorLabel = escapeHtml(nickname || author || "Анонім");
+  return `
+    <article class="faction-chat-preview-message" role="listitem" data-message-index="${index}">
+      <div class="faction-chat-preview-message__author">${authorLabel}</div>
+      <p>${safeText}</p>
+    </article>
+  `;
+}
+
+function setFactionChatPreviewLink(link: HTMLAnchorElement | null, url: string | null): void {
+  if (!link) {
+    return;
+  }
+  if (url) {
+    link.href = url;
+    link.removeAttribute("aria-disabled");
+    link.classList.remove("is-disabled");
+  } else {
+    link.removeAttribute("href");
+    link.setAttribute("aria-disabled", "true");
+    link.classList.add("is-disabled");
+  }
+}
+
 async function loadFactionMembers(): Promise<void> {
   const container = app.querySelector<HTMLElement>("[data-faction-members]");
   if (!container || !apiBase) {
@@ -969,6 +1034,51 @@ async function loadFactionMembers(): Promise<void> {
       return;
     }
     container.innerHTML = `<p class="muted small">Помилка завантаження учасників.</p>`;
+  }
+}
+
+async function loadFactionChatPreview(): Promise<void> {
+  if (!app || !apiBase || !initData) {
+    return;
+  }
+  const container = app.querySelector<HTMLElement>("[data-faction-chat-messages]");
+  const link = app.querySelector<HTMLAnchorElement>("[data-faction-chat-link]");
+  if (!container) {
+    return;
+  }
+  const entry = selectBadgeFactionEntry(currentProfileStats);
+  if (!entry) {
+    container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
+    setFactionChatPreviewLink(link, null);
+    return;
+  }
+
+  const fallbackUrl = getFactionBranchChatUrl(entry);
+  container.innerHTML = `<p class="muted small">Завантаження...</p>`;
+  setFactionChatPreviewLink(link, fallbackUrl);
+
+  const requestId = ++factionChatPreviewRequestVersion;
+  try {
+    const { response, data } = await fetchFactionChatPreview(apiBase, {
+      initData,
+      limit: FACTION_CHAT_PREVIEW_LIMIT
+    });
+    if (requestId !== factionChatPreviewRequestVersion) {
+      return;
+    }
+    if (!response.ok || !data.ok) {
+      container.innerHTML = `<p class="muted small">Не вдалося завантажити чат.</p>`;
+      return;
+    }
+    const messages = data.messages ?? [];
+    container.innerHTML = renderFactionChatPreviewMessages(messages);
+    const chatUrl = data.chat_url ?? fallbackUrl;
+    setFactionChatPreviewLink(link, chatUrl);
+  } catch {
+    if (requestId !== factionChatPreviewRequestVersion) {
+      return;
+    }
+    container.innerHTML = `<p class="muted small">Помилка завантаження чату.</p>`;
   }
 }
 
@@ -1010,7 +1120,9 @@ function renderUser(
   const totalPredictions = prediction?.total ?? 0;
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
+  const primaryFactionEntry = selectBadgeFactionEntry(profile ?? null);
   const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
+  const factionChatPreviewMarkup = renderFactionChatPreviewSection(primaryFactionEntry);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
@@ -1157,6 +1269,10 @@ function renderUser(
                 </span>
               </div>
             </div>
+
+            <div class="profile-screen__row profile-screen__row--chat-preview">
+              ${factionChatPreviewMarkup}
+            </div>
           </div>
         </section>
 
@@ -1234,6 +1350,7 @@ function renderUser(
   `;
 
   void loadFactionMembers();
+  void loadFactionChatPreview();
 
   const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");
