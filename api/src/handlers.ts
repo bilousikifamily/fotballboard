@@ -1568,26 +1568,19 @@ async function getFactionRank(supabase: SupabaseClient, factionId: string): Prom
       console.error("Failed to fetch faction rank", error);
       return null;
     }
+    const target = factionId.trim().toLowerCase();
     const seen = new Set<string>();
-    let lastPoints: number | null = null;
-    let rank = 0;
     for (const row of (data as Array<{ faction_club_id: string | null; points_total: number | null }>) ?? []) {
-      const rawFaction = row.faction_club_id?.trim();
-      if (!rawFaction) {
+      const normalized = row.faction_club_id?.trim().toLowerCase();
+      if (!normalized || seen.has(normalized)) {
         continue;
-      }
-      const normalized = rawFaction.toLowerCase();
-      if (seen.has(normalized)) {
-        continue;
-      }
-      const points = typeof row.points_total === "number" ? row.points_total : STARTING_POINTS;
-      if (lastPoints === null || points !== lastPoints) {
-        rank += 1;
-        lastPoints = points;
       }
       seen.add(normalized);
-      if (normalized === factionId.toLowerCase()) {
-        return rank <= 5 ? rank : null;
+      if (normalized === target) {
+        return seen.size <= 5 ? seen.size : null;
+      }
+      if (seen.size >= 6) {
+        break;
       }
     }
     return null;
