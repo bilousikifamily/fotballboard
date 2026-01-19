@@ -122,13 +122,24 @@ const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
 ];
 
 const DEFAULT_ONBOARDING_LEAGUE: AllLeagueId = "english-premier-league";
-const ONBOARDING_LEAGUES: Array<{ id: AllLeagueId; label: string; flag: string }> = [
-  { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
-  { id: "la-liga", label: "Ла Ліга", flag: "🇪🇸" },
-  { id: "serie-a", label: "Серія A", flag: "🇮🇹" },
-  { id: "ukrainian-premier-league", label: "УПЛ", flag: "🇺🇦" },
-  { id: "bundesliga", label: "Бундесліга", flag: "🇩🇪" },
-  { id: "ligue-1", label: "Ліга 1", flag: "🇫🇷" }
+const ONBOARDING_CLUBS: string[] = [
+  "real-madrid",
+  "barcelona",
+  "atletico-madrid",
+  "bayern-munchen",
+  "borussia-dortmund",
+  "chelsea",
+  "manchester-city",
+  "liverpool",
+  "arsenal",
+  "manchester-united",
+  "paris-saint-germain",
+  "milan",
+  "juventus",
+  "inter",
+  "napoli",
+  "dynamo-kyiv",
+  "shakhtar"
 ];
 
 const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
@@ -332,7 +343,6 @@ function renderOnboarding(
     step: 1,
     factionClubId: onboarding.faction_club_id ?? null,
     factionLeague: resolvedLeague,
-    activeLeague: resolvedLeague,
     nickname: onboarding.nickname ?? ""
   };
 
@@ -348,26 +358,17 @@ function renderOnboarding(
 
     let body = "";
     if (state.step === 1) {
-      const leagueTabs = ONBOARDING_LEAGUES.map((league) => {
-        const isActive = league.id === state.activeLeague;
-        return `
-          <button class="flag-button ${isActive ? "is-active" : ""}" type="button" data-onboarding-league="${league.id}">
-            <span class="flag-icon">${league.flag}</span>
-            <span>${escapeHtml(league.label)}</span>
-          </button>
-        `;
-      }).join("");
-      const clubs = (ALL_CLUBS[state.activeLeague] ?? []).map((clubId) =>
-        renderClubChoice({
+      const clubs = ONBOARDING_CLUBS.map((clubId) => {
+        const league = findClubLeague(clubId) ?? DEFAULT_ONBOARDING_LEAGUE;
+        return renderClubChoice({
           id: clubId,
           name: formatClubName(clubId),
-          logo: getClubLogoPath(state.activeLeague, clubId),
+          logo: getClubLogoPath(league, clubId),
           selected: state.factionClubId === clubId,
           dataAttr: "data-faction-choice"
-        })
-      ).join("");
+        });
+      }).join("");
       body = `
-        <div class="league-tabs">${leagueTabs}</div>
         <div class="logo-grid">
           ${clubs}
         </div>
@@ -433,23 +434,12 @@ function renderOnboarding(
       });
     }
 
-    app.querySelectorAll<HTMLButtonElement>("[data-onboarding-league]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextLeague = button.dataset.onboardingLeague as AllLeagueId | undefined;
-        if (!nextLeague || nextLeague === state.activeLeague) {
-          return;
-        }
-        state.activeLeague = nextLeague;
-        renderStep();
-      });
-    });
-
     app.querySelectorAll<HTMLButtonElement>("[data-faction-choice]").forEach((button) => {
       button.addEventListener("click", () => {
         const clubId = button.dataset.factionChoice || null;
         state.factionClubId = clubId;
         if (clubId) {
-          state.factionLeague = state.activeLeague;
+          state.factionLeague = findClubLeague(clubId) ?? null;
         }
         renderStep();
       });
