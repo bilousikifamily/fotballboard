@@ -54,7 +54,7 @@ import {
   renderTeamLogo
 } from "./screens/matches";
 import { renderAdminUserSessions } from "./screens/adminUsers";
-import { renderLeaderboardList, renderUsersError, getFactionPrizeSrc } from "./screens/leaderboard";
+import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
 import { getFactionBranchChatUrl } from "./data/factionChatLinks";
@@ -106,7 +106,14 @@ const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
-const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada26";
+const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada";
+const FACTION_RANK_PRIZE_MAP: Record<number, string> = {
+  1: "/images/500.png",
+  2: "/images/200.png",
+  3: "/images/100.png",
+  4: "/images/50.png",
+  5: "/images/20.png"
+};
 let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -142,6 +149,14 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "dfb-pokal", label: "Кубок Німеччини" },
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
+
+function getFactionRankPrize(rank?: number | null): string | null {
+  if (rank === undefined || rank === null) {
+    return null;
+  }
+  const normalizedRank = Math.min(Math.max(Math.floor(rank), 1), 5);
+  return FACTION_RANK_PRIZE_MAP[normalizedRank] ?? null;
+}
 
 const NOTICE_RULES = [
   "Вгаданий результат +1 голос",
@@ -883,6 +898,7 @@ function renderFactionMembersRows(
     4: "/images/50.png",
     5: "/images/20.png"
   };
+  const globalPrizeSrc = getFactionRankPrize(factionRank);
   const topMembers = members.slice(0, Math.min(members.length, MAX_TOP_FACTION_CARDS));
   const displayMembers = [...topMembers];
   if (highlightId !== null) {
@@ -912,13 +928,7 @@ function renderFactionMembersRows(
           : member.photo_url
           ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
           : `<div class="table-avatar placeholder"></div>`;
-      const effectiveFactionRank =
-        typeof factionRank === "number" && Number.isFinite(factionRank)
-          ? Math.min(Math.max(Math.floor(factionRank), 1), 5)
-          : null;
-      const sharedPrizeSrc =
-        getFactionPrizeSrc(factionId) ?? (effectiveFactionRank ? prizeMap[effectiveFactionRank] : null);
-      const prizeSrc = sharedPrizeSrc ?? prizeMap[rankLabel];
+      const prizeSrc = globalPrizeSrc ?? prizeMap[rankLabel];
       const prizeIcon = prizeSrc ? `<img src="${escapeAttribute(prizeSrc)}" alt="" />` : "";
       return `
         <div class="leaderboard-row${isSelf ? " is-self" : ""}">
