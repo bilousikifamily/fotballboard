@@ -2503,7 +2503,8 @@ function buildFactionPredictionsMessage(
   const homeLabel = getMatchTeamLabel(match, "home") || "Домашня команда";
   const awayLabel = getMatchTeamLabel(match, "away") || "Гостьова команда";
   const averageScore = formatAverageScore(predictions);
-  const header = `${homeLabel} СЕРЕДНІЙ РАХУНОК ${averageScore} виходячи з прогнозів ${awayLabel}`;
+  const prettyAverage = averageScore.replace(":", " : ");
+  const header = `${homeLabel} ${prettyAverage}  ${awayLabel}`;
   if (predictions.length === 0) {
     return `${header}\n\nПоки що прогнози відсутні.`;
   }
