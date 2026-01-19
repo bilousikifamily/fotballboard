@@ -6227,17 +6227,19 @@ function addDays(dateStr: string, days: number): string {
 function buildMatchResultCaption(notification: MatchResultNotification): string {
   const lines: string[] = [];
   const resultLine = formatMatchResultLine(notification);
+  const statsLines = buildMatchResultStatsLines(notification.prediction_stats);
+
   if (resultLine) {
     lines.push(resultLine);
+    if (statsLines.length > 0) {
+      lines.push("");
+    }
   }
-  const messageLine = formatMatchResultMessage(notification);
-  if (messageLine) {
-    lines.push(messageLine);
-  }
-  const statsLines = buildMatchResultStatsLines(notification.prediction_stats);
+
   if (statsLines.length > 0) {
     lines.push(...statsLines);
   }
+
   return lines.join("\n");
 }
 
@@ -6264,7 +6266,7 @@ function formatExactGuessLabel(user: MatchResultExactGuessUser): string {
     nickname: user.nickname ?? null,
     faction_club_id: user.faction_club_id ?? null
   });
-  const safeLabel = escapeTelegramHtml(label);
+  const safeLabel = escapeTelegramHtml(label.toUpperCase());
   const factionLabel = escapeTelegramHtml(buildFactionLabel(user.faction_club_id));
   return `${safeLabel} (${factionLabel})`;
 }
@@ -6287,7 +6289,7 @@ async function notifyUsersAboutMatchResult(
 ): Promise<void> {
   for (const notification of notifications) {
     const imageFile = getMatchResultImageFile(notification.delta);
-    const caption = buildMatchResultCaption(notification) || formatMatchResultMessage(notification);
+    const caption = buildMatchResultCaption(notification) || formatMatchResultLine(notification);
     if (imageFile) {
       await sendPhoto(
         env,
@@ -6750,37 +6752,14 @@ function getMatchResultImageFile(delta: number): string | null {
 }
 
 function formatMatchResultLine(notification: MatchResultNotification): string {
-  const home = resolveUkrainianClubName(notification.home_team, null);
-  const away = resolveUkrainianClubName(notification.away_team, null);
+  const home = resolveUkrainianClubName(notification.home_team, null).toUpperCase();
+  const away = resolveUkrainianClubName(notification.away_team, null).toUpperCase();
   const homeLabel = escapeTelegramHtml(home);
   const awayLabel = escapeTelegramHtml(away);
   const score = `${notification.home_score}:${notification.away_score}`;
   return `${homeLabel} ${score} ${awayLabel}`;
 }
 
-function formatMatchResultMessage(notification: MatchResultNotification): string {
-  const absDelta = Math.abs(notification.delta);
-  const pointsLabel = formatPointsLabel(absDelta);
-
-  if (notification.delta > 0) {
-    return `Тобі нараховано ${absDelta} ${pointsLabel}`;
-  }
-
-  return `Ти втратив ${absDelta} ${pointsLabel}`;
-}
-
-function formatPointsLabel(points: number): string {
-  const absPoints = Math.abs(points);
-  const mod10 = absPoints % 10;
-  const mod100 = absPoints % 100;
-  if (mod10 === 1 && mod100 !== 11) {
-    return "бал";
-  }
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "бали";
-  }
-  return "балів";
-}
 
 function normalizeTeamSlug(value: string | null): string | null {
   const trimmed = value?.trim().toLowerCase();
