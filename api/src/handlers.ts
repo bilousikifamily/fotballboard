@@ -438,6 +438,9 @@ export default {
       }
 
       const factionSlug = normalizeFactionChoice(factionClubId);
+      if (!wasOnboarded && factionSlug) {
+        await notifyFactionChatNewDeputy(env, auth.user, factionSlug, { nickname });
+      }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
@@ -1388,6 +1391,32 @@ function formatUserDisplay(user: TelegramUser): string {
     return username;
   }
   return `id:${user.id}`;
+}
+
+async function notifyFactionChatNewDeputy(
+  env: Env,
+  user: TelegramUser,
+  faction: FactionBranchSlug,
+  options?: { nickname?: string | null }
+): Promise<void> {
+  const refs = getFactionChatRefs(env);
+  const targetRef = refs.bySlug[faction];
+  if (!targetRef) {
+    return;
+  }
+  const chatTarget = targetRef.chatId ?? (targetRef.chatUsername ? `@${targetRef.chatUsername}` : null);
+  if (!chatTarget) {
+    return;
+  }
+  const nicknameCandidate = options?.nickname?.trim();
+  const mention =
+    user.username && user.username.trim()
+      ? `@${user.username.trim()}`
+      : nicknameCandidate && nicknameCandidate.length
+        ? nicknameCandidate
+        : formatUserDisplay(user);
+  const message = `У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n${mention}`;
+  await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
 }
 
 async function getUserClassicoChoice(
