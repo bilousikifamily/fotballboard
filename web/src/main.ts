@@ -944,19 +944,16 @@ function renderFactionChatPreviewSection(entry: FactionEntry | null): string {
   const headerLabel = "Чат фракції";
   return `
     <section class="panel faction-chat-preview" data-faction-chat-panel>
-      <div class="faction-chat-preview__header">
+      <a
+        class="faction-chat-preview__header"
+        data-faction-chat-link
+        href="#"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-disabled="true"
+      >
         <span>${escapeHtml(headerLabel)}</span>
-        <a
-          class="faction-chat-preview__link"
-          data-faction-chat-link
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled="true"
-        >
-          Відкрити чат
-        </a>
-      </div>
+      </a>
       <div class="faction-chat-preview__messages" data-faction-chat-messages>
         <p class="muted small">${placeholderText}</p>
       </div>

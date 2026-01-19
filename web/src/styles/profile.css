@@ -863,46 +863,31 @@ h1 {
 .faction-chat-preview__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
+  justify-content: center;
+  padding: 14px 20px;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   border: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-.faction-chat-preview__header span {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 1.1rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #0b0b0d;
-}
-
-.faction-chat-preview__link {
-  padding: 10px 24px;
-  border-radius: 999px;
-  background: #0b0b0d;
-  color: #fff;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   text-decoration: none;
-  font-size: 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  gap: 12px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
 }
 
-.faction-chat-preview__link.is-disabled,
-.faction-chat-preview__link[aria-disabled="true"] {
+.faction-chat-preview__header[aria-disabled="true"] {
   opacity: 0.4;
   pointer-events: none;
 }
 
-.faction-chat-preview__link:hover:not([aria-disabled="true"]) {
+.faction-chat-preview__header:hover:not([aria-disabled="true"]) {
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
 }
