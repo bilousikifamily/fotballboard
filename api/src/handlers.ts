@@ -644,7 +644,6 @@ export default {
         {
           ok: true,
           faction: userFaction,
-          chat_url: formatFactionChatUrl(chatRef),
           messages
         },
         200,

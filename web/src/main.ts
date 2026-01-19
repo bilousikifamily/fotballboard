@@ -1072,8 +1072,7 @@ async function loadFactionChatPreview(): Promise<void> {
     }
     const messages = data.messages ?? [];
     container.innerHTML = renderFactionChatPreviewMessages(messages);
-    const chatUrl = fallbackUrl ?? data.chat_url;
-    setFactionChatPreviewLink(link, chatUrl);
+    setFactionChatPreviewLink(link, fallbackUrl);
   } catch {
     if (requestId !== factionChatPreviewRequestVersion) {
       return;

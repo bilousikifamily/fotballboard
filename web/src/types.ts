@@ -228,7 +228,6 @@ export type FactionChatPreviewResponse =
   | {
       ok: true;
       faction: FactionBranchSlug;
-      chat_url: string | null;
       messages: FactionChatPreviewMessage[];
     }
   | { ok: false; error: string };
