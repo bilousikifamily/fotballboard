@@ -862,21 +862,27 @@ h1 {
 
 .faction-members-table .leaderboard-rows {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
 }
 
 .faction-members-table .leaderboard-row {
-  width: 100%;
-  margin: 0;
-  justify-self: stretch;
+  position: relative;
+  width: min(540px, 100%);
+  margin: 0 auto;
+  justify-self: center;
   border-radius: 14px;
   padding: 10px 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 12px 32px rgba(0, 0, 0, 0.45);
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.faction-members-table .leaderboard-row .leaderboard-rank {
+  display: none;
 }
 
 .faction-members-table .leaderboard-row.is-self {
