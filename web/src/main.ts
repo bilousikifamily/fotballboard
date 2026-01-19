@@ -106,6 +106,7 @@ const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
+const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada26";
 let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -947,7 +948,7 @@ function renderFactionChatPreviewSection(entry: FactionEntry | null): string {
       <a
         class="faction-chat-preview__header"
         data-faction-chat-link
-        href="#"
+        href="${GENERAL_FACTION_CHAT_URL}"
         target="_blank"
         rel="noopener noreferrer"
         aria-disabled="true"
@@ -985,15 +986,10 @@ function setFactionChatPreviewLink(link: HTMLAnchorElement | null, url: string |
   if (!link) {
     return;
   }
-  if (url) {
-    link.href = url;
-    link.removeAttribute("aria-disabled");
-    link.classList.remove("is-disabled");
-  } else {
-    link.removeAttribute("href");
-    link.setAttribute("aria-disabled", "true");
-    link.classList.add("is-disabled");
-  }
+  const target = url ?? GENERAL_FACTION_CHAT_URL;
+  link.href = target;
+  link.removeAttribute("aria-disabled");
+  link.classList.remove("is-disabled");
 }
 
 async function loadFactionMembers(): Promise<void> {
