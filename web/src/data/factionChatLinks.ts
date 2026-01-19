@@ -36,10 +36,12 @@ export function resolveFactionBranchSlug(value: string | null | undefined): Fact
   if (!normalized) {
     return null;
   }
-  if (FACTION_BRANCH_ALIAS[normalized]) {
-    return FACTION_BRANCH_ALIAS[normalized];
+  const parts = normalized.split("/");
+  const candidate = parts[parts.length - 1] ?? normalized;
+  if (FACTION_BRANCH_ALIAS[candidate]) {
+    return FACTION_BRANCH_ALIAS[candidate];
   }
-  const underscored = normalized.replace(/[\s-]+/g, "_");
+  const underscored = candidate.replace(/[\s-]+/g, "_");
   return FACTION_BRANCH_ALIAS[underscored] ?? null;
 }
 
