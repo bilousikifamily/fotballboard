@@ -1304,14 +1304,11 @@ export default {
       }
 
       const supabase = createSupabaseClient(env);
-      if (supabase) {
-        await insertDebugUpdate(supabase, update);
-      }
-      const message = getUpdateMessage(update);
-      if (message) {
-      }
-
-      await handleUpdate(update, env);
+    if (supabase) {
+      await insertDebugUpdate(supabase, update);
+    }
+    await enforceFactionChatPermissions(env, supabase, update);
+    await handleUpdate(update, env);
       return new Response("ok");
     }
 
@@ -1733,6 +1730,55 @@ async function listFactionDebugMessages(
   } catch (error) {
     console.error("Failed to load debug updates", error);
     return [];
+  }
+}
+
+function matchChatRef(ref: FactionChatRef | undefined | null, message: TelegramMessage): boolean {
+  if (!ref || typeof ref.chatId !== "number" || typeof message.chat?.id !== "number") {
+    return false;
+  }
+  if (ref.chatId !== message.chat.id) {
+    return false;
+  }
+  const threadId = message.message_thread_id ?? null;
+  if (typeof ref.threadId === "number") {
+    return threadId === ref.threadId;
+  }
+  return threadId === null;
+}
+
+async function enforceFactionChatPermissions(
+  env: Env,
+  supabase: SupabaseClient | null,
+  update: TelegramUpdate
+): Promise<void> {
+  const message = getUpdateMessage(update);
+  if (
+    !message ||
+    typeof message.chat?.id !== "number" ||
+    typeof message.from?.id !== "number" ||
+    typeof message.message_id !== "number"
+  ) {
+    return;
+  }
+
+  const refs = getFactionChatRefs(env);
+  if (matchChatRef(refs.general, message)) {
+    return;
+  }
+
+  let userFaction: FactionBranchSlug | null = null;
+  if (supabase) {
+    userFaction = await getUserFactionSlug(supabase, message.from.id);
+  }
+  if (userFaction && matchChatRef(refs.bySlug[userFaction], message)) {
+    return;
+  }
+
+  try {
+    await deleteMessage(env, message.chat.id, message.message_id);
+  } catch (error) {
+    console.error("Failed to delete unauthorized message", error);
   }
 }
 
