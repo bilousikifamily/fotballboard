@@ -3,7 +3,6 @@ import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueI
 import type {
   AvatarOption,
   FactionEntry,
-  FactionMember,
   FactionChatPreviewMessage,
   Match,
   OddsRefreshDebug,
@@ -42,7 +41,7 @@ import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, get
 import { extractCorrectScoreProbability, formatProbability } from "./features/odds";
 import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
 import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
-import { formatPredictionName, formatTelegramName, formatUserName } from "./formatters/names";
+import { formatPredictionName, formatTelegramName } from "./formatters/names";
 import {
   formatRainProbability,
   formatTemperature,
@@ -54,7 +53,13 @@ import {
   renderTeamLogo
 } from "./screens/matches";
 import { renderAdminUserSessions } from "./screens/adminUsers";
-import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
+import {
+  renderFactionMembersRows,
+  renderFactionMembersSection,
+  renderLeaderboardList,
+  renderUsersError,
+  updateFactionRankCache
+} from "./features/factionRanking";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
 import { getFactionBranchChatUrl } from "./data/factionChatLinks";
@@ -102,19 +107,11 @@ const matchWeatherCache = new Map<number, number | null>();
 const matchWeatherConditionCache = new Map<number, string | null>();
 const matchWeatherTempCache = new Map<number, number | null>();
 const matchWeatherTimezoneCache = new Map<number, string | null>();
-const factionRankCache = new Map<string, number>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
 const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada";
-const FACTION_RANK_PRIZE_MAP: Record<number, string> = {
-  1: "/images/500.png",
-  2: "/images/200.png",
-  3: "/images/100.png",
-  4: "/images/50.png",
-  5: "/images/20.png"
-};
 let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -150,14 +147,6 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "dfb-pokal", label: "Кубок Німеччини" },
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
-
-function getFactionRankPrize(rank?: number | null): string | null {
-  if (rank === undefined || rank === null) {
-    return null;
-  }
-  const normalizedRank = Math.min(Math.max(Math.floor(rank), 1), 5);
-  return FACTION_RANK_PRIZE_MAP[normalizedRank] ?? null;
-}
 
 const NOTICE_RULES = [
   "Вгаданий результат +1 голос",
@@ -864,95 +853,6 @@ function updateLeaderboardPrimaryFaction(logo: string | null): void {
   identity.insertAdjacentHTML("afterbegin", avatarMarkup);
 }
 
-function renderFactionMembersSection(profile: ProfileStatsPayload | null): string {
-  const entry = selectBadgeFactionEntry(profile);
-  const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
-  return `
-    <div class="faction-members-heading">
-      <h2>ТОП 5 ДЕПУТАТІВ ФРАКЦІЇ</h2>
-    </div>
-    <section class="panel faction-members">
-      <div class="faction-members-table" data-faction-members>
-        <p class="muted small">${placeholderText}</p>
-      </div>
-    </section>
-  `;
-}
-
-const MAX_FACTION_CARDS = 6;
-const MAX_TOP_FACTION_CARDS = 5;
-
-function renderFactionMembersRows(
-  members: FactionMember[],
-  highlightId: number | null,
-  factionLogo: string | null,
-  factionId: string | null,
-  factionRank: number | null
-): string {
-  if (!members.length) {
-    return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
-  }
-  const prizeMap: Record<number, string> = {
-    1: "/images/500.png",
-    2: "/images/200.png",
-    3: "/images/100.png",
-    4: "/images/50.png",
-    5: "/images/20.png"
-  };
-  const normalizedFactionId = factionId?.trim().toLowerCase() ?? null;
-  const cachedRank = normalizedFactionId ? factionRankCache.get(normalizedFactionId) ?? null : null;
-  const globalPrizeSrc = getFactionRankPrize(cachedRank ?? factionRank);
-  const topMembers = members.slice(0, Math.min(members.length, MAX_TOP_FACTION_CARDS));
-  const displayMembers = [...topMembers];
-  if (highlightId !== null) {
-    const userIndex = members.findIndex((member) => member.id === highlightId);
-    if (userIndex !== -1) {
-      const userInTop = topMembers.some((member) => member.id === highlightId);
-      if (!userInTop) {
-        displayMembers.push(members[userIndex]);
-      }
-    }
-  }
-  const rows = displayMembers
-    .slice(0, MAX_FACTION_CARDS)
-    .map((member, index) => {
-      const displayName = formatUserName(member) || "Гравець";
-      const safeName = escapeHtml(displayName);
-      const points = typeof member.points_total === "number" ? member.points_total : 0;
-      const safePoints = escapeHtml(String(points));
-      const isSelf = highlightId !== null && member.id === highlightId;
-      const rankIndex = members.indexOf(member);
-      const rankLabel = rankIndex >= 0 ? rankIndex + 1 : index + 1;
-      const avatarLogo = getAvatarLogoPath(member.avatar_choice);
-      const avatar = factionLogo
-        ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(factionLogo)}" alt="" />`
-        : avatarLogo
-          ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(avatarLogo)}" alt="" />`
-          : member.photo_url
-          ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
-          : `<div class="table-avatar placeholder"></div>`;
-      const prizeSrc = globalPrizeSrc ?? prizeMap[rankLabel];
-      const prizeIcon = prizeSrc ? `<img src="${escapeAttribute(prizeSrc)}" alt="" />` : "";
-      return `
-        <div class="leaderboard-row${isSelf ? " is-self" : ""}">
-          <div class="leaderboard-rank" aria-hidden="true"></div>
-          <div class="leaderboard-identity">
-            ${avatar}
-            <span class="leaderboard-name">${safeName}</span>
-          </div>
-          <div class="leaderboard-points">
-            <span class="leaderboard-points-value">${safePoints}</span>
-          </div>
-          <span class="leaderboard-prize ${prizeIcon ? "is-visible" : ""}">
-            ${prizeIcon}
-          </span>
-        </div>
-      `;
-    })
-    .join("");
-  return `<div class="leaderboard-rows">${rows}</div>`;
-}
-
 function renderFactionChatPreviewSection(entry: FactionEntry | null): string {
   const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
   const headerLabel = "Чат фракції";
@@ -1126,7 +1026,7 @@ function renderUser(
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
   const primaryFactionEntry = selectBadgeFactionEntry(profile ?? null);
-  const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
+  const factionMembersMarkup = renderFactionMembersSection(primaryFactionEntry);
   const factionChatPreviewMarkup = renderFactionChatPreviewSection(primaryFactionEntry);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
@@ -3106,38 +3006,9 @@ async function loadLeaderboard(): Promise<void> {
       startingPoints: STARTING_POINTS,
       primaryFactionLogo: getPrimaryFactionLogo(currentProfileStats)
     });
-    const latestRanks = buildFactionRankCache(data.users);
-    factionRankCache.clear();
-    latestRanks.forEach((rank, key) => {
-      factionRankCache.set(key, rank);
-    });
+    updateFactionRankCache(data.users, STARTING_POINTS);
     leaderboardLoaded = true;
   } catch {
     renderUsersError(container);
   }
-}
-
-function buildFactionRankCache(users: LeaderboardUser[]): Map<string, number> {
-  const cache = new Map<string, number>();
-  const seen = new Set<string>();
-  let lastPoints: number | null = null;
-  let currentRank = 0;
-  for (const user of users) {
-    const rawFaction = user.faction_club_id?.trim();
-    if (!rawFaction) {
-      continue;
-    }
-    const normalized = rawFaction.toLowerCase();
-    if (seen.has(normalized)) {
-      continue;
-    }
-    const points = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
-    if (lastPoints === null || points !== lastPoints) {
-      currentRank += 1;
-      lastPoints = points;
-    }
-    seen.add(normalized);
-    cache.set(normalized, currentRank);
-  }
-  return cache;
 }
