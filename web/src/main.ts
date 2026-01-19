@@ -2,7 +2,6 @@ import "./style.css";
 import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "./data/clubs";
 import type {
   AvatarOption,
-  FactionBranchMessage,
   FactionEntry,
   FactionMember,
   Match,
@@ -31,7 +30,6 @@ import {
 import { postPrediction, fetchPredictions } from "./api/predictions";
 import {
   fetchFactionMembers,
-  fetchFactionMessages,
   postAvatarChoice,
   postNickname,
   postOnboarding
@@ -57,7 +55,6 @@ import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
-import { getFactionBranchChatUrl } from "./data/factionChatLinks";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
@@ -105,7 +102,6 @@ const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
-const FACTION_THREAD_MESSAGE_LIMIT = 3;
 
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -862,75 +858,6 @@ function renderFactionMembersSection(profile: ProfileStatsPayload | null): strin
   `;
 }
 
-function renderFactionThreadBadge(entry: FactionEntry | null): string {
-  if (!entry) {
-    return "";
-  }
-  const display = getFactionDisplay(entry);
-  if (!display.logo) {
-    return "";
-  }
-  const label = escapeAttribute(display.name);
-  const logo = escapeAttribute(display.logo);
-  return `
-    <span class="faction-thread-badge" aria-label="${label}" role="img">
-      <img src="${logo}" alt="${label}" />
-    </span>
-  `;
-}
-
-function renderFactionThreadSection(entry: FactionEntry | null): string {
-  const badgeMarkup = renderFactionThreadBadge(entry);
-  return `
-    <section class="panel faction-recent-messages" data-faction-thread-card>
-      <div class="faction-recent-header">
-        ${badgeMarkup}
-        <a
-          class="faction-thread-link"
-          data-faction-thread-link
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled="true"
-          role="button"
-          >
-          Чат фракції
-        </a>
-      </div>
-      <div class="faction-recent-list" data-faction-thread role="list" aria-live="polite">
-        <p class="muted small">Завантаження...</p>
-      </div>
-    </section>
-  `;
-}
-
-function renderFactionRecentMessage(message: FactionBranchMessage, index: number): string {
-  const safeText = escapeHtml((message.text ?? "").trim());
-  const displayText = safeText || "—";
-  const nickname = message.nickname?.trim();
-  const fallbackAuthor = message.author?.trim();
-  const authorLabel = escapeHtml(nickname || fallbackAuthor || "Анонім");
-  const hasUserId = typeof message.authorId === "number";
-  const isSelf = hasUserId && message.authorId === currentUserId;
-  const bubbleClass = isSelf ? "message-chip--outgoing" : "message-chip--incoming";
-  return `
-    <article class="message-chip ${bubbleClass}" role="listitem">
-      <span class="message-chip__author">${authorLabel}</span>
-      <p>${displayText}</p>
-    </article>
-  `;
-}
-
-function renderFactionRecentMessages(messages: FactionBranchMessage[]): string {
-  if (!messages.length) {
-    return `<p class="muted small faction-recent-empty">Поки що порожньо.</p>`;
-  }
-  return messages
-    .slice(0, 3)
-    .map((message, index) => renderFactionRecentMessage(message, index))
-    .join("");
-}
-
 const MAX_FACTION_CARDS = 6;
 const MAX_TOP_FACTION_CARDS = 5;
 
@@ -1032,60 +959,6 @@ async function loadFactionMembers(): Promise<void> {
   }
 }
 
-async function loadFactionThreadMessages(): Promise<void> {
-  if (!app || !apiBase || !initData) {
-    return;
-  }
-  const container = app.querySelector<HTMLElement>("[data-faction-thread]");
-  const link = app.querySelector<HTMLAnchorElement>("[data-faction-thread-link]");
-  if (!container) {
-    return;
-  }
-  const entry = selectBadgeFactionEntry(currentProfileStats);
-  if (!entry) {
-    container.innerHTML = `<p class="muted small">Фракцію ще не обрано.</p>`;
-    setFactionThreadLink(link, null);
-    return;
-  }
-
-  const fallbackUrl = getFactionBranchChatUrl(entry);
-  container.innerHTML = `<p class="muted small">Завантаження...</p>`;
-  setFactionThreadLink(link, fallbackUrl);
-
-  try {
-    const { response, data } = await fetchFactionMessages(apiBase, {
-      initData,
-      faction: entry.value,
-      limit: FACTION_THREAD_MESSAGE_LIMIT
-    });
-    if (!response.ok || !data.ok) {
-      throw new Error("failed to load faction thread");
-    }
-    const messages = data.messages ?? [];
-    container.innerHTML = renderFactionRecentMessages(messages);
-    const chatUrl = data.chat_url ?? null;
-    setFactionThreadLink(link, chatUrl ?? fallbackUrl);
-  } catch {
-    container.innerHTML = `<p class="muted small">Не вдалося завантажити повідомлення.</p>`;
-    setFactionThreadLink(link, fallbackUrl);
-  }
-}
-
-function setFactionThreadLink(link: HTMLAnchorElement | null, url: string | null): void {
-  if (!link) {
-    return;
-  }
-  if (url) {
-    link.href = url;
-    link.removeAttribute("aria-disabled");
-    link.classList.remove("is-disabled");
-  } else {
-    link.removeAttribute("href");
-    link.setAttribute("aria-disabled", "true");
-    link.classList.add("is-disabled");
-  }
-}
-
 function scrollProfilePredictionsToBottom(): void {
   const container = app.querySelector<HTMLElement>("[data-profile-predictions]");
   if (!container) {
@@ -1125,9 +998,7 @@ function renderUser(
   const totalPredictions = prediction?.total ?? 0;
   const hitsPredictions = prediction?.hits ?? 0;
   const accuracy = totalPredictions > 0 ? Math.round((hitsPredictions / totalPredictions) * 100) : 0;
-  const primaryFactionEntry = selectBadgeFactionEntry(profile ?? null);
   const factionMembersMarkup = renderFactionMembersSection(profile ?? null);
-  const factionThreadMarkup = renderFactionThreadSection(primaryFactionEntry);
   const leagueOptions = MATCH_LEAGUES.map(
     (league) => `<option value="${league.id}">${escapeHtml(league.label)}</option>`
   ).join("");
@@ -1264,10 +1135,6 @@ function renderUser(
             </div>
 
             <div class="profile-screen__row profile-screen__row--chat">
-              ${factionThreadMarkup}
-            </div>
-
-            <div class="profile-screen__row profile-screen__row--top">
               ${factionMembersMarkup}
             </div>
 
@@ -1355,7 +1222,6 @@ function renderUser(
   `;
 
   void loadFactionMembers();
-  void loadFactionThreadMessages();
 
   const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");

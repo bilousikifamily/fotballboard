@@ -51,14 +51,3 @@ export function fetchFactionMembers(
     headers: authHeaders(initData)
   });
 }
-
-export function fetchFactionMessages(
-  apiBase: string,
-  payload: { initData: string; faction?: string; limit?: number }
-): Promise<{ response: Response; data: FactionMessagesResponse }> {
-  return requestJson<FactionMessagesResponse>(`${apiBase}/api/faction-messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-}

@@ -19,7 +19,6 @@ import type {
   MatchResultExactGuessUser,
   FactionStat,
   FactionBranchSlug,
-  FactionBranchMessage,
   FixturePayload,
   FixturesResult,
   GeocodeResult,
@@ -112,11 +111,6 @@ const TEAM_MATCH_ALIASES: Record<string, string> = {
 
 type ClassicoFaction = "real_madrid" | "barcelona";
 const CLASSICO_FACTIONS: ClassicoFaction[] = ["real_madrid", "barcelona"];
-const CLASSICO_CHAT_ENV: Record<ClassicoFaction, keyof Env> = {
-  real_madrid: "FACTION_CHAT_REAL",
-  barcelona: "FACTION_CHAT_BARCA"
-};
-
 const ALL_FACTION_BRANCHES: FactionBranchSlug[] = [
   "real_madrid",
   "barcelona",
@@ -125,14 +119,6 @@ const ALL_FACTION_BRANCHES: FactionBranchSlug[] = [
   "chelsea",
   "milan",
   "manchester-united"
-];
-
-const EXTRA_FACTION_CHAT_CONFIG: Array<{ slug: Exclude<FactionBranchSlug, ClassicoFaction>; envKey: keyof Env }> = [
-  { slug: "liverpool", envKey: "FACTION_CHAT_LIVERPOOL" },
-  { slug: "arsenal", envKey: "FACTION_CHAT_ARSENAL" },
-  { slug: "chelsea", envKey: "FACTION_CHAT_CHELSEA" },
-  { slug: "milan", envKey: "FACTION_CHAT_MILAN" },
-  { slug: "manchester-united", envKey: "FACTION_CHAT_MANCHESTER_UNITED" }
 ];
 
 const FACTION_DISPLAY_NAMES: Record<FactionBranchSlug, string> = {
@@ -328,9 +314,6 @@ export default {
       }
 
       const factionSlug = normalizeFactionChoice(factionClubId);
-      if (!wasOnboarded && factionSlug) {
-        await notifyFactionChatNewDeputy(env, auth.user, factionSlug, { nickname });
-      }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
@@ -487,68 +470,6 @@ export default {
       }
 
       return jsonResponse({ ok: true, faction: factionId, members }, 200, corsHeaders());
-    }
-
-    if (url.pathname === "/api/faction-messages") {
-      if (request.method === "OPTIONS") {
-        return corsResponse();
-      }
-      if (request.method !== "POST") {
-        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
-      }
-
-      const body = await readJson<{ initData?: string; faction?: string; limit?: number }>(request);
-      if (!body) {
-        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
-      }
-      const initData = body.initData?.trim();
-      if (!initData) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      const supabase = createSupabaseClient(env);
-      if (!supabase) {
-        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-
-      const requestedFaction = normalizeFactionChoice(body.faction);
-      const userFaction = await getUserFactionSlug(supabase, auth.user.id);
-      const faction = requestedFaction ?? userFaction;
-      if (!faction) {
-        return jsonResponse({ ok: false, error: "faction_not_selected" }, 400, corsHeaders());
-      }
-
-      const rawLimit = typeof body.limit === "number" ? Math.floor(body.limit) : 3;
-      const limit = Math.min(Math.max(rawLimit, 1), 6);
-
-      const refs = getFactionChatRefs(env);
-      const targetRef = refs.bySlug[faction];
-      const messages = await listFactionDebugMessages(supabase, faction, targetRef, limit);
-      const chatRef = refs.bySlug[faction];
-      const chatUrl = formatFactionChatUrl(chatRef);
-      return jsonResponse(
-        {
-          ok: true,
-          faction,
-          chat_url: chatUrl,
-          messages,
-          debug: {
-            source: "debug_updates",
-            chat_id: targetRef?.chatId ?? null,
-            thread_id: targetRef?.threadId ?? null,
-            count: messages.length
-          }
-        },
-        200,
-        corsHeaders()
-      );
     }
 
     if (url.pathname === "/api/analitika") {
@@ -1175,9 +1096,6 @@ export default {
       }
       const message = getUpdateMessage(update);
       if (message) {
-        await captureFactionBranchMessage(message, env, supabase);
-        await handleFactionChatModeration(message, env, supabase);
-        await handleGeneralChatModeration(message, env, supabase);
       }
 
       await handleUpdate(update, env);
@@ -1187,7 +1105,6 @@ export default {
     return new Response("Not Found", { status: 404 });
   },
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(handleMatchStartDigests(env));
     ctx.waitUntil(handlePredictionReminders(env));
     ctx.waitUntil(handleWeatherRefresh(env));
   }
@@ -1272,197 +1189,6 @@ function resolveUpdateType(update: TelegramUpdate): string {
   return "unknown";
 }
 
-type FactionChatRef = {
-  chatId?: number;
-  chatUsername?: string;
-  threadId?: number | null;
-  label: string;
-};
-
-type FactionChatRefs = {
-  classico: Partial<Record<ClassicoFaction, FactionChatRef>>;
-  bySlug: Partial<Record<FactionBranchSlug, FactionChatRef>>;
-  general?: FactionChatRef;
-};
-
-function parseChatRef(value: string | undefined, label: string): FactionChatRef | null {
-  const raw = value?.trim();
-  if (!raw) {
-    return null;
-  }
-
-  const normalized = raw.replace(/^https?:\/\//, "").replace(/^@/, "");
-  const numericThreadMatch =
-    normalized.match(/^t\.me\/(-?\d+)\/(\d+)$/i) ??
-    normalized.match(/^(-?\d+)\/(\d+)$/) ??
-    normalized.match(/^(-?\d+):(\d+)$/);
-  if (numericThreadMatch) {
-    const rawChatId = numericThreadMatch[1];
-    const threadId = Number(numericThreadMatch[2]);
-    const chatId =
-      rawChatId.startsWith("-100") || rawChatId.startsWith("-")
-        ? Number(rawChatId)
-        : Number(`-100${rawChatId}`);
-    return {
-      chatId,
-      threadId: Number.isFinite(threadId) ? threadId : null,
-      label
-    };
-  }
-
-  if (/^-?\d+$/.test(raw)) {
-    return { chatId: Number(raw), threadId: null, label };
-  }
-  const privateMatch = normalized.match(/^t\.me\/c\/(\d+)(?:\/(\d+))?/i);
-  if (privateMatch) {
-    const internalId = privateMatch[1];
-    const threadId = privateMatch[2] ? Number(privateMatch[2]) : null;
-    return {
-      chatId: Number(`-100${internalId}`),
-      threadId: Number.isFinite(threadId ?? NaN) ? threadId : null,
-      label
-    };
-  }
-
-  const publicMatch = normalized.match(/^t\.me\/([a-z0-9_]{5,})(?:\/(\d+))?/i);
-  if (publicMatch) {
-    const threadId = publicMatch[2] ? Number(publicMatch[2]) : null;
-    return {
-      chatUsername: publicMatch[1].toLowerCase(),
-      threadId: Number.isFinite(threadId ?? NaN) ? threadId : null,
-      label
-    };
-  }
-
-  if (/^[a-z0-9_]{5,}$/i.test(normalized)) {
-    return { chatUsername: normalized.toLowerCase(), threadId: null, label };
-  }
-
-  return null;
-}
-
-function getFactionChatRefs(env: Env): FactionChatRefs {
-  const classico: Partial<Record<ClassicoFaction, FactionChatRef>> = {};
-  const bySlug: Partial<Record<FactionBranchSlug, FactionChatRef>> = {};
-  CLASSICO_FACTIONS.forEach((slug) => {
-    const ref = parseChatRef(env[CLASSICO_CHAT_ENV[slug]], slug);
-    if (ref) {
-      classico[slug] = ref;
-      bySlug[slug] = ref;
-    }
-  });
-  EXTRA_FACTION_CHAT_CONFIG.forEach((config) => {
-    const ref = parseChatRef(env[config.envKey], config.slug);
-    if (ref) {
-      bySlug[config.slug] = ref;
-    }
-  });
-  return {
-    classico,
-    bySlug,
-    general: parseChatRef(env.FACTION_CHAT_GENERAL, "general")
-  };
-}
-
-function formatFactionChatUrl(ref: FactionChatRef | undefined | null): string | null {
-  if (!ref) {
-    return null;
-  }
-  if (ref.chatUsername) {
-    const base = `https://t.me/${ref.chatUsername}`;
-    return ref.threadId ? `${base}/${ref.threadId}` : base;
-  }
-  if (typeof ref.chatId === "number") {
-    const normalized = String(ref.chatId).replace(/^-100/, "").replace(/^-/, "");
-    if (!normalized) {
-      return null;
-    }
-    const base = `https://t.me/c/${normalized}`;
-    return ref.threadId ? `${base}/${ref.threadId}` : base;
-  }
-  return null;
-}
-
-function identifyFactionFromMessage(
-  message: TelegramMessage,
-  refs: FactionChatRefs
-): FactionBranchSlug | null {
-  for (const [slug, ref] of Object.entries(refs.bySlug)) {
-    if (ref && matchChatRef(message, ref)) {
-      return slug as FactionBranchSlug;
-    }
-  }
-  return null;
-}
-
-function normalizeFactionMessageText(message: TelegramMessage): string | null {
-  const candidate = message.text?.trim() || message.caption?.trim() || "";
-  const normalized = candidate.replace(/\s+/g, " ").trim();
-  if (!normalized || normalized.startsWith("/")) {
-    return null;
-  }
-  const limit = 280;
-  if (normalized.length <= limit) {
-    return normalized;
-  }
-  return `${normalized.slice(0, limit - 1)}…`;
-}
-
-function matchChatRef(message: TelegramMessage, ref: FactionChatRef): boolean {
-  const chatId = message.chat?.id;
-  const chatUsername = message.chat?.username?.toLowerCase();
-  const matchesChat =
-    (ref.chatId !== undefined && chatId === ref.chatId) ||
-    (!!ref.chatUsername && !!chatUsername && ref.chatUsername === chatUsername);
-  if (!matchesChat) {
-    return false;
-  }
-  if (ref.threadId !== null && ref.threadId !== undefined) {
-    return message.message_thread_id === ref.threadId;
-  }
-  return true;
-}
-
-async function captureFactionBranchMessage(message: TelegramMessage, env: Env, supabase: SupabaseClient | null): Promise<void> {
-  if (!supabase) {
-    return;
-  }
-  const from = message.from;
-  const chatId = message.chat?.id;
-  const messageId = message.message_id;
-  if (!chatId || !messageId) {
-    return;
-  }
-  if (from?.is_bot) {
-    return;
-  }
-
-  if (from) {
-    await storeUser(supabase, from);
-  }
-
-  const refs = getFactionChatRefs(env);
-  const faction = identifyFactionFromMessage(message, refs);
-  if (!faction) {
-    return;
-  }
-
-  const text = normalizeFactionMessageText(message);
-  if (!text) {
-    return;
-  }
-
-  await insertFactionBranchMessage(supabase, {
-    faction,
-    chatId,
-    messageId,
-    threadId: message.message_thread_id ?? null,
-    author: from ? formatUserDisplay(from) : null,
-    authorId: from?.id ?? null,
-    text
-  });
-}
-
 function formatFactionName(faction: FactionBranchSlug | "general"): string {
   if (faction === "general") {
     return "Загальний чат";
@@ -1483,34 +1209,6 @@ function formatUserDisplay(user: TelegramUser): string {
     return username;
   }
   return `id:${user.id}`;
-}
-
-async function notifyFactionChatNewDeputy(
-  env: Env,
-  user: TelegramUser,
-  faction: FactionBranchSlug,
-  options?: { nickname?: string | null }
-): Promise<void> {
-  const refs = getFactionChatRefs(env);
-  const targetRef = refs.bySlug[faction];
-  if (!targetRef) {
-    return;
-  }
-  const chatTarget = targetRef.chatId ?? (targetRef.chatUsername ? `@${targetRef.chatUsername}` : null);
-  if (!chatTarget) {
-    return;
-  }
-  const factionLabel = formatFactionName(faction);
-  const userLabel = formatUserDisplay(user);
-  const nicknameCandidate = options?.nickname?.trim();
-  const mention =
-    user.username && user.username.trim()
-      ? `@${user.username.trim()}`
-      : nicknameCandidate && nicknameCandidate.length
-      ? nicknameCandidate
-      : userLabel;
-  const message = `У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n${mention}`;
-  await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
 }
 
 async function getUserClassicoChoice(
@@ -1560,84 +1258,6 @@ async function getUserFactionClubId(supabase: SupabaseClient, userId: number): P
     console.error("Failed to load user faction", error);
     return null;
   }
-}
-
-async function handleFactionChatModeration(
-  message: TelegramMessage,
-  env: Env,
-  supabase: SupabaseClient | null
-): Promise<void> {
-  const from = message.from;
-  const chatId = message.chat?.id;
-  const messageId = message.message_id;
-  if (!from || !chatId || !messageId || from.is_bot) {
-    return;
-  }
-
-  const refs = getFactionChatRefs(env);
-  const detected = identifyFactionFromMessage(message, refs);
-  if (!detected) {
-    return;
-  }
-  const targetFaction = detected;
-  if (!targetFaction) {
-    return;
-  }
-
-  if (!supabase) {
-    console.error("Failed to moderate faction chat: missing_supabase");
-    return;
-  }
-
-  const userFaction = await getUserFactionSlug(supabase, from.id);
-  if (userFaction === targetFaction) {
-    return;
-  }
-
-  await deleteMessage(env, chatId, messageId);
-
-  const targetLabel = formatFactionName(targetFaction);
-  const userLabel = formatUserDisplay(from);
-  const userFactionLabel = userFaction ? formatFactionName(userFaction) : NO_FACTION_LABEL;
-
-  const directMessage = userFaction
-    ? `Твоє повідомлення видалено: це чат фракції ${targetLabel}. Твоя фракція: ${userFactionLabel}.`
-    : `Твоє повідомлення видалено: це чат фракції ${targetLabel}. Ти поки що ${NO_FACTION_LABEL} — обери фракцію в WebApp та заходь у відповідну гілку.`;
-  await sendMessage(env, from.id, directMessage);
-
-  if (refs.general) {
-    const generalChatTarget =
-      refs.general.chatId ?? (refs.general.chatUsername ? `@${refs.general.chatUsername}` : null);
-    if (!generalChatTarget) {
-      return;
-    }
-    const generalText = `Порушення у чаті ${targetLabel}: ${userLabel} (${userFactionLabel}) написав у чужій гілці. Повідомлення видалено.`;
-    await sendMessage(env, generalChatTarget, generalText);
-  }
-}
-
-async function handleGeneralChatModeration(
-  message: TelegramMessage,
-  env: Env,
-  supabase: SupabaseClient | null
-): Promise<void> {
-  const from = message.from;
-  const chatId = message.chat?.id;
-  const messageId = message.message_id;
-  if (!from || !chatId || !messageId || from.is_bot) {
-    return;
-  }
-
-  const refs = getFactionChatRefs(env);
-  if (!refs.general) {
-    return;
-  }
-
-  const isGeneralChat = matchChatRef(message, refs.general);
-  if (!isGeneralChat) {
-    return;
-  }
-  return;
 }
 
 async function storeUser(
@@ -1724,190 +1344,6 @@ async function listFactionMembers(
   } catch (error) {
     console.error("Failed to fetch faction members", error);
     return null;
-  }
-}
-
-async function insertFactionBranchMessage(
-  supabase: SupabaseClient,
-  payload: {
-    faction: FactionBranchSlug;
-    chatId: number;
-    messageId: number;
-    threadId: number | null;
-    author: string | null;
-    authorId?: number | null;
-    text: string;
-  }
-): Promise<void> {
-  try {
-    const record = {
-      faction: payload.faction,
-      chat_id: payload.chatId,
-      message_id: payload.messageId,
-      thread_id: payload.threadId,
-      author: payload.author?.trim() || null,
-      author_id: payload.authorId ?? null,
-      text: payload.text,
-      created_at: new Date().toISOString()
-    };
-    const { error } = await supabase.from("faction_branch_messages").insert(record);
-    if (error && error.code !== "23505") {
-      console.error("Failed to insert faction branch message", error);
-    }
-  } catch (error) {
-    console.error("Failed to insert faction branch message", error);
-  }
-}
-
-type FactionBranchMessageRow = {
-  id: number;
-  faction: string;
-  author: string | null;
-  text: string | null;
-  created_at: string | null;
-  author_id?: number | null;
-  users?: { nickname?: string | null } | null;
-};
-
-type DebugUpdateRow = {
-  id: number;
-  chat_id: number | null;
-  thread_id: number | null;
-  message_id: number | null;
-  user_id: number | null;
-  text: string | null;
-  created_at: string | null;
-};
-
-async function listFactionBranchMessages(
-  supabase: SupabaseClient,
-  faction: FactionBranchSlug,
-  limit: number
-): Promise<FactionBranchMessage[]> {
-  try {
-    const { data, error } = await supabase
-      .from("faction_branch_messages")
-      .select("id, faction, author, text, created_at, author_id, users (nickname)")
-      .eq("faction", faction)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    if (error) {
-      console.error("Failed to load faction branch messages", error);
-      return [];
-    }
-    return (
-      ((data as FactionBranchMessageRow[]) ?? []).map((row) => ({
-        id: row.id,
-        faction: row.faction as FactionBranchSlug,
-        author: row.author ?? null,
-        text: row.text ?? "",
-        created_at: row.created_at ?? new Date().toISOString(),
-        nickname: row.users?.nickname ?? null,
-        authorId: row.author_id ?? null
-      })) ?? []
-    );
-  } catch (error) {
-    console.error("Failed to load faction branch messages", error);
-    return [];
-  }
-}
-
-function formatStoredUserLabel(user: StoredUser | null, fallbackId: number | null): string | null {
-  if (user) {
-    const nickname = (user.nickname ?? "").trim();
-    if (nickname) {
-      return nickname;
-    }
-    const telegramUser: TelegramUser = {
-      id: user.id ?? 0,
-      username: user.username ?? undefined,
-      first_name: user.first_name ?? undefined,
-      last_name: user.last_name ?? undefined
-    };
-    const display = formatUserDisplay(telegramUser);
-    if (display) {
-      return display;
-    }
-  }
-  return typeof fallbackId === "number" ? `id:${fallbackId}` : null;
-}
-
-async function listFactionDebugMessages(
-  supabase: SupabaseClient,
-  faction: FactionBranchSlug,
-  ref: FactionChatRef | undefined,
-  limit: number
-): Promise<FactionBranchMessage[]> {
-  if (!ref) {
-    return [];
-  }
-  if (typeof ref.chatId !== "number" && typeof ref.threadId !== "number") {
-    return [];
-  }
-  try {
-    let query = supabase
-      .from("debug_updates")
-      .select("id, chat_id, thread_id, message_id, user_id, text, created_at")
-      .eq("update_type", "message")
-      .order("created_at", { ascending: false })
-      .limit(Math.min(limit, 20));
-    if (typeof ref.chatId === "number") {
-      query = query.eq("chat_id", ref.chatId);
-    }
-    if (typeof ref.threadId === "number") {
-      query = query.eq("thread_id", ref.threadId);
-    } else if (typeof ref.chatId === "number") {
-      query = query.is("thread_id", null);
-    }
-    const { data, error } = await query;
-    if (error) {
-      console.error("Failed to load debug updates", error);
-      return [];
-    }
-    const rows = (data as DebugUpdateRow[]) ?? [];
-    const userIds = Array.from(
-      new Set(rows.map((row) => row.user_id).filter((id): id is number => typeof id === "number"))
-    );
-    const usersById = new Map<number, StoredUser>();
-    if (userIds.length) {
-      const { data: users, error: usersError } = await supabase
-        .from("users")
-        .select("id, username, first_name, last_name, nickname")
-        .in("id", userIds);
-      if (usersError) {
-        console.error("Failed to load debug update users", usersError);
-      } else {
-        (users as StoredUser[]).forEach((user) => {
-          if (typeof user.id === "number") {
-            usersById.set(user.id, user);
-          }
-        });
-      }
-    }
-
-    return rows
-      .map((row) => {
-        const normalizedText = normalizeFactionMessageText({ text: row.text ?? "" });
-        if (!normalizedText) {
-          return null;
-        }
-        const user = typeof row.user_id === "number" ? usersById.get(row.user_id) ?? null : null;
-        const author = formatStoredUserLabel(user, row.user_id ?? null);
-        return {
-          id: row.id,
-          faction,
-          author,
-          text: normalizedText,
-          created_at: row.created_at ?? new Date().toISOString(),
-          nickname: user?.nickname ?? null,
-          authorId: row.user_id ?? null
-        } satisfies FactionBranchMessage;
-      })
-      .filter((message): message is FactionBranchMessage => Boolean(message))
-      .slice(0, limit);
-  } catch (error) {
-    console.error("Failed to load debug updates", error);
-    return [];
   }
 }
 
@@ -6591,78 +6027,7 @@ function formatMatchPredictionLine(
   return `${homeName} ${prediction.home_pred}:${prediction.away_pred} ${awayName} (${userLabel})`;
 }
 
-async function sendFactionMatchStartDigest(
-  env: Env,
-  match: DbMatch,
-  faction: FactionBranchSlug,
-  predictions: MatchPredictionRecord[],
-  chatRef?: FactionChatRef
-): Promise<void> {
-  if (!chatRef) {
-    return;
-  }
-  const chatTarget =
-    chatRef.chatId ?? (chatRef.chatUsername ? `@${chatRef.chatUsername}` : null);
-  if (!chatTarget) {
-    return;
-  }
-  const homeName = resolveUkrainianClubName(match.home_team, match.home_club_id ?? null);
-  const awayName = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
-  const header = `Прогнози фракції ${formatFactionName(faction)} на матч ${homeName} — ${awayName}:`;
-  const lines = predictions.length
-    ? predictions.map((prediction) => formatMatchPredictionLine(homeName, awayName, prediction))
-    : ["Поки без прогнозів."];
-  const message = [header, ...lines].join("\n");
-  try {
-    const threadId = typeof chatRef.threadId === "number" ? chatRef.threadId : undefined;
-    await sendMessage(env, chatTarget, message, undefined, undefined, threadId);
-  } catch (error) {
-    console.error("Failed to send match start digest", error);
-  }
-}
-
-async function handleMatchStartDigests(env: Env): Promise<void> {
-  const supabase = createSupabaseClient(env);
-  if (!supabase) {
-    console.error("Failed to send match start digests: missing_supabase");
-    return;
-  }
-
-  const matches = await listMatchesAwaitingStartDigest(supabase);
-  if (!matches || matches.length === 0) {
-    return;
-  }
-
-  const refs = getFactionChatRefs(env);
-
-  for (const match of matches) {
-    const predictions = await listMatchPredictionsWithUsers(supabase, match.id);
-    if (!predictions) {
-      continue;
-    }
-
-    const grouped = groupMatchPredictionsByFaction(predictions);
-    for (const faction of ALL_FACTION_BRANCHES) {
-      const factionPredictions = grouped[faction];
-      const chatRef = refs.bySlug[faction];
-      await sendFactionMatchStartDigest(env, match, faction, factionPredictions, chatRef);
-    }
-
-    try {
-      const { error } = await supabase
-        .from("matches")
-        .update({ start_digest_sent_at: new Date().toISOString() })
-        .eq("id", match.id)
-        .is("start_digest_sent_at", null);
-      if (error) {
-        console.error("Failed to mark match start digest sent", error);
-      }
-    } catch (error) {
-      console.error("Failed to mark match start digest sent", error);
-    }
-  }
-}
-
+ 
 async function listUsersMissingPrediction(
   supabase: SupabaseClient,
   matchId: number

@@ -67,26 +67,6 @@ export type FactionBranchSlug =
   | "milan"
   | "manchester-united";
 
-export type FactionBranchMessage = {
-  id: number;
-  faction: FactionBranchSlug;
-  author?: string | null;
-  text: string;
-  created_at: string;
-  nickname?: string | null;
-  authorId?: number | null;
-};
-
-export type FactionMessagesResponse =
-  | {
-      ok: true;
-      faction: FactionBranchSlug;
-      chat_url: string | null;
-      messages: FactionBranchMessage[];
-      debug?: { source: string; chat_id: number | null; thread_id: number | null; count: number };
-    }
-  | { ok: false; error: string };
-
 export type CreateMatchResponse =
   | { ok: true; match: Match }
   | { ok: false; error: string };
