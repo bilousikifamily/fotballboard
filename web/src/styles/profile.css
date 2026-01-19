@@ -28,11 +28,8 @@
 }
 
 .profile-nickname {
-  position: absolute;
-  top: clamp(-28px, -6vw, -16px);
-  left: 50%;
-  transform: translate(-50%, 0);
-  margin: 0;
+  position: static;
+  margin: 0 0 12px;
   padding: 0;
   border-radius: 14px;
   z-index: 2;
@@ -41,6 +38,8 @@
   gap: 10px;
   justify-content: center;
   pointer-events: none;
+  width: 100%;
+  text-align: center;
 }
 
 .profile-nickname-chip {
@@ -56,7 +55,7 @@
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: 0.14em;
-  font-size: clamp(0.85rem, 3.4vw, 1.15rem);
+  font-size: 120%;
   pointer-events: auto;
   position: relative;
   z-index: 3;

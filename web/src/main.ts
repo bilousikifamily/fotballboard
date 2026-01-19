@@ -1000,7 +1000,6 @@ function renderUser(
     ? `
       <div class="profile-nickname" data-profile-name>
         <span class="profile-nickname-chip">${safeName}</span>
-        ${factionBadgeMarkup}
       </div>
     `
     : "";
