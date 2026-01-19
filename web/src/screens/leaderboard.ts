@@ -3,6 +3,18 @@ import { formatUserName } from "../formatters/names";
 import { formatClubName, getAvatarLogoPath } from "../features/clubs";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
 
+const factionPrizeMap = new Map<string, string>();
+
+function normalizeFactionId(value?: string | null): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized ? normalized : null;
+}
+
+export function getFactionPrizeSrc(factionId?: string | null): string | null {
+  const normalized = normalizeFactionId(factionId);
+  return normalized ? factionPrizeMap.get(normalized) ?? null : null;
+}
+
 export function renderUsersError(container: HTMLElement): void {
   container.innerHTML = `<p class="muted small">Не вдалося завантажити таблицю.</p>`;
 }
@@ -29,6 +41,7 @@ export function renderLeaderboardList(
   users: LeaderboardUser[],
   options: { currentUserId: number | null; startingPoints: number; primaryFactionLogo?: string | null }
 ): string {
+  factionPrizeMap.clear();
   const uniqueUsers = collapseLeaderboardByFaction(users);
   if (!uniqueUsers.length) {
     return `<p class="muted small">Поки що немає користувачів.</p>`;
@@ -75,6 +88,10 @@ export function renderLeaderboardList(
         ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
         : `<div class="table-avatar placeholder"></div>`;
       const prizeSrc = prizeMap[currentRank];
+      const normalizedFaction = normalizeFactionId(user.faction_club_id);
+      if (normalizedFaction && prizeSrc) {
+        factionPrizeMap.set(normalizedFaction, prizeSrc);
+      }
       const prizeIcon = prizeSrc
         ? `<img src="${escapeAttribute(prizeSrc)}" alt="" />`
         : "";

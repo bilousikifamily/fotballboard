@@ -52,7 +52,7 @@ import {
   renderTeamLogo
 } from "./screens/matches";
 import { renderAdminUserSessions } from "./screens/adminUsers";
-import { renderLeaderboardList, renderUsersError } from "./screens/leaderboard";
+import { renderLeaderboardList, renderUsersError, getFactionPrizeSrc } from "./screens/leaderboard";
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { toKyivISOString } from "./utils/time";
 
@@ -102,7 +102,6 @@ const matchWeatherTimezoneCache = new Map<number, string | null>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
-
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
   { id: "la-liga", label: "Ла Ліга", flag: "🇪🇸" },
@@ -864,7 +863,8 @@ const MAX_TOP_FACTION_CARDS = 5;
 function renderFactionMembersRows(
   members: FactionMember[],
   highlightId: number | null,
-  factionLogo: string | null
+  factionLogo: string | null,
+  factionId: string | null
 ): string {
   if (!members.length) {
     return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
@@ -905,7 +905,8 @@ function renderFactionMembersRows(
           : member.photo_url
           ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
           : `<div class="table-avatar placeholder"></div>`;
-      const prizeSrc = prizeMap[rankLabel];
+      const sharedPrizeSrc = getFactionPrizeSrc(factionId);
+      const prizeSrc = sharedPrizeSrc ?? prizeMap[rankLabel];
       const prizeIcon = prizeSrc ? `<img src="${escapeAttribute(prizeSrc)}" alt="" />` : "";
       return `
         <div class="leaderboard-row${isSelf ? " is-self" : ""}">
@@ -950,7 +951,7 @@ async function loadFactionMembers(): Promise<void> {
       return;
     }
     const members = data.members ?? [];
-    container.innerHTML = renderFactionMembersRows(members, currentUserId, factionLogo);
+    container.innerHTML = renderFactionMembersRows(members, currentUserId, factionLogo, entry.value);
   } catch {
     if (requestId !== factionMembersRequestVersion) {
       return;
