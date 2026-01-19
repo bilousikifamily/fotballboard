@@ -464,6 +464,7 @@ export interface PredictionRow {
     photo_url?: string | null;
     nickname?: string | null;
     points_total?: number | null;
+    faction_club_id?: string | null;
   } | null;
 }
 
@@ -481,6 +482,7 @@ export interface PredictionView {
     photo_url?: string | null;
     nickname?: string | null;
     points_total?: number | null;
+    faction_club_id?: string | null;
   } | null;
 }
 

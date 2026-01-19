@@ -666,26 +666,69 @@ export default {
 
       const refs = getFactionChatRefs(env);
       const chatRef = refs.bySlug[userFaction];
-      if (!chatRef || typeof chatRef.chatId !== "number") {
-        return jsonResponse({ ok: false, error: "chat_not_configured" }, 400, corsHeaders());
-      }
-
-      const rawLimit = typeof body.limit === "number" ? Math.floor(body.limit) : 2;
-      const limit = Math.min(Math.max(rawLimit, 1), 3);
-      const messages = await listFactionDebugMessages(supabase, userFaction, chatRef, limit);
-
-      return jsonResponse(
-        {
-          ok: true,
-          faction: userFaction,
-          messages
-        },
-        200,
-        corsHeaders()
-      );
+    if (!chatRef || typeof chatRef.chatId !== "number") {
+      return jsonResponse({ ok: false, error: "chat_not_configured" }, 400, corsHeaders());
     }
 
-    if (url.pathname === "/api/analitika") {
+    const rawLimit = typeof body.limit === "number" ? Math.floor(body.limit) : 2;
+    const limit = Math.min(Math.max(rawLimit, 1), 3);
+    const messages = await listFactionDebugMessages(supabase, userFaction, chatRef, limit);
+
+    return jsonResponse(
+      {
+        ok: true,
+        faction: userFaction,
+        messages
+      },
+      200,
+      corsHeaders()
+    );
+  }
+
+  if (url.pathname === "/api/match-faction-predictions") {
+    if (request.method === "OPTIONS") {
+      return corsResponse();
+    }
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+    }
+
+    const supabase = createSupabaseClient(env);
+    if (!supabase) {
+      return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+    }
+
+    const body = await readJson<{ initData?: string; match_id?: number; faction?: string }>(request);
+    if (!body) {
+      return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+    }
+
+    const auth = await authenticateInitData(body.initData ?? "", env.BOT_TOKEN);
+    if (!auth.ok || !auth.user) {
+      return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+    }
+    await storeUser(supabase, auth.user);
+
+    const isAdminUser = await checkAdmin(supabase, auth.user.id);
+    if (!isAdminUser) {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+    }
+
+    const matchId = Number(body.match_id);
+    if (!Number.isInteger(matchId)) {
+      return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+    }
+
+    const normalizedFaction = normalizeFactionChoice(body.faction ?? "");
+    if (!normalizedFaction) {
+      return jsonResponse({ ok: false, error: "bad_faction" }, 400, corsHeaders());
+    }
+
+    const sent = await sendMatchFactionPredictions(env, supabase, matchId, normalizedFaction);
+    return jsonResponse({ ok: sent }, sent ? 200 : 500, corsHeaders());
+  }
+
+  if (url.pathname === "/api/analitika") {
       if (request.method === "OPTIONS") {
         return corsResponse();
       }
@@ -2324,7 +2367,7 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
     const { data, error } = await supabase
       .from("predictions")
       .select(
-        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url, nickname, points_total)"
+        "id, user_id, home_pred, away_pred, points, created_at, users (id, username, first_name, last_name, photo_url, nickname, points_total, faction_club_id)"
       )
       .eq("match_id", matchId)
       .order("created_at", { ascending: true });
@@ -2339,23 +2382,139 @@ async function listPredictions(supabase: SupabaseClient, matchId: number): Promi
       user_id: row.user_id,
       home_pred: row.home_pred,
       away_pred: row.away_pred,
-      points: row.points ?? 0,
-      user: row.users
-        ? {
-          id: row.users.id,
-          username: row.users.username ?? null,
-          first_name: row.users.first_name ?? null,
-          last_name: row.users.last_name ?? null,
-          photo_url: row.users.photo_url ?? null,
-          nickname: row.users.nickname ?? null,
-          points_total: row.users.points_total ?? null
-        }
+          points: row.points ?? 0,
+          user: row.users
+            ? {
+              id: row.users.id,
+              username: row.users.username ?? null,
+              first_name: row.users.first_name ?? null,
+              last_name: row.users.last_name ?? null,
+              photo_url: row.users.photo_url ?? null,
+              nickname: row.users.nickname ?? null,
+              points_total: row.users.points_total ?? null,
+              faction_club_id: row.users.faction_club_id ?? null
+            }
         : null
     }));
   } catch (error) {
     console.error("Failed to fetch predictions", error);
     return null;
   }
+}
+
+async function getMatchById(supabase: SupabaseClient, matchId: number): Promise<DbMatch | null> {
+  try {
+    const { data, error } = await supabase.from("matches").select("*").eq("id", matchId).maybeSingle();
+    if (error || !data) {
+      if (!error && data === null) {
+        return null;
+      }
+      console.error("Failed to fetch match by id", error);
+      return null;
+    }
+    return data as DbMatch;
+  } catch (error) {
+    console.error("Failed to fetch match by id", error);
+    return null;
+  }
+}
+
+async function listFactionPredictions(
+  supabase: SupabaseClient,
+  matchId: number,
+  faction: FactionBranchSlug
+): Promise<PredictionView[]> {
+  const predictions = await listPredictions(supabase, matchId);
+  if (!predictions) {
+    return [];
+  }
+  const normalizedFaction = faction.toLowerCase();
+  return predictions.filter(
+    (prediction) =>
+      prediction.user?.faction_club_id?.trim().toLowerCase() === normalizedFaction
+  );
+}
+
+function formatMatchKickoff(match: DbMatch): string {
+  try {
+    const date = new Date(match.kickoff_at);
+    if (!date || Number.isNaN(date.getTime())) {
+      return "час невідомий";
+    }
+    return date.toLocaleString("uk-UA", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Kyiv"
+    });
+  } catch {
+    return "час невідомий";
+  }
+}
+
+function formatPredictionUser(prediction: PredictionView): string {
+  const nickname = prediction.user?.nickname?.trim();
+  if (nickname) {
+    return nickname;
+  }
+  const username = prediction.user?.username?.trim();
+  if (username) {
+    return `@${username}`;
+  }
+  return `id:${prediction.user_id}`;
+}
+
+function buildFactionPredictionsMessage(
+  match: DbMatch,
+  faction: FactionBranchSlug,
+  predictions: PredictionView[]
+): string {
+  const header = `Прогнози фракції ${formatFactionName(faction)} на матч ${match.home_team} — ${match.away_team}\n${formatMatchKickoff(
+    match
+  )}`;
+  if (predictions.length === 0) {
+    return `${header}\n\nПоки що прогнози відсутні.`;
+  }
+  const rows = predictions
+    .map(
+      (prediction, index) =>
+        `${index + 1}. ${formatPredictionUser(prediction)} — ${prediction.home_pred}:${prediction.away_pred}`
+    )
+    .join("\n");
+  return `${header}\n\n${rows}`;
+}
+
+async function sendMatchFactionPredictions(
+  env: Env,
+  supabase: SupabaseClient,
+  matchId: number,
+  faction: FactionBranchSlug
+): Promise<boolean> {
+  const match = await getMatchById(supabase, matchId);
+  if (!match) {
+    return false;
+  }
+  const predictions = await listFactionPredictions(supabase, matchId, faction);
+  const refs = getFactionChatRefs(env);
+  const chatRef = refs.bySlug[faction];
+  if (!chatRef) {
+    return false;
+  }
+  const target =
+    typeof chatRef.chatId === "number"
+      ? chatRef.chatId
+      : chatRef.chatUsername
+        ? `@${chatRef.chatUsername}`
+        : null;
+  if (!target) {
+    return false;
+  }
+  const message = buildFactionPredictionsMessage(match, faction, predictions);
+  await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
+  return true;
 }
 
 async function checkAdmin(supabase: SupabaseClient, userId: number): Promise<boolean> {

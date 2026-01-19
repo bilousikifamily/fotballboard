@@ -278,6 +278,7 @@ export type PredictionUser = {
   photo_url?: string | null;
   nickname?: string | null;
   points_total?: number | null;
+  faction_club_id?: string | null;
 };
 
 export type PredictionView = {
