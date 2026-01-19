@@ -864,7 +864,8 @@ function renderFactionMembersRows(
   members: FactionMember[],
   highlightId: number | null,
   factionLogo: string | null,
-  factionId: string | null
+  factionId: string | null,
+  factionRank: number | null
 ): string {
   if (!members.length) {
     return `<p class="muted small">У цій фракції ще немає голосів.</p>`;
@@ -905,7 +906,12 @@ function renderFactionMembersRows(
           : member.photo_url
           ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
           : `<div class="table-avatar placeholder"></div>`;
-      const sharedPrizeSrc = getFactionPrizeSrc(factionId);
+      const effectiveFactionRank =
+        typeof factionRank === "number" && Number.isFinite(factionRank)
+          ? Math.min(Math.max(Math.floor(factionRank), 1), 5)
+          : null;
+      const sharedPrizeSrc =
+        getFactionPrizeSrc(factionId) ?? (effectiveFactionRank ? prizeMap[effectiveFactionRank] : null);
       const prizeSrc = sharedPrizeSrc ?? prizeMap[rankLabel];
       const prizeIcon = prizeSrc ? `<img src="${escapeAttribute(prizeSrc)}" alt="" />` : "";
       return `
@@ -951,7 +957,13 @@ async function loadFactionMembers(): Promise<void> {
       return;
     }
     const members = data.members ?? [];
-    container.innerHTML = renderFactionMembersRows(members, currentUserId, factionLogo, entry.value);
+    container.innerHTML = renderFactionMembersRows(
+      members,
+      currentUserId,
+      factionLogo,
+      entry.value,
+      entry.rank ?? null
+    );
   } catch {
     if (requestId !== factionMembersRequestVersion) {
       return;
