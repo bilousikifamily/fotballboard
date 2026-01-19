@@ -74,6 +74,7 @@ import {
   logFixturesSearch
 } from "./services/apiFootball";
 import { deleteMessage, getUpdateMessage, handleUpdate, sendMessage, sendPhoto } from "./services/telegram";
+import { formatClubName } from "./utils/clubs";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 
 const STARTING_POINTS = 100;
@@ -2467,22 +2468,47 @@ function formatPredictionUser(prediction: PredictionView): string {
   return `id:${prediction.user_id}`;
 }
 
+function getMatchTeamLabel(match: DbMatch, kind: "home" | "away"): string {
+  const slug = kind === "home" ? match.home_club_id : match.away_club_id;
+  const teamName = kind === "home" ? match.home_team : match.away_team;
+  const label = teamName ?? slug ?? "";
+  return resolveUkrainianClubName(label, slug ?? null);
+}
+
+function formatAverageScore(predictions: PredictionView[]): string {
+  if (!predictions.length) {
+    return "0:0";
+  }
+  const { homes, aways } = predictions.reduce(
+    (acc, prediction) => ({
+      homes: acc.homes + prediction.home_pred,
+      aways: acc.aways + prediction.away_pred
+    }),
+    { homes: 0, aways: 0 }
+  );
+  const averageHome = homes / predictions.length;
+  const averageAway = aways / predictions.length;
+  const format = (value: number): string => {
+    const rounded = Number(value.toFixed(1));
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+  return `${format(averageHome)}:${format(averageAway)}`;
+}
+
 function buildFactionPredictionsMessage(
   match: DbMatch,
   faction: FactionBranchSlug,
   predictions: PredictionView[]
 ): string {
-  const header = `Прогнози фракції ${formatFactionName(faction)} на матч ${match.home_team} — ${match.away_team}\n${formatMatchKickoff(
-    match
-  )}`;
+  const homeLabel = getMatchTeamLabel(match, "home") || "Домашня команда";
+  const awayLabel = getMatchTeamLabel(match, "away") || "Гостьова команда";
+  const averageScore = formatAverageScore(predictions);
+  const header = `${homeLabel} СЕРЕДНІЙ РАХУНОК ${averageScore} виходячи з прогнозів ${awayLabel}`;
   if (predictions.length === 0) {
     return `${header}\n\nПоки що прогнози відсутні.`;
   }
   const rows = predictions
-    .map(
-      (prediction, index) =>
-        `${index + 1}. ${formatPredictionUser(prediction)} — ${prediction.home_pred}:${prediction.away_pred}`
-    )
+    .map((prediction) => `${formatPredictionUser(prediction)} — ${prediction.home_pred}:${prediction.away_pred}`)
     .join("\n");
   return `${header}\n\n${rows}`;
 }
