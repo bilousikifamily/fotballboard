@@ -25,7 +25,10 @@ function getFactionRankPrize(rank?: number | null): string | null {
   if (rank === undefined || rank === null) {
     return null;
   }
-  const normalizedRank = Math.min(Math.max(Math.floor(rank), 1), 5);
+  const normalizedRank = Math.floor(rank);
+  if (normalizedRank < 1 || normalizedRank > 5) {
+    return null;
+  }
   return FACTION_PRIZE_MAP[normalizedRank] ?? null;
 }
 

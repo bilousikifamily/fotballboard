@@ -1587,7 +1587,7 @@ async function getFactionRank(supabase: SupabaseClient, factionId: string): Prom
       }
       seen.add(normalized);
       if (normalized === factionId.toLowerCase()) {
-        return rank;
+        return rank <= 5 ? rank : null;
       }
     }
     return null;
