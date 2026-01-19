@@ -5762,12 +5762,36 @@ function normalizeFactionChoice(value: unknown): FactionBranchSlug | null {
     return null;
   }
   const normalized = value.trim().toLowerCase();
-  const direct = FACTION_SLUG_ALIASES[normalized];
+  if (!normalized) {
+    return null;
+  }
+  const parts = normalized.split("/");
+  const candidate = parts[parts.length - 1] ?? normalized;
+  const direct = FACTION_SLUG_ALIASES[candidate];
   if (direct) {
     return direct;
   }
-  const replaced = normalized.replace(/[\s_-]+/g, "_");
-  return FACTION_SLUG_ALIASES[replaced] ?? null;
+  const hyphenated = candidate.replace(/[\s_]+/g, "-");
+  const hyphenMatch = FACTION_SLUG_ALIASES[hyphenated];
+  if (hyphenMatch) {
+    return hyphenMatch;
+  }
+  const underscored = candidate.replace(/[\s-]+/g, "_");
+  const underscoreMatch = FACTION_SLUG_ALIASES[underscored];
+  if (underscoreMatch) {
+    return underscoreMatch;
+  }
+  const compact = candidate.replace(/[\s_-]+/g, "");
+  if (!compact) {
+    return null;
+  }
+  for (const slug of ALL_FACTION_BRANCHES) {
+    const slugCompact = slug.replace(/[\s_-]+/g, "");
+    if (slugCompact === compact) {
+      return slug;
+    }
+  }
+  return null;
 }
 
 function normalizeClassicoChoice(value: unknown): ClassicoFaction | null {
