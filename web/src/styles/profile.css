@@ -28,8 +28,11 @@
 }
 
 .profile-nickname {
-  position: static;
-  margin: 0 0 12px;
+  position: absolute;
+  top: clamp(-34px, -8vw, -20px);
+  left: 50%;
+  transform: translate(-50%, 0);
+  margin: 0;
   padding: 0;
   border-radius: 14px;
   z-index: 2;
@@ -38,7 +41,7 @@
   gap: 10px;
   justify-content: center;
   pointer-events: none;
-  width: 100%;
+  width: auto;
   text-align: center;
 }
 
