@@ -102,6 +102,7 @@ const matchWeatherCache = new Map<number, number | null>();
 const matchWeatherConditionCache = new Map<number, string | null>();
 const matchWeatherTempCache = new Map<number, number | null>();
 const matchWeatherTimezoneCache = new Map<number, string | null>();
+const factionRankCache = new Map<string, number>();
 const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
@@ -898,7 +899,9 @@ function renderFactionMembersRows(
     4: "/images/50.png",
     5: "/images/20.png"
   };
-  const globalPrizeSrc = getFactionRankPrize(factionRank);
+  const normalizedFactionId = factionId?.trim().toLowerCase() ?? null;
+  const cachedRank = normalizedFactionId ? factionRankCache.get(normalizedFactionId) ?? null : null;
+  const globalPrizeSrc = getFactionRankPrize(cachedRank ?? factionRank);
   const topMembers = members.slice(0, Math.min(members.length, MAX_TOP_FACTION_CARDS));
   const displayMembers = [...topMembers];
   if (highlightId !== null) {
@@ -3103,8 +3106,38 @@ async function loadLeaderboard(): Promise<void> {
       startingPoints: STARTING_POINTS,
       primaryFactionLogo: getPrimaryFactionLogo(currentProfileStats)
     });
+    const latestRanks = buildFactionRankCache(data.users);
+    factionRankCache.clear();
+    latestRanks.forEach((rank, key) => {
+      factionRankCache.set(key, rank);
+    });
     leaderboardLoaded = true;
   } catch {
     renderUsersError(container);
   }
+}
+
+function buildFactionRankCache(users: LeaderboardUser[]): Map<string, number> {
+  const cache = new Map<string, number>();
+  const seen = new Set<string>();
+  let lastPoints: number | null = null;
+  let currentRank = 0;
+  for (const user of users) {
+    const rawFaction = user.faction_club_id?.trim();
+    if (!rawFaction) {
+      continue;
+    }
+    const normalized = rawFaction.toLowerCase();
+    if (seen.has(normalized)) {
+      continue;
+    }
+    const points = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
+    if (lastPoints === null || points !== lastPoints) {
+      currentRank += 1;
+      lastPoints = points;
+    }
+    seen.add(normalized);
+    cache.set(normalized, currentRank);
+  }
+  return cache;
 }
