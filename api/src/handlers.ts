@@ -596,7 +596,7 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      const factionRank = await getFactionRank(supabase, factionId);
+      const factionRank = await getFactionLeaderboardRank(supabase, factionId);
       return jsonResponse({ ok: true, faction: factionId, members, faction_rank: factionRank }, 200, corsHeaders());
     }
 
@@ -1556,7 +1556,7 @@ async function listFactionMembers(
   }
 }
 
-async function getFactionRank(supabase: SupabaseClient, factionId: string): Promise<number | null> {
+async function getFactionLeaderboardRank(supabase: SupabaseClient, factionId: string): Promise<number | null> {
   try {
     const { data, error } = await supabase
       .from("users")
@@ -2158,7 +2158,7 @@ async function getFactionStats(supabase: SupabaseClient, userId: number): Promis
         continue;
       }
       const members = await countFactionMembers(supabase, key, value);
-      const rank = await getFactionRank(supabase, key, value, points);
+      const rank = await getMemberRankInFaction(supabase, key, value, points);
       entries.push({ key, value, members, rank });
     }
     return entries;
@@ -2178,7 +2178,7 @@ async function countFactionMembers(supabase: SupabaseClient, key: FactionKey, va
   }
 }
 
-async function getFactionRank(
+async function getMemberRankInFaction(
   supabase: SupabaseClient,
   key: FactionKey,
   value: string,
