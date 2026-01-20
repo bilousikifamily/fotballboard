@@ -2465,6 +2465,24 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
       parts.push(`league_sample=${teamSample}`);
     }
   }
+  if (debug.teamFixturesCount !== undefined) {
+    parts.push(`team_fixtures=${debug.teamFixturesCount}`);
+  }
+  if (debug.teamFixturesSource) {
+    parts.push(`team_source=${debug.teamFixturesSource}`);
+  }
+  if (debug.teamFixturesStatus) {
+    parts.push(`team_status=${debug.teamFixturesStatus}`);
+  }
+  if (debug.teamFixturesSample?.length) {
+    const teamSample = debug.teamFixturesSample
+      .map((item) => [item.home, item.away].filter(Boolean).join(" - "))
+      .filter(Boolean)
+      .join(" | ");
+    if (teamSample) {
+      parts.push(`team_sample=${teamSample}`);
+    }
+  }
   return parts.length ? ` [${parts.join(" ")}]` : "";
 }
 

@@ -217,6 +217,10 @@ export type OddsRefreshDebug = {
   leagueRangeStatus?: number;
   fixtureId?: number | null;
   fallbackReason?: string;
+  teamFixturesCount?: number;
+  teamFixturesSource?: "team_home" | "team_away";
+  teamFixturesStatus?: number;
+  teamFixturesSample?: Array<{ id?: number; home?: string; away?: string; homeId?: number; awayId?: number }>;
 };
 
 export type LeaderboardUser = {

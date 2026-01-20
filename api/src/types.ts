@@ -79,6 +79,10 @@ export type OddsDebugInfo = {
   leagueRangeStatus?: number;
   fixtureId?: number | null;
   fallbackReason?: string;
+  teamFixturesCount?: number;
+  teamFixturesSource?: TeamFixturesSource;
+  teamFixturesStatus?: number;
+  teamFixturesSample?: OddsDebugFixture[];
 };
 
 export type ClubApiMapRow = {
@@ -161,6 +165,14 @@ export type FixturePayload = {
   fixture?: { id?: number; date?: string; venue?: { name?: string; city?: string } };
   league?: { id?: number; name?: string; round?: string };
   teams?: { home?: { id?: number; name?: string }; away?: { id?: number; name?: string } };
+};
+
+export type TeamFixturesSource = "team_home" | "team_away";
+
+export type TeamFixturesResult = {
+  fixtures: FixturePayload[];
+  source: TeamFixturesSource;
+  dateStatus: number;
 };
 
 export type FixturesResult = {
