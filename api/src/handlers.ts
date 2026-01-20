@@ -4929,6 +4929,31 @@ function getTeamSearchQuery(teamName: string): string {
   return TEAM_SEARCH_ALIASES[normalized] ?? teamName;
 }
 
+function buildTeamSearchVariants(teamName: string): string[] {
+  const trimmed = teamName.trim();
+  if (!trimmed) {
+    return [];
+  }
+  const normalized = trimmed.replace(/\s+/g, " ").trim();
+  const variants = new Set<string>();
+  const addVariant = (value: string): void => {
+    const candidate = value.replace(/\s+/g, " ").trim();
+    if (candidate && candidate !== normalized) {
+      variants.add(candidate);
+    }
+  };
+  if (/^as\s+/i.test(normalized)) {
+    addVariant(normalized.replace(/^as\s+/i, ""));
+  }
+  if (/\s+fc$/i.test(normalized)) {
+    addVariant(normalized.replace(/\s+fc$/i, ""));
+  }
+  if (/^as\s+/i.test(normalized) && /\s+fc$/i.test(normalized)) {
+    addVariant(normalized.replace(/^as\s+/i, "").replace(/\s+fc$/i, ""));
+  }
+  return Array.from(variants);
+}
+
 function getTeamSearchQueries(teamName: string, slug?: string): string[] {
   const alias = getTeamSearchQuery(teamName);
   const queries: string[] = [];
@@ -4942,7 +4967,11 @@ function getTeamSearchQueries(teamName: string, slug?: string): string[] {
     }
   }
   if (teamName) {
-    queries.push(teamName);
+    const normalizedName = teamName.trim();
+    if (normalizedName) {
+      queries.push(normalizedName);
+      buildTeamSearchVariants(normalizedName).forEach((variant) => queries.push(variant));
+    }
   }
   return Array.from(new Set(queries));
 }
