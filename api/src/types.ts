@@ -51,8 +51,8 @@ export type OddsDebugInfo = {
   awayTeamKnownId?: number | null;
   homeTeamId?: number | null;
   awayTeamId?: number | null;
-  homeTeamSource?: "search" | "cache" | "none";
-  awayTeamSource?: "search" | "cache" | "none";
+  homeTeamSource?: "search" | "cache" | "db" | "none";
+  awayTeamSource?: "search" | "cache" | "db" | "none";
   homeTeamQuery?: string;
   awayTeamQuery?: string;
   homeTeamSearchStatus?: number;
@@ -79,6 +79,31 @@ export type OddsDebugInfo = {
   leagueRangeStatus?: number;
   fixtureId?: number | null;
   fallbackReason?: string;
+};
+
+export type ClubApiMapRow = {
+  id: number;
+  slug?: string | null;
+  league_id?: string | null;
+  name?: string | null;
+  normalized_name: string;
+  api_team_id: number;
+  api_team_name?: string | null;
+  api_team_code?: string | null;
+  api_team_country?: string | null;
+  api_team_logo?: string | null;
+  api_team_founded?: number | null;
+  api_team_national?: boolean | null;
+  season?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ClubSyncPayload = {
+  initData?: string;
+  league_id?: string;
+  api_league_id?: number | string;
+  season?: number | string;
 };
 
 export type OddsStoreResult =

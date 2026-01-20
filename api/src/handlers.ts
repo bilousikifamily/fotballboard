@@ -10,6 +10,8 @@ import type {
   AnalitikaUpsert,
   AnnouncementPayload,
   AvatarPayload,
+  ClubApiMapRow,
+  ClubSyncPayload,
   CreateMatchPayload,
   DbAnalitika,
   DbMatch,
@@ -112,7 +114,8 @@ const TEAM_MATCH_ALIASES: Record<string, string> = {
 };
 
 const KNOWN_TEAM_IDS: Record<string, number> = {
-  asmonaco: 200
+  asmonaco: 200,
+  monaco: 200
 };
 
 const KNOWN_API_TEAM_IDS: Record<string, number> = {
@@ -1074,6 +1077,101 @@ export default {
         );
       }
       return jsonResponse({ ok: true, debug: oddsResult.debug }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/clubs/sync") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<ClubSyncPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const auth = await authenticateInitData(body.initData ?? "", env.BOT_TOKEN);
+      if (!auth.ok || !auth.user) {
+        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      }
+
+      await storeUser(supabase, auth.user);
+      const isAdmin = await checkAdmin(supabase, auth.user.id);
+      if (!isAdmin) {
+        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      }
+
+      if (!env.API_FOOTBALL_KEY) {
+        return jsonResponse({ ok: false, error: "missing_api_key" }, 500, corsHeaders());
+      }
+
+      const normalizedLeagueId = normalizeLeagueId(body.league_id ?? null);
+      if (body.league_id && !normalizedLeagueId) {
+        return jsonResponse({ ok: false, error: "bad_league" }, 400, corsHeaders());
+      }
+
+      const explicitApiLeagueId = parseInteger(body.api_league_id);
+      const apiLeagueId = explicitApiLeagueId ?? resolveApiLeagueId(env, normalizedLeagueId);
+      if (!apiLeagueId) {
+        return jsonResponse({ ok: false, error: "missing_league_mapping" }, 400, corsHeaders());
+      }
+
+      let season = parseInteger(body.season);
+      if (!season) {
+        const timezone = getApiFootballTimezone(env);
+        if (!timezone) {
+          return jsonResponse({ ok: false, error: "missing_timezone" }, 400, corsHeaders());
+        }
+        season = resolveSeasonForDate(new Date(), timezone);
+      }
+
+      const teamsResult = await fetchTeamsByLeague(env, apiLeagueId, season);
+      if (!teamsResult.teams.length) {
+        return jsonResponse(
+          { ok: false, error: "api_error", detail: `teams_status_${teamsResult.status}` },
+          502,
+          corsHeaders()
+        );
+      }
+
+      const nowIso = new Date().toISOString();
+      const rows = teamsResult.teams
+        .map((entry) => buildClubApiMapRow(entry, normalizedLeagueId ?? null, season, nowIso))
+        .filter((entry): entry is ClubApiMapRow => Boolean(entry));
+
+      if (!rows.length) {
+        return jsonResponse({ ok: false, error: "teams_empty" }, 200, corsHeaders());
+      }
+
+      try {
+        const { error } = await supabase.from("club_api_map").upsert(rows, { onConflict: "api_team_id" });
+        if (error) {
+          return jsonResponse({ ok: false, error: "db_error", detail: error.message }, 500, corsHeaders());
+        }
+      } catch (error) {
+        console.error("Failed to upsert club_api_map", error);
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse(
+        {
+          ok: true,
+          updated: rows.length,
+          teams_total: teamsResult.teams.length,
+          league_id: normalizedLeagueId ?? null,
+          api_league_id: apiLeagueId,
+          season
+        },
+        200,
+        corsHeaders()
+      );
     }
 
     if (url.pathname === "/api/matches/weather") {
@@ -2706,8 +2804,9 @@ async function fetchAndStoreOdds(
     debug.date = dateParam;
   }
 
-  const homeTeamResult = await resolveTeamId(env, match.home_team, match.home_club_id ?? undefined);
-  const awayTeamResult = await resolveTeamId(env, match.away_team, match.away_club_id ?? undefined);
+  const teamLookupOptions = { supabase, leagueId: match.league_id ?? null, season };
+  const homeTeamResult = await resolveTeamId(env, match.home_team, match.home_club_id ?? undefined, teamLookupOptions);
+  const awayTeamResult = await resolveTeamId(env, match.away_team, match.away_club_id ?? undefined, teamLookupOptions);
   if (debug) {
     debug.homeTeamId = homeTeamResult.id;
     debug.awayTeamId = awayTeamResult.id;
@@ -3100,7 +3199,10 @@ async function resolveAnalitikaTeamsWithCache(
     const cached = staticRows.get(key) ?? null;
     let teamId = isAnalitikaStaticFresh(cached) ? extractTeamIdFromStatic(cached) : null;
     if (!teamId) {
-      const resolvedTeam = await resolveTeamId(env, team.name, team.slug);
+      const resolvedTeam = await resolveTeamId(env, team.name, team.slug, {
+        supabase,
+        leagueId: ANALITIKA_LEAGUE_ID
+      });
       if (!resolvedTeam.id) {
         return { ok: false, error: "team_not_found", detail: team.slug };
       }
@@ -3436,13 +3538,100 @@ function extractStandingsTeamSample(payload: unknown, limit = 6): Array<{ id: nu
   });
 }
 
+function selectBestClubApiMapping(
+  rows: ClubApiMapRow[],
+  leagueId: string | null,
+  season: number | null
+): ClubApiMapRow | null {
+  if (!rows.length) {
+    return null;
+  }
+  let best = rows[0];
+  let bestScore = -Infinity;
+  for (const row of rows) {
+    let score = 0;
+    if (leagueId && row.league_id === leagueId) {
+      score += 2;
+    }
+    if (season && row.season === season) {
+      score += 1;
+    }
+    if (score > bestScore) {
+      best = row;
+      bestScore = score;
+      continue;
+    }
+    if (score === bestScore) {
+      const rowSeason = typeof row.season === "number" ? row.season : 0;
+      const bestSeason = typeof best.season === "number" ? best.season : 0;
+      if (rowSeason > bestSeason) {
+        best = row;
+      }
+    }
+  }
+  return best;
+}
+
+async function findClubApiMapping(
+  supabase: SupabaseClient,
+  teamName: string,
+  slug?: string,
+  leagueId?: string | null,
+  season?: number | null
+): Promise<ClubApiMapRow | null> {
+  const normalizedSlug = normalizeTeamSlug(slug ?? null);
+  if (normalizedSlug) {
+    try {
+      const { data, error } = await supabase
+        .from("club_api_map")
+        .select(
+          "slug, league_id, name, normalized_name, api_team_id, api_team_name, api_team_code, api_team_country, api_team_logo, api_team_founded, api_team_national, season"
+        )
+        .eq("slug", normalizedSlug)
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        console.error("Failed to read club_api_map by slug", error);
+      } else if (data) {
+        return data as ClubApiMapRow;
+      }
+    } catch (error) {
+      console.error("Failed to read club_api_map by slug", error);
+    }
+  }
+
+  const candidates = buildNormalizedTeamCandidates(teamName, normalizedSlug ?? slug);
+  if (!candidates.length) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("club_api_map")
+      .select(
+        "slug, league_id, name, normalized_name, api_team_id, api_team_name, api_team_code, api_team_country, api_team_logo, api_team_founded, api_team_national, season"
+      )
+      .in("normalized_name", candidates);
+    if (error) {
+      console.error("Failed to read club_api_map by name", error);
+      return null;
+    }
+    const rows = (data as ClubApiMapRow[] | null) ?? [];
+    return selectBestClubApiMapping(rows, leagueId ?? null, season ?? null);
+  } catch (error) {
+    console.error("Failed to read club_api_map by name", error);
+    return null;
+  }
+}
+
 async function resolveTeamId(
   env: Env,
   teamName: string,
-  slug?: string
+  slug?: string,
+  options?: { supabase?: SupabaseClient | null; leagueId?: string | null; season?: number | null }
 ): Promise<{
   id: number | null;
-  source: "search" | "cache" | "none";
+  source: "search" | "cache" | "db" | "none";
   query: string;
   status: number;
   candidates: Array<{ id?: number; name?: string }>;
@@ -3468,6 +3657,26 @@ async function resolveTeamId(
       searchAttempts: [],
       searchResponses: []
     };
+  }
+  const supabase = options?.supabase ?? null;
+  if (supabase) {
+    const mapping = await findClubApiMapping(supabase, teamName, slug, options?.leagueId ?? null, options?.season ?? null);
+    if (mapping?.api_team_id) {
+      const mappedName = mapping.api_team_name ?? mapping.name ?? teamName;
+      teamIdCache.set(normalized, { id: mapping.api_team_id, name: mappedName, updatedAt: Date.now() });
+      return {
+        id: mapping.api_team_id,
+        source: "db",
+        query: mappedName,
+        status: 0,
+        candidates: [],
+        matchedName: mappedName,
+        matchScore: 6,
+        queryAttempts: [],
+        searchAttempts: [],
+        searchResponses: []
+      };
+    }
   }
   const queryAttempts: string[] = [];
   const searchAttempts: number[] = [];
@@ -3624,6 +3833,67 @@ async function fetchTeamsBySearch(env: Env, teamName: string): Promise<TeamsResu
     console.warn("API-Football teams search parse error", error);
     return { teams: [], status };
   }
+}
+
+async function fetchTeamsByLeague(env: Env, leagueId: number, season: number): Promise<TeamsResult> {
+  const path = buildApiPath("/teams", { league: leagueId, season });
+  const response = await fetchApiFootball(env, path);
+  const status = response.status;
+  if (!response.ok) {
+    console.warn("API-Football teams league error", response.status);
+    return { teams: [], status };
+  }
+  try {
+    const payload = (await response.json()) as { response?: TeamPayload[] };
+    return { teams: payload.response ?? [], status };
+  } catch (error) {
+    console.warn("API-Football teams league parse error", error);
+    return { teams: [], status };
+  }
+}
+
+function buildClubApiMapRow(
+  entry: TeamPayload,
+  leagueId: string | null,
+  season: number,
+  nowIso: string
+): ClubApiMapRow | null {
+  const team = toRecord(entry.team);
+  const rawId = team?.id ?? null;
+  const id = typeof rawId === "number" ? rawId : Number(rawId);
+  if (!Number.isFinite(id)) {
+    return null;
+  }
+  const name = typeof team?.name === "string" ? team.name.trim() : "";
+  if (!name) {
+    return null;
+  }
+  const normalizedName = normalizeTeamName(name);
+  if (!normalizedName) {
+    return null;
+  }
+  const code = typeof team?.code === "string" ? team.code : null;
+  const country = typeof team?.country === "string" ? team.country : null;
+  const logo = typeof team?.logo === "string" ? team.logo : null;
+  const foundedRaw = team?.founded ?? null;
+  const founded = typeof foundedRaw === "number" ? foundedRaw : Number(foundedRaw);
+  const national = typeof team?.national === "boolean" ? team.national : null;
+  const slug = normalizeClubKey(name);
+  return {
+    slug: slug || null,
+    league_id: leagueId ?? null,
+    name,
+    normalized_name: normalizedName,
+    api_team_id: id,
+    api_team_name: name,
+    api_team_code: code,
+    api_team_country: country,
+    api_team_logo: logo,
+    api_team_founded: Number.isFinite(founded) ? founded : null,
+    api_team_national: national,
+    season,
+    updated_at: nowIso
+  };
 }
 
 async function fetchHeadToHeadFixtures(
@@ -5042,6 +5312,18 @@ function getTeamSearchQueries(teamName: string, slug?: string): string[] {
     }
   }
   return Array.from(new Set(queries));
+}
+
+function buildNormalizedTeamCandidates(teamName: string, slug?: string): string[] {
+  const queries = getTeamSearchQueries(teamName, slug);
+  const candidates = new Set<string>();
+  for (const query of queries) {
+    const normalized = normalizeTeamName(query);
+    if (normalized) {
+      candidates.add(normalized);
+    }
+  }
+  return Array.from(candidates);
 }
 
 function isWomenTeamName(value: string): boolean {

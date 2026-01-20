@@ -1,5 +1,6 @@
 import type {
   AnnouncementResponse,
+  ClubSyncResponse,
   ConfirmMatchResponse,
   CreateMatchResponse,
   MatchWeatherResponse,
@@ -108,5 +109,16 @@ export function postMatchesAnnouncement(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData })
+  });
+}
+
+export function postClubSync(
+  apiBase: string,
+  payload: { initData: string; league_id?: string; api_league_id?: number; season?: number }
+): Promise<{ response: Response; data: ClubSyncResponse }> {
+  return requestJson<ClubSyncResponse>(`${apiBase}/api/clubs/sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   });
 }

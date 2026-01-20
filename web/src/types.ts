@@ -113,6 +113,17 @@ export type AnalitikaRefreshResponse =
   | { ok: true; updated: number; warnings?: string[]; debug?: AnalitikaDebugInfo }
   | { ok: false; error: string; detail?: string; debug?: AnalitikaDebugInfo };
 
+export type ClubSyncResponse =
+  | {
+      ok: true;
+      updated: number;
+      teams_total: number;
+      league_id?: string | null;
+      api_league_id?: number | null;
+      season?: number | null;
+    }
+  | { ok: false; error: string; detail?: string };
+
 export type AnalitikaDebugInfo = {
   league_slug?: string;
   api_league_id?: number | null;
@@ -178,8 +189,8 @@ export type OddsRefreshDebug = {
   awayTeamKnownId?: number | null;
   homeTeamId?: number | null;
   awayTeamId?: number | null;
-  homeTeamSource?: "search" | "cache" | "none";
-  awayTeamSource?: "search" | "cache" | "none";
+  homeTeamSource?: "search" | "cache" | "db" | "none";
+  awayTeamSource?: "search" | "cache" | "db" | "none";
   homeTeamQuery?: string;
   awayTeamQuery?: string;
   homeTeamSearchStatus?: number;

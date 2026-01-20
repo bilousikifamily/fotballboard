@@ -2,6 +2,7 @@ import "./style.css";
 import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "./data/clubs";
 import type {
   AvatarOption,
+  ClubSyncResponse,
   FactionEntry,
   FactionChatPreviewMessage,
   Match,
@@ -21,6 +22,7 @@ import {
   fetchMatchWeather,
   fetchMatches,
   fetchPendingMatches,
+  postClubSync,
   postConfirmMatch,
   postMatch,
   postMatchesAnnouncement,
@@ -1052,6 +1054,7 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-add>ДОДАТИ МАТЧ</button>
           <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
+          <button class="button secondary" type="button" data-admin-toggle-clubs>СИНХ КЛУБІВ</button>
           <button class="button secondary" type="button" data-admin-toggle-users>КОРИСТУВАЧІ</button>
           <button class="button secondary" type="button" data-admin-toggle-debug>DEBUG</button>
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
@@ -1129,6 +1132,24 @@ function renderUser(
           </label>
           <button class="button" type="submit">Підтягнути коефіцієнти</button>
           <p class="muted small" data-admin-odds-status></p>
+        </form>
+        <form class="admin-form" data-admin-clubs-form>
+          <label class="field">
+            <span>Ліга</span>
+            <select name="league_id" data-admin-clubs-league required>
+              ${leagueOptions}
+            </select>
+          </label>
+          <label class="field">
+            <span>API ліга ID</span>
+            <input type="number" name="api_league_id" inputmode="numeric" placeholder="2 для ЛЧ" />
+          </label>
+          <label class="field">
+            <span>Сезон</span>
+            <input type="number" name="season" inputmode="numeric" placeholder="2025" />
+          </label>
+          <button class="button" type="submit">Синхронізувати клуби</button>
+          <p class="muted small" data-admin-clubs-status></p>
         </form>
         <div class="admin-users" data-admin-users>
           <p class="muted small">Аналітика користувачів</p>
@@ -1335,6 +1356,7 @@ function renderUser(
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
+    const toggleClubs = app.querySelector<HTMLButtonElement>("[data-admin-toggle-clubs]");
     const toggleUsers = app.querySelector<HTMLButtonElement>("[data-admin-toggle-users]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
@@ -1343,6 +1365,7 @@ function renderUser(
     const form = app.querySelector<HTMLFormElement>("[data-admin-form]");
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
+    const clubsForm = app.querySelector<HTMLFormElement>("[data-admin-clubs-form]");
     const debugPanel = app.querySelector<HTMLElement>("[data-admin-debug]");
     const usersPanel = app.querySelector<HTMLElement>("[data-admin-users]");
     renderAdminFactionOptions();
@@ -1376,6 +1399,16 @@ function renderUser(
       oddsForm.addEventListener("submit", (event) => {
         event.preventDefault();
         void submitOddsRefresh(oddsForm);
+      });
+    }
+
+    if (toggleClubs && clubsForm) {
+      toggleClubs.addEventListener("click", () => {
+        clubsForm.classList.toggle("is-open");
+      });
+      clubsForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        void submitClubSync(clubsForm);
       });
     }
 
@@ -2149,6 +2182,90 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
       status.textContent = "Не вдалося підтягнути коефіцієнти.";
     }
   }
+}
+
+async function submitClubSync(form: HTMLFormElement): Promise<void> {
+  if (!apiBase || !initData) {
+    return;
+  }
+
+  const status = form.querySelector<HTMLElement>("[data-admin-clubs-status]");
+  if (status) {
+    status.textContent = "Синхронізація...";
+  }
+
+  const leagueId = (form.querySelector<HTMLSelectElement>("[data-admin-clubs-league]")?.value ?? "").trim();
+  const apiLeagueRaw = (form.querySelector<HTMLInputElement>('input[name="api_league_id"]')?.value ?? "").trim();
+  const seasonRaw = (form.querySelector<HTMLInputElement>('input[name="season"]')?.value ?? "").trim();
+  const apiLeagueId = apiLeagueRaw ? Number(apiLeagueRaw) : undefined;
+  const season = seasonRaw ? Number(seasonRaw) : undefined;
+
+  try {
+    const payload = {
+      initData,
+      league_id: leagueId || undefined,
+      api_league_id: Number.isFinite(apiLeagueId) ? apiLeagueId : undefined,
+      season: Number.isFinite(season) ? season : undefined
+    };
+    const { response, data } = await postClubSync(apiBase, payload);
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = formatClubSyncError(data);
+      }
+      return;
+    }
+
+    if (status) {
+      status.textContent = formatClubSyncSuccess(data);
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося синхронізувати клуби.";
+    }
+  }
+}
+
+function formatClubSyncSuccess(payload: Extract<ClubSyncResponse, { ok: true }>): string {
+  const parts = [
+    `Оновлено: ${payload.updated}`,
+    `всього: ${payload.teams_total}`,
+    payload.season ? `сезон: ${payload.season}` : null
+  ].filter(Boolean);
+  return `Синхронізація завершена ✅ (${parts.join(", ")})`;
+}
+
+function formatClubSyncError(payload: ClubSyncResponse | null): string {
+  if (!payload) {
+    return "Не вдалося синхронізувати клуби.";
+  }
+  if (!payload.ok) {
+    const detail = payload.detail ? ` (${payload.detail})` : "";
+    switch (payload.error) {
+      case "bad_initData":
+        return "Некоректні дані входу.";
+      case "forbidden":
+        return "Недостатньо прав.";
+      case "missing_api_key":
+        return "Не заданий API ключ.";
+      case "missing_supabase":
+        return "Не налаштовано Supabase.";
+      case "missing_league_mapping":
+        return `Немає мапи для ліги.${detail}`;
+      case "bad_league":
+        return "Некоректна ліга.";
+      case "missing_timezone":
+        return "Немає таймзони для сезону.";
+      case "teams_empty":
+        return "Список команд порожній.";
+      case "api_error":
+        return `Помилка API-Football.${detail}`;
+      case "db_error":
+        return `Помилка бази.${detail}`;
+      default:
+        return `Не вдалося синхронізувати клуби.${detail}`;
+    }
+  }
+  return "Не вдалося синхронізувати клуби.";
 }
 
 function formatOddsRefreshError(payload: OddsRefreshResponse | null): string {
