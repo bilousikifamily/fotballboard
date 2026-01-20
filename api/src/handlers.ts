@@ -2725,7 +2725,24 @@ async function fetchAndStoreOdds(
     debug.awayTeamSearchDetails = awayTeamResult.searchResponses;
   }
   if (!homeTeamResult.id || !awayTeamResult.id) {
-    console.warn("Odds skipped: team id not found", { home: match.home_team, away: match.away_team });
+    console.warn("Odds skipped: team id not found", {
+      match: `${match.home_team} vs ${match.away_team}`,
+      league: match.league_id,
+      date: dateParam,
+      timezone,
+      home: {
+        query: homeTeamResult.query,
+        status: homeTeamResult.status,
+        candidates: homeTeamResult.candidates,
+        searchDetails: homeTeamResult.searchResponses
+      },
+      away: {
+        query: awayTeamResult.query,
+        status: awayTeamResult.status,
+        candidates: awayTeamResult.candidates,
+        searchDetails: awayTeamResult.searchResponses
+      }
+    });
     return { ok: false, reason: "team_not_found", debug };
   }
 
