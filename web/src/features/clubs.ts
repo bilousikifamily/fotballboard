@@ -1,4 +1,11 @@
-import { CLUB_REGISTRY, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "../data/clubs";
+import {
+  CLUB_REGISTRY,
+  EU_CLUBS,
+  type AllLeagueId,
+  type LeagueId,
+  type LogoLeagueId,
+  type MatchLeagueId
+} from "../data/clubs";
 import type { Match } from "../types";
 import { normalizeTeamSlugValue } from "./teamSlugs";
 
@@ -43,7 +50,7 @@ export function isAllLeagueId(value: MatchLeagueId): value is AllLeagueId {
   );
 }
 
-export function resolveLogoLeagueId(leagueId: MatchLeagueId | null): AllLeagueId | null {
+export function resolveLogoLeagueId(leagueId: MatchLeagueId | null): LogoLeagueId | null {
   if (!leagueId) {
     return null;
   }
@@ -62,14 +69,16 @@ export function resolveLogoLeagueId(leagueId: MatchLeagueId | null): AllLeagueId
     case "coupe-de-france":
       return "ligue-1";
     case "uefa-champions-league":
+      return "champions-league";
     case "uefa-europa-league":
+      return "europa-league";
     case "uefa-europa-conference-league":
-      return null;
+      return "conference-league";
   }
   return null;
 }
 
-export function resolveTeamLogoLeague(clubSlug: string | null, leagueId: MatchLeagueId | null): AllLeagueId | null {
+export function resolveTeamLogoLeague(clubSlug: string | null, leagueId: MatchLeagueId | null): LogoLeagueId | null {
   const resolvedLeague = resolveLogoLeagueId(leagueId);
   if (resolvedLeague) {
     return resolvedLeague;
@@ -80,7 +89,7 @@ export function resolveTeamLogoLeague(clubSlug: string | null, leagueId: MatchLe
   return findClubLeague(clubSlug);
 }
 
-export function getClubLogoPath(leagueId: string, clubId: string): string {
+export function getClubLogoPath(leagueId: LogoLeagueId, clubId: string): string {
   return `/logos/football-logos/${leagueId}/${clubId}.png`;
 }
 

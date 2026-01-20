@@ -16,6 +16,11 @@ export type MatchLeagueId =
   | "coppa-italia"
   | "dfb-pokal"
   | "coupe-de-france";
+export type LogoLeagueId =
+  | AllLeagueId
+  | "champions-league"
+  | "europa-league"
+  | "conference-league";
 
 export const UA_CLUBS: string[] = [
   "dnipro",
