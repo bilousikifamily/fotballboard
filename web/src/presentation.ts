@@ -1,7 +1,7 @@
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { formatKyivDateTime, formatKyivDateShort } from "./formatters/dates";
 import { formatPredictionName } from "./formatters/names";
-import { formatClubName, getClubLogoPath, resolveTeamLogoLeague } from "./features/clubs";
+import { formatClubName, getMatchTeamInfo } from "./features/clubs";
 import {
   normalizeRainProbability,
   formatRainProbability,
@@ -18,7 +18,7 @@ import {
   STORAGE_KEY
 } from "./presentation/storage";
 import type { PresentationPredictionUser } from "./presentation/storage";
-import type { PredictionUser, TeamMatchStat } from "./types";
+import type { Match, PredictionUser, TeamMatchStat } from "./types";
 import { fetchPresentationMatches } from "./presentation/remote";
 
 const CURRENT_MATCH_INDEX_KEY = "presentation.currentMatchIndex";
@@ -181,10 +181,18 @@ function formatTournamentStage(stage: string): string {
 function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMode = "logos-only"): string {
   const homeName = match.homeTeam || formatClubName(match.homeClub);
   const awayName = match.awayTeam || formatClubName(match.awayClub);
-  const homeLogoLeague = resolveTeamLogoLeague(match.homeClub || null, match.homeLeague ?? null);
-  const awayLogoLeague = resolveTeamLogoLeague(match.awayClub || null, match.awayLeague ?? null);
-  const homeLogo = match.homeClub && homeLogoLeague ? getClubLogoPath(homeLogoLeague, match.homeClub) : null;
-  const awayLogo = match.awayClub && awayLogoLeague ? getClubLogoPath(awayLogoLeague, match.awayClub) : null;
+  const logos = getMatchTeamInfo({
+    id: Number(match.id) || 0,
+    home_club_id: match.homeClub,
+    away_club_id: match.awayClub,
+    league_id: match.homeLeague ?? match.awayLeague ?? null,
+    home_team: homeName,
+    away_team: awayName
+  } as Match);
+  const homeLogo = logos.homeLogo;
+  const awayLogo = logos.awayLogo;
+  const homeLogoFallback = logos.homeLogoFallback;
+  const awayLogoFallback = logos.awayLogoFallback;
   const rainPercent = normalizeRainProbability(match.rainProbability ?? null);
   const rainLabel = formatRainProbability(rainPercent);
   const weatherIcon = getWeatherIcon(match.weatherCondition ?? null);
@@ -210,10 +218,10 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
       <article class="presentation-match-card" data-view-mode="${viewMode}">
         <div class="presentation-match-card__teams">
           <div class="presentation-match-team">
-            ${renderTeamLogo(homeName, homeLogo)}
+      ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
           </div>
           <div class="presentation-match-team">
-            ${renderTeamLogo(awayName, awayLogo)}
+            ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
           </div>
         </div>
       </article>
@@ -232,10 +240,10 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
         </header>
         <div class="presentation-match-card__teams">
           <div class="presentation-match-team">
-            ${renderTeamLogo(homeName, homeLogo)}
+            ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
           </div>
           <div class="presentation-match-team">
-            ${renderTeamLogo(awayName, awayLogo)}
+            ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
           </div>
         </div>
       </article>
@@ -248,10 +256,10 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
       <article class="presentation-match-card" data-view-mode="${viewMode}">
         <div class="presentation-match-card__teams">
           <div class="presentation-match-team">
-            ${renderTeamLogo(homeName, homeLogo)}
+            ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
           </div>
           <div class="presentation-match-team">
-            ${renderTeamLogo(awayName, awayLogo)}
+            ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
           </div>
         </div>
         <div class="presentation-match-weather">
@@ -277,10 +285,10 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
       <article class="presentation-match-card" data-view-mode="${viewMode}">
         <div class="presentation-match-card__teams">
           <div class="presentation-match-team">
-            ${renderTeamLogo(homeName, homeLogo)}
+            ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
           </div>
           <div class="presentation-match-team">
-            ${renderTeamLogo(awayName, awayLogo)}
+            ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
           </div>
         </div>
         <div class="presentation-probabilities">
@@ -322,11 +330,11 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
       <article class="presentation-match-card" data-view-mode="${viewMode}">
         <div class="presentation-match-card__teams">
           <div class="presentation-match-team">
-            ${renderTeamLogo(homeName, homeLogo)}
+            ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
           </div>
           ${averageScoreHtml}
           <div class="presentation-match-team">
-            ${renderTeamLogo(awayName, awayLogo)}
+            ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
           </div>
         </div>
       </article>
@@ -338,10 +346,10 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
     <article class="presentation-match-card" data-view-mode="logos-only">
       <div class="presentation-match-card__teams">
         <div class="presentation-match-team">
-          ${renderTeamLogo(homeName, homeLogo)}
+          ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
         </div>
         <div class="presentation-match-team">
-          ${renderTeamLogo(awayName, awayLogo)}
+          ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
         </div>
       </div>
     </article>

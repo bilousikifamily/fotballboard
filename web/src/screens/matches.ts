@@ -48,11 +48,19 @@ export function getWeatherIcon(condition: string | null): string {
   return "🌧️";
 }
 
-export function renderTeamLogo(name: string, logo: string | null): string {
+export function renderTeamLogo(
+  name: string,
+  logo: string | null,
+  fallbackLogo: string | null = null
+): string {
   const alt = escapeAttribute(name);
-  return logo
-    ? `<img class="match-logo" src="${escapeAttribute(logo)}" alt="${alt}" />`
-    : `<div class="match-logo match-logo-fallback" role="img" aria-label="${alt}"></div>`;
+  if (!logo) {
+    return `<div class="match-logo match-logo-fallback" role="img" aria-label="${alt}"></div>`;
+  }
+  const fallbackAttr = fallbackLogo
+    ? ` onerror="this.onerror=null;this.src='${escapeAttribute(fallbackLogo)}'"`
+    : "";
+  return `<img class="match-logo" src="${escapeAttribute(logo)}" alt="${alt}"${fallbackAttr} />`;
 }
 
 export function renderMatchesList(matches: Match[]): string {
@@ -125,9 +133,16 @@ type MatchRenderOptions = {
 };
 
 function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string {
-  const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
-  const homeLogoMarkup = renderTeamLogo(homeName, homeLogo);
-  const awayLogoMarkup = renderTeamLogo(awayName, awayLogo);
+  const {
+    homeName,
+    awayName,
+    homeLogo,
+    awayLogo,
+    homeLogoFallback,
+    awayLogoFallback
+  } = getMatchTeamInfo(match);
+  const homeLogoMarkup = renderTeamLogo(homeName, homeLogo, homeLogoFallback);
+  const awayLogoMarkup = renderTeamLogo(awayName, awayLogo, awayLogoFallback);
   const city = match.venue_city ?? match.venue_name ?? "";
   const cityLabel = city ? city.toUpperCase() : "";
   const kyivTime = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");

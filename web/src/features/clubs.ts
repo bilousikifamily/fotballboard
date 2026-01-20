@@ -133,6 +133,8 @@ export function getMatchTeamInfo(match: Match): {
   awayName: string;
   homeLogo: string | null;
   awayLogo: string | null;
+  homeLogoFallback: string | null;
+  awayLogoFallback: string | null;
 } {
   const homeClubId = match.home_club_id ?? null;
   const awayClubId = match.away_club_id ?? null;
@@ -145,8 +147,20 @@ export function getMatchTeamInfo(match: Match): {
 
   const homeLogoLeague = resolveTeamLogoLeague(homeSlug, matchLeagueId);
   const awayLogoLeague = resolveTeamLogoLeague(awaySlug, matchLeagueId);
-  const homeLogo = homeSlug && homeLogoLeague ? getClubLogoPath(homeLogoLeague, homeSlug) : null;
-  const awayLogo = awaySlug && awayLogoLeague ? getClubLogoPath(awayLogoLeague, awaySlug) : null;
+  const homeBaseLeague = homeSlug ? findClubLeague(homeSlug) : null;
+  const awayBaseLeague = awaySlug ? findClubLeague(awaySlug) : null;
+  const resolvedHomeLeague = homeLogoLeague ?? homeBaseLeague;
+  const resolvedAwayLeague = awayLogoLeague ?? awayBaseLeague;
+  const homeLogo = homeSlug && resolvedHomeLeague ? getClubLogoPath(resolvedHomeLeague, homeSlug) : null;
+  const awayLogo = awaySlug && resolvedAwayLeague ? getClubLogoPath(resolvedAwayLeague, awaySlug) : null;
+  const homeLogoFallback =
+    homeSlug && homeBaseLeague && resolvedHomeLeague && resolvedHomeLeague !== homeBaseLeague
+      ? getClubLogoPath(homeBaseLeague, homeSlug)
+      : null;
+  const awayLogoFallback =
+    awaySlug && awayBaseLeague && resolvedAwayLeague && resolvedAwayLeague !== awayBaseLeague
+      ? getClubLogoPath(awayBaseLeague, awaySlug)
+      : null;
 
-  return { homeName, awayName, homeLogo, awayLogo };
+  return { homeName, awayName, homeLogo, awayLogo, homeLogoFallback, awayLogoFallback };
 }
