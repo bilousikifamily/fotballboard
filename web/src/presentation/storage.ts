@@ -1,6 +1,6 @@
 import { ALL_CLUBS, type MatchLeagueId } from "../data/clubs";
 import { formatClubName, findClubLeague } from "../features/clubs";
-import { normalizeTeamSlugValue } from "../features/analitika";
+import { normalizeTeamSlugValue } from "../features/teamSlugs";
 import type { TeamMatchStat } from "../types";
 
 export const STORAGE_KEY = "presentation.matches";

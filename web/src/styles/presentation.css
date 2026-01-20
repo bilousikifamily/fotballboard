@@ -99,6 +99,11 @@ a {
   flex-wrap: wrap;
 }
 
+.admin-build {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+}
+
 .admin-controls {
   display: flex;
   flex-direction: column;

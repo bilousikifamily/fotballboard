@@ -6,6 +6,8 @@ const PRESENTATION_VIEW_MODE_KEY = "presentation.viewMode";
 const PRESENTATION_LAST5_TEAM_KEY = "presentation.last5Team";
 const API_BASE =
   import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
+const BUILD_ID = import.meta.env.VITE_BUILD_ID ?? "";
+const BUILD_TIME = import.meta.env.VITE_BUILD_TIME ?? "";
 
 type PresentationViewMode = 
   | "logos-only"
@@ -52,6 +54,7 @@ const viewModeButtons = document.querySelectorAll<HTMLButtonElement>("[data-admi
 const syncForm = document.querySelector<HTMLFormElement>("[data-admin-sync-form]");
 const syncStatus = document.querySelector<HTMLElement>("[data-admin-sync-status]");
 const syncLeagueSelect = document.querySelector<HTMLSelectElement>("[data-admin-sync-league]");
+const buildBadge = document.querySelector<HTMLElement>("[data-admin-build]");
 
 function showLogin(): void {
   loginPanel?.classList.remove("is-hidden");
@@ -148,6 +151,12 @@ if (syncLeagueSelect) {
   syncLeagueSelect.innerHTML = CLUB_SYNC_LEAGUES.map(
     (league) => `<option value="${league.id}">${league.label}</option>`
   ).join("");
+}
+
+if (buildBadge) {
+  const baseLabel = BUILD_ID ? `build ${BUILD_ID}` : `build ${import.meta.env.MODE ?? "local"}`;
+  const suffix = BUILD_TIME ? ` ${BUILD_TIME}` : "";
+  buildBadge.textContent = `${baseLabel}${suffix}`;
 }
 
 if (syncForm) {
