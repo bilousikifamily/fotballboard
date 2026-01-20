@@ -1,5 +1,6 @@
 import { CLUB_REGISTRY, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "../data/clubs";
 import type { Match } from "../types";
+import { normalizeTeamSlugValue } from "./teamSlugs";
 
 const CLUB_NAME_OVERRIDES: Record<string, string> = {
   "as-monaco": "AS Monaco",
@@ -116,16 +117,18 @@ export function getMatchTeamInfo(match: Match): {
   const homeClubId = match.home_club_id ?? null;
   const awayClubId = match.away_club_id ?? null;
   const matchLeagueId = (match.league_id as MatchLeagueId | null) ?? null;
+  const homeSlug = homeClubId ?? normalizeTeamSlugValue(match.home_team);
+  const awaySlug = awayClubId ?? normalizeTeamSlugValue(match.away_team);
   const resolvedLeague =
     resolveLogoLeagueId(matchLeagueId) ||
-    (homeClubId ? findClubLeague(homeClubId) : null) ||
-    (awayClubId ? findClubLeague(awayClubId) : null);
+    (homeSlug ? findClubLeague(homeSlug) : null) ||
+    (awaySlug ? findClubLeague(awaySlug) : null);
 
-  const homeName = homeClubId ? formatClubName(homeClubId) : match.home_team;
-  const awayName = awayClubId ? formatClubName(awayClubId) : match.away_team;
+  const homeName = homeSlug ? formatClubName(homeSlug) : match.home_team;
+  const awayName = awaySlug ? formatClubName(awaySlug) : match.away_team;
 
-  const homeLogo = homeClubId && resolvedLeague ? getClubLogoPath(resolvedLeague, homeClubId) : null;
-  const awayLogo = awayClubId && resolvedLeague ? getClubLogoPath(resolvedLeague, awayClubId) : null;
+  const homeLogo = homeSlug && resolvedLeague ? getClubLogoPath(resolvedLeague, homeSlug) : null;
+  const awayLogo = awaySlug && resolvedLeague ? getClubLogoPath(resolvedLeague, awaySlug) : null;
 
   return { homeName, awayName, homeLogo, awayLogo };
 }
