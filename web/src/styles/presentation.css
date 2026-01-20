@@ -113,6 +113,21 @@ a {
   font-size: 1rem;
 }
 
+.admin-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-sync h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
 .presentation-header h1,
 .admin-header h1 {
   margin: 0;

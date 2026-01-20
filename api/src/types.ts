@@ -101,6 +101,7 @@ export type ClubApiMapRow = {
 
 export type ClubSyncPayload = {
   initData?: string;
+  admin_token?: string;
   league_id?: string;
   api_league_id?: number | string;
   season?: number | string;

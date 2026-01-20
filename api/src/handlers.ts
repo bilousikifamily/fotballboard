@@ -1097,15 +1097,24 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData ?? "", env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
+      const initData = body.initData?.trim() ?? "";
+      if (initData) {
+        const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+        if (!auth.ok || !auth.user) {
+          return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+        }
 
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+        await storeUser(supabase, auth.user);
+        const isAdmin = await checkAdmin(supabase, auth.user.id);
+        if (!isAdmin) {
+          return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+        }
+      } else {
+        const token = body.admin_token?.trim() ?? "";
+        const expected = env.PRESENTATION_ADMIN_TOKEN?.trim() ?? "";
+        if (!token || !expected || token !== expected) {
+          return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+        }
       }
 
       if (!env.API_FOOTBALL_KEY) {

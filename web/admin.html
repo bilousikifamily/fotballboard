@@ -49,6 +49,28 @@
           <button class="button secondary" type="button" data-admin-view-mode="average-score">СЕРЕДНІЙ РАХУНОК</button>
           <button class="button secondary" type="button" data-logout>Вийти</button>
         </div>
+
+        <section class="admin-sync" data-admin-sync>
+          <h2>Синх клубів</h2>
+          <form data-admin-sync-form>
+            <div class="field-grid">
+              <label class="field">
+                <span>Ліга</span>
+                <select name="league_id" data-admin-sync-league required></select>
+              </label>
+              <label class="field">
+                <span>API ліга ID</span>
+                <input type="number" name="api_league_id" inputmode="numeric" placeholder="2 для ЛЧ" />
+              </label>
+              <label class="field">
+                <span>Сезон</span>
+                <input type="number" name="season" inputmode="numeric" placeholder="2025" />
+              </label>
+            </div>
+            <button class="button secondary" type="submit">СИНХ КЛУБІВ</button>
+            <p class="muted" data-admin-sync-status></p>
+          </form>
+        </section>
       </section>
     </main>
     <script type="module" src="/src/admin-panel.ts"></script>
