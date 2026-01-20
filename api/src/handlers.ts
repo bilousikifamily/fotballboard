@@ -98,7 +98,8 @@ const TEAM_SEARCH_ALIASES: Record<string, string> = {
   parissaintgermain: "Paris Saint Germain",
   psg: "Paris Saint Germain",
   parissaintgermainfc: "Paris Saint Germain",
-  parissatgermain: "Paris Saint Germain"
+  parissatgermain: "Paris Saint Germain",
+  asmonaco: "Monaco"
 };
 const TEAM_MATCH_ALIASES: Record<string, string> = {
   inter: "intermilan",

@@ -1,12 +1,7 @@
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { formatKyivDateTime, formatKyivDateShort } from "./formatters/dates";
 import { formatPredictionName } from "./formatters/names";
-import {
-  formatClubName,
-  findClubLeague,
-  getClubLogoPath,
-  resolveLogoLeagueId
-} from "./features/clubs";
+import { formatClubName, getClubLogoPath, resolveTeamLogoLeague } from "./features/clubs";
 import {
   normalizeRainProbability,
   formatRainProbability,
@@ -186,18 +181,10 @@ function formatTournamentStage(stage: string): string {
 function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMode = "logos-only"): string {
   const homeName = match.homeTeam || formatClubName(match.homeClub);
   const awayName = match.awayTeam || formatClubName(match.awayClub);
-  const leagueForLogos = resolveLogoLeagueId(match.homeLeague ?? match.awayLeague ?? null);
-  const homeClubLeague = match.homeClub ? findClubLeague(match.homeClub) : null;
-  const awayClubLeague = match.awayClub ? findClubLeague(match.awayClub) : null;
-  const logoLeague =
-    leagueForLogos ??
-    homeClubLeague ??
-    awayClubLeague ??
-    match.homeLeague ??
-    match.awayLeague ??
-    "english-premier-league";
-  const homeLogo = match.homeClub && logoLeague ? getClubLogoPath(logoLeague, match.homeClub) : null;
-  const awayLogo = match.awayClub && logoLeague ? getClubLogoPath(logoLeague, match.awayClub) : null;
+  const homeLogoLeague = resolveTeamLogoLeague(match.homeClub || null, match.homeLeague ?? null);
+  const awayLogoLeague = resolveTeamLogoLeague(match.awayClub || null, match.awayLeague ?? null);
+  const homeLogo = match.homeClub && homeLogoLeague ? getClubLogoPath(homeLogoLeague, match.homeClub) : null;
+  const awayLogo = match.awayClub && awayLogoLeague ? getClubLogoPath(awayLogoLeague, match.awayClub) : null;
   const rainPercent = normalizeRainProbability(match.rainProbability ?? null);
   const rainLabel = formatRainProbability(rainPercent);
   const weatherIcon = getWeatherIcon(match.weatherCondition ?? null);

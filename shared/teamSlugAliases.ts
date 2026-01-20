@@ -2,5 +2,6 @@
 export const TEAM_SLUG_ALIASES: Record<string, string> = {
   "acf-fiorentina": "fiorentina",
   "ac-fiorentina": "fiorentina",
-  "newcastle-united": "newcastle"
+  "newcastle-united": "newcastle",
+  "arsenal-fc": "arsenal"
 };
