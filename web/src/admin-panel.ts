@@ -205,10 +205,16 @@ async function submitClubSync(): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const data = (await response.json().catch(() => null)) as ClubSyncResponse | null;
+    const rawText = await response.text();
+    let data: ClubSyncResponse | null = null;
+    try {
+      data = JSON.parse(rawText) as ClubSyncResponse;
+    } catch {
+      data = null;
+    }
     if (!response.ok || !data || !data.ok) {
       if (syncStatus) {
-        syncStatus.textContent = formatSyncError(data);
+        syncStatus.textContent = formatSyncError(data, response.status, rawText);
       }
       return;
     }
@@ -232,36 +238,40 @@ function formatSyncSuccess(payload: Extract<ClubSyncResponse, { ok: true }>): st
   return `Синхронізація завершена ✅ (${parts.join(", ")})`;
 }
 
-function formatSyncError(payload: ClubSyncResponse | null): string {
+function formatSyncError(payload: ClubSyncResponse | null, status?: number, rawText?: string): string {
+  const statusLabel = typeof status === "number" ? `HTTP ${status}` : null;
+  const trimmed = rawText?.trim();
+  const snippet = trimmed ? trimmed.replace(/\s+/g, " ").slice(0, 160) : "";
+  const detailSuffix = statusLabel ? ` (${statusLabel})` : "";
   if (!payload) {
-    return "Не вдалося синхронізувати клуби.";
+    return `Не вдалося синхронізувати клуби.${detailSuffix}${snippet ? ` ${snippet}` : ""}`;
   }
   if (!payload.ok) {
     const detail = payload.detail ? ` (${payload.detail})` : "";
     switch (payload.error) {
       case "forbidden":
-        return "Недостатньо прав.";
+        return `Недостатньо прав.${detailSuffix}`;
       case "missing_api_key":
-        return "Не заданий API ключ.";
+        return `Не заданий API ключ.${detailSuffix}`;
       case "missing_supabase":
-        return "Не налаштовано Supabase.";
+        return `Не налаштовано Supabase.${detailSuffix}`;
       case "missing_league_mapping":
-        return `Немає мапи для ліги.${detail}`;
+        return `Немає мапи для ліги.${detail}${detailSuffix}`;
       case "bad_league":
-        return "Некоректна ліга.";
+        return `Некоректна ліга.${detailSuffix}`;
       case "missing_timezone":
-        return "Немає таймзони для сезону.";
+        return `Немає таймзони для сезону.${detailSuffix}`;
       case "teams_empty":
-        return "Список команд порожній.";
+        return `Список команд порожній.${detailSuffix}`;
       case "api_error":
-        return `Помилка API-Football.${detail}`;
+        return `Помилка API-Football.${detail}${detailSuffix}`;
       case "db_error":
-        return `Помилка бази.${detail}`;
+        return `Помилка бази.${detail}${detailSuffix}`;
       default:
-        return `Не вдалося синхронізувати клуби.${detail}`;
+        return `Не вдалося синхронізувати клуби.${detail}${detailSuffix}`;
     }
   }
-  return "Не вдалося синхронізувати клуби.";
+  return `Не вдалося синхронізувати клуби.${detailSuffix}`;
 }
 
 const authenticated = sessionStorage.getItem(AUTH_KEY) === "1";
