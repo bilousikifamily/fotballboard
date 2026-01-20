@@ -53,6 +53,7 @@ const logoutButton = document.querySelector<HTMLButtonElement>("[data-logout]");
 const viewModeButtons = document.querySelectorAll<HTMLButtonElement>("[data-admin-view-mode]");
 const syncForm = document.querySelector<HTMLFormElement>("[data-admin-sync-form]");
 const syncStatus = document.querySelector<HTMLElement>("[data-admin-sync-status]");
+const syncRawResponse = document.querySelector<HTMLElement>("[data-admin-sync-raw]");
 const syncLeagueSelect = document.querySelector<HTMLSelectElement>("[data-admin-sync-league]");
 const buildBadge = document.querySelector<HTMLElement>("[data-admin-build]");
 
@@ -216,9 +217,14 @@ async function submitClubSync(): Promise<void> {
       if (syncStatus) {
         syncStatus.textContent = formatSyncError(data, response.status, rawText);
       }
+      if (syncRawResponse) {
+        syncRawResponse.textContent = rawText;
+      }
       return;
     }
-
+    if (syncRawResponse) {
+      syncRawResponse.textContent = rawText;
+    }
     if (syncStatus) {
       syncStatus.textContent = formatSyncSuccess(data);
     }

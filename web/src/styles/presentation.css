@@ -132,6 +132,18 @@ a {
   margin: 0;
   font-size: 1.1rem;
 }
+.admin-sync-raw {
+  white-space: pre-wrap;
+  font-size: 0.75rem;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 60px;
+  overflow: auto;
+  max-height: 160px;
+}
 
 .presentation-header h1,
 .admin-header h1 {
