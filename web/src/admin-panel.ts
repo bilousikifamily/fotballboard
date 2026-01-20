@@ -54,6 +54,8 @@ const viewModeButtons = document.querySelectorAll<HTMLButtonElement>("[data-admi
 const syncForm = document.querySelector<HTMLFormElement>("[data-admin-sync-form]");
 const syncStatus = document.querySelector<HTMLElement>("[data-admin-sync-status]");
 const syncRawResponse = document.querySelector<HTMLElement>("[data-admin-sync-raw]");
+const curlButton = document.querySelector<HTMLButtonElement>("[data-admin-curl-command]");
+const curlHint = document.querySelector<HTMLElement>("[data-admin-curl-hint]");
 const syncLeagueSelect = document.querySelector<HTMLSelectElement>("[data-admin-sync-league]");
 const buildBadge = document.querySelector<HTMLElement>("[data-admin-build]");
 
@@ -233,6 +235,27 @@ async function submitClubSync(): Promise<void> {
       syncStatus.textContent = "Не вдалося синхронізувати клуби.";
     }
   }
+}
+
+const buildCurlCommand = (apiLeagueId: number | undefined, leagueParam: string, seasonParam: string): string => {
+  const leagueValue = Number.isFinite(apiLeagueId) ? apiLeagueId : leagueParam;
+  return `curl -X GET "https://v3.football.api-sports.io/teams?league=${leagueValue}&season=${seasonParam}" \\\n-H "x-apisports-key: <API_FOOTBALL_KEY>"`;
+};
+
+if (curlButton) {
+  curlButton.addEventListener("click", () => {
+    const leagueId = (syncLeagueSelect?.value ?? "").trim() || "uefa-champions-league";
+    const seasonValue = (syncForm?.querySelector<HTMLInputElement>('input[name="season"]')?.value ?? "").trim() || "2025";
+    const apiLeagueRaw = (syncForm?.querySelector<HTMLInputElement>('input[name="api_league_id"]')?.value ?? "").trim();
+    const apiLeagueId = apiLeagueRaw ? Number(apiLeagueRaw) : undefined;
+    const command = buildCurlCommand(apiLeagueId, leagueId, seasonValue);
+    if (curlHint) {
+      curlHint.textContent = `Виконуй у терміналі (Mac/Linux або WSL):${"\n"}${command}`;
+    }
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(command);
+    }
+  });
 }
 
 function formatSyncSuccess(payload: Extract<ClubSyncResponse, { ok: true }>): string {

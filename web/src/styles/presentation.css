@@ -144,6 +144,13 @@ a {
   overflow: auto;
   max-height: 160px;
 }
+.admin-sync-curl {
+  margin: 0;
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
 .presentation-header h1,
 .admin-header h1 {
