@@ -2660,30 +2660,6 @@ async function sendMatchFactionPredictions(
   return true;
 }
 
-  const match = await getMatchById(supabase, matchId);
-  if (!match) {
-    return false;
-  }
-  const predictions = await listFactionPredictions(supabase, matchId, faction);
-  const refs = getFactionChatRefs(env);
-  const chatRef = refs.bySlug[faction];
-  if (!chatRef) {
-    return false;
-  }
-  const target =
-    typeof chatRef.chatId === "number"
-      ? chatRef.chatId
-      : chatRef.chatUsername
-        ? `@${chatRef.chatUsername}`
-        : null;
-  if (!target) {
-    return false;
-  }
-  const message = buildFactionPredictionsMessage(match, faction, predictions);
-  await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
-  return true;
-}
-
 async function checkAdmin(supabase: SupabaseClient, userId: number): Promise<boolean> {
   try {
     const { data, error } = await supabase
