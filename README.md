@@ -66,6 +66,7 @@ create table if not exists matches (
   away_score int,
   created_by bigint references users(id),
   reminder_sent_at timestamptz,
+  start_digest_sent_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -105,6 +106,7 @@ alter table matches add column if not exists league_id text;
 alter table matches add column if not exists home_club_id text;
 alter table matches add column if not exists away_club_id text;
 alter table matches add column if not exists reminder_sent_at timestamptz;
+alter table matches add column if not exists start_digest_sent_at timestamptz;
 create table if not exists missed_predictions (
   id bigserial primary key,
   user_id bigint not null references users(id) on delete cascade,

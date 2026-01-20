@@ -1478,6 +1478,7 @@ export default {
   },
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(handlePredictionReminders(env));
+    ctx.waitUntil(handleMatchStartDigests(env));
     ctx.waitUntil(handleWeatherRefresh(env));
   }
 };
@@ -2547,10 +2548,9 @@ async function listFactionPredictions(
   if (!predictions) {
     return [];
   }
-  const normalizedFaction = faction.toLowerCase();
   return predictions.filter(
     (prediction) =>
-      prediction.user?.faction_club_id?.trim().toLowerCase() === normalizedFaction
+      normalizeFactionChoice(prediction.user?.faction_club_id) === faction
   );
 }
 
@@ -6963,6 +6963,101 @@ async function handlePredictionReminders(env: Env): Promise<void> {
       .is("reminder_sent_at", null);
     if (error) {
       console.error("Failed to mark prediction reminder sent", error);
+    }
+  }
+}
+
+function formatAverageMatchPredictionScore(predictions: MatchPredictionRecord[]): string {
+  if (!predictions.length) {
+    return "0:0";
+  }
+  const { homes, aways } = predictions.reduce(
+    (acc, prediction) => ({
+      homes: acc.homes + prediction.home_pred,
+      aways: acc.aways + prediction.away_pred
+    }),
+    { homes: 0, aways: 0 }
+  );
+  const averageHome = homes / predictions.length;
+  const averageAway = aways / predictions.length;
+  const format = (value: number): string => {
+    const rounded = Number(value.toFixed(1));
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+  return `${format(averageHome)}:${format(averageAway)}`;
+}
+
+function buildMatchStartDigestMessage(
+  match: DbMatch,
+  faction: FactionBranchSlug,
+  predictions: MatchPredictionRecord[]
+): string {
+  const homeLabel = getMatchTeamLabel(match, "home") || "Домашня команда";
+  const awayLabel = getMatchTeamLabel(match, "away") || "Гостьова команда";
+  const averageScore = formatAverageMatchPredictionScore(predictions);
+  const prettyAverage = averageScore.replace(":", " : ");
+  const header = `${homeLabel} ${prettyAverage}  ${awayLabel}`;
+  const factionLabel = formatFactionName(faction).toUpperCase();
+  if (predictions.length === 0) {
+    return `${factionLabel}\n${header}\n\nПоки що прогнози відсутні.`;
+  }
+  const rows = predictions
+    .map((prediction) => `${formatPredictionUserLabel(prediction.user)} — ${prediction.home_pred}:${prediction.away_pred}`)
+    .join("\n");
+  return `${factionLabel}\n${header}\n\n${rows}`;
+}
+
+async function handleMatchStartDigests(env: Env): Promise<void> {
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Failed to send match start digests: missing_supabase");
+    return;
+  }
+
+  const matches = await listMatchesAwaitingStartDigest(supabase);
+  if (!matches || matches.length === 0) {
+    return;
+  }
+
+  const refs = getFactionChatRefs(env);
+  for (const match of matches) {
+    const predictions = await listMatchPredictionsWithUsers(supabase, match.id);
+    const grouped = predictions ? groupMatchPredictionsByFaction(predictions) : null;
+    const now = new Date().toISOString();
+    let anySent = false;
+
+    if (grouped) {
+      for (const faction of ALL_FACTION_BRANCHES) {
+        const factionPredictions = grouped[faction] ?? [];
+        if (factionPredictions.length === 0) {
+          continue;
+        }
+        const chatRef = refs.bySlug[faction];
+        if (!chatRef) {
+          continue;
+        }
+        const target =
+          typeof chatRef.chatId === "number"
+            ? chatRef.chatId
+            : chatRef.chatUsername
+              ? `@${chatRef.chatUsername}`
+              : null;
+        if (!target) {
+          continue;
+        }
+        const message = buildMatchStartDigestMessage(match, faction, factionPredictions);
+        await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
+        anySent = true;
+      }
+    }
+
+    const { error } = await supabase
+      .from("matches")
+      .update({ start_digest_sent_at: now })
+      .eq("id", match.id)
+      .is("start_digest_sent_at", null);
+    if (error) {
+      console.error("Failed to mark match start digest sent", error, { matchId: match.id, anySent });
     }
   }
 }

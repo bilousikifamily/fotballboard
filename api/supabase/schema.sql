@@ -19,3 +19,5 @@ create table if not exists club_api_map (
 create unique index if not exists club_api_map_slug_unique on club_api_map (slug);
 create unique index if not exists club_api_map_api_team_id_unique on club_api_map (api_team_id);
 create index if not exists club_api_map_normalized_name_idx on club_api_map (normalized_name);
+
+alter table if exists matches add column if not exists start_digest_sent_at timestamptz;
