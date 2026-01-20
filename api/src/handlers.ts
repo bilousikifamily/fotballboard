@@ -111,6 +111,10 @@ const TEAM_MATCH_ALIASES: Record<string, string> = {
   parissaintgermainfc: "parissaintgermain"
 };
 
+const KNOWN_API_TEAM_IDS: Record<string, number> = {
+  "as-monaco": 200
+};
+
 type ClassicoFaction = "real_madrid" | "barcelona";
 const CLASSICO_FACTIONS: ClassicoFaction[] = ["real_madrid", "barcelona"];
 const ALL_FACTION_BRANCHES: FactionBranchSlug[] = [
@@ -3474,6 +3478,28 @@ async function resolveTeamId(
         candidates,
         matchedName: match.name ?? null,
         matchScore: match.score ?? null,
+        queryAttempts,
+        searchAttempts,
+        searchResponses
+      };
+    }
+  }
+
+  const slugKey = slug?.trim().toLowerCase();
+  if (slugKey) {
+    const knownTeamId = KNOWN_API_TEAM_IDS[slugKey];
+    if (knownTeamId) {
+      const label = formatClubLabel(slugKey);
+      const matchedLabel = label || teamName;
+      teamIdCache.set(normalized, { id: knownTeamId, name: matchedLabel, updatedAt: Date.now() });
+      return {
+        id: knownTeamId,
+        source: "cache",
+        query: matchedLabel,
+        status: 0,
+        candidates: [],
+        matchedName: matchedLabel,
+        matchScore: 6,
         queryAttempts,
         searchAttempts,
         searchResponses
