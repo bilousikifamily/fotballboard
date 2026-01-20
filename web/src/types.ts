@@ -170,6 +170,12 @@ export type OddsRefreshDebug = {
   season?: number;
   date?: string;
   timezone?: string;
+  homeClubId?: string | null;
+  awayClubId?: string | null;
+  homeTeamNormalized?: string | null;
+  awayTeamNormalized?: string | null;
+  homeTeamKnownId?: number | null;
+  awayTeamKnownId?: number | null;
   homeTeamId?: number | null;
   awayTeamId?: number | null;
   homeTeamSource?: "search" | "cache" | "none";

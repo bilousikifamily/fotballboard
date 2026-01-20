@@ -2236,6 +2236,21 @@ function formatOddsRefreshDebug(debug?: OddsRefreshDebug): string {
   if (debug.timezone) {
     parts.push(`tz=${debug.timezone}`);
   }
+  if (debug.homeClubId || debug.awayClubId) {
+    const homeClubId = debug.homeClubId ?? "none";
+    const awayClubId = debug.awayClubId ?? "none";
+    parts.push(`club_ids=${homeClubId}/${awayClubId}`);
+  }
+  if (debug.homeTeamNormalized || debug.awayTeamNormalized) {
+    const homeNorm = debug.homeTeamNormalized ?? "none";
+    const awayNorm = debug.awayTeamNormalized ?? "none";
+    parts.push(`team_norm=${homeNorm}/${awayNorm}`);
+  }
+  if (debug.homeTeamKnownId !== undefined || debug.awayTeamKnownId !== undefined) {
+    const homeKnown = debug.homeTeamKnownId ?? "none";
+    const awayKnown = debug.awayTeamKnownId ?? "none";
+    parts.push(`team_known_id=${homeKnown}/${awayKnown}`);
+  }
   if (debug.homeTeamId !== undefined || debug.awayTeamId !== undefined) {
     const homeId = debug.homeTeamId ?? "null";
     const awayId = debug.awayTeamId ?? "null";

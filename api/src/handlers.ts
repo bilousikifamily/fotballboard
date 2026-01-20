@@ -2673,6 +2673,12 @@ async function fetchAndStoreOdds(
   const timezone = getApiFootballTimezone(env);
   if (debug) {
     debug.timezone = timezone ?? undefined;
+    debug.homeClubId = match.home_club_id ?? null;
+    debug.awayClubId = match.away_club_id ?? null;
+    debug.homeTeamNormalized = match.home_team ? normalizeTeamKey(match.home_team) : null;
+    debug.awayTeamNormalized = match.away_team ? normalizeTeamKey(match.away_team) : null;
+    debug.homeTeamKnownId = debug.homeTeamNormalized ? KNOWN_TEAM_IDS[debug.homeTeamNormalized] ?? null : null;
+    debug.awayTeamKnownId = debug.awayTeamNormalized ? KNOWN_TEAM_IDS[debug.awayTeamNormalized] ?? null : null;
   }
   if (!timezone) {
     console.warn("Odds skipped: missing timezone");
