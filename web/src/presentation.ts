@@ -1,7 +1,12 @@
 import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { formatKyivDateTime, formatKyivDateShort } from "./formatters/dates";
 import { formatPredictionName } from "./formatters/names";
-import { formatClubName, getClubLogoPath, resolveLogoLeagueId } from "./features/clubs";
+import {
+  formatClubName,
+  findClubLeague,
+  getClubLogoPath,
+  resolveLogoLeagueId
+} from "./features/clubs";
 import {
   normalizeRainProbability,
   formatRainProbability,
@@ -182,7 +187,15 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
   const homeName = match.homeTeam || formatClubName(match.homeClub);
   const awayName = match.awayTeam || formatClubName(match.awayClub);
   const leagueForLogos = resolveLogoLeagueId(match.homeLeague ?? match.awayLeague ?? null);
-  const logoLeague = leagueForLogos ?? match.homeLeague ?? match.awayLeague ?? "english-premier-league";
+  const homeClubLeague = match.homeClub ? findClubLeague(match.homeClub) : null;
+  const awayClubLeague = match.awayClub ? findClubLeague(match.awayClub) : null;
+  const logoLeague =
+    leagueForLogos ??
+    homeClubLeague ??
+    awayClubLeague ??
+    match.homeLeague ??
+    match.awayLeague ??
+    "english-premier-league";
   const homeLogo = match.homeClub && logoLeague ? getClubLogoPath(logoLeague, match.homeClub) : null;
   const awayLogo = match.awayClub && logoLeague ? getClubLogoPath(logoLeague, match.awayClub) : null;
   const rainPercent = normalizeRainProbability(match.rainProbability ?? null);
