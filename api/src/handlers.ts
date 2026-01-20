@@ -111,6 +111,10 @@ const TEAM_MATCH_ALIASES: Record<string, string> = {
   parissaintgermainfc: "parissaintgermain"
 };
 
+const KNOWN_TEAM_IDS: Record<string, number> = {
+  asmonaco: 200
+};
+
 const KNOWN_API_TEAM_IDS: Record<string, number> = {
   "as-monaco": 200
 };
@@ -3427,6 +3431,21 @@ async function resolveTeamId(
 }> {
   const normalized = normalizeTeamKey(teamName);
   const queries = getTeamSearchQueries(teamName, slug);
+  const knownId = KNOWN_TEAM_IDS[normalized];
+  if (knownId) {
+    return {
+      id: knownId,
+      source: "cache",
+      query: teamName,
+      status: 0,
+      candidates: [],
+      matchedName: teamName,
+      matchScore: 6,
+      queryAttempts: [],
+      searchAttempts: [],
+      searchResponses: []
+    };
+  }
   const queryAttempts: string[] = [];
   const searchAttempts: number[] = [];
   let lastCandidates: Array<{ id?: number; name?: string }> = [];
