@@ -3,6 +3,15 @@ body {
   height: 100%;
 }
 
+:root {
+  --admin-orange-glass: rgba(255, 154, 31, 0.15);
+  --admin-orange-glass-strong: rgba(255, 154, 31, 0.25);
+  --admin-orange-border: rgba(255, 154, 31, 0.45);
+  --admin-orange-border-soft: rgba(255, 154, 31, 0.35);
+  --admin-orange-soft: rgba(255, 122, 26, 0.12);
+  --admin-orange-pill: rgba(255, 122, 26, 0.18);
+}
+
 body.admin-layout-active {
   overflow: hidden;
   height: 100%;
@@ -84,8 +93,8 @@ body.admin-layout-active #app {
   justify-items: center;
   align-content: stretch;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 0;
+  padding: 6px 12px;
   z-index: 4;
 }
 
@@ -113,10 +122,10 @@ body.admin-layout-active #app {
   bottom: 8%;
   left: 50%;
   transform: translateX(-50%);
-  width: calc(40vw * 0.96);
+  width: clamp(140px, 45vw, 240px);
   box-sizing: border-box;
-  background: rgba(255, 154, 31, 0.22);
-  border: 1px solid rgba(255, 154, 31, 0.45);
+  background: var(--admin-orange-glass);
+  border: 1px solid var(--admin-orange-border);
   border-radius: 18px;
   padding: 2px 10px;
   box-shadow:
@@ -209,13 +218,13 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__logo-frame .score-btn {
-  width: 36px;
-  height: 36px;
+  width: clamp(32px, 6vw, 44px);
+  height: clamp(32px, 6vw, 44px);
   border-radius: 999px;
-  background: rgba(17, 17, 20, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--admin-orange-glass);
+  border: 1px solid var(--admin-orange-border);
   color: var(--ink);
-  font-size: 1.8rem;
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -226,10 +235,11 @@ body.admin-layout-active #app {
 
 .admin-layout__logo-frame .score-btn:active {
   transform: scale(0.96);
+  background: var(--admin-orange-glass-strong);
 }
 
 .admin-layout__logo-frame .score-value {
-  font-size: 3rem;
+  font-size: clamp(1.5rem, 7vw, 3rem);
   font-weight: 700;
   color: var(--ink);
 }
@@ -251,8 +261,8 @@ body.admin-layout-active #app {
   letter-spacing: 0.02em;
   padding: 3px 10px;
   border-radius: 12px;
-  background: rgba(255, 122, 26, 0.18);
-  border: 1px solid rgba(255, 154, 31, 0.35);
+  background: var(--admin-orange-pill);
+  border: 1px solid var(--admin-orange-border-soft);
   box-shadow:
     0 6px 18px rgba(0, 0, 0, 0.3),
     inset 0 0 0 1px rgba(0, 0, 0, 0.35);
@@ -347,9 +357,9 @@ body.admin-layout-active #app {
 .admin-layout__info-card {
   width: min(90%, 560px);
   padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255, 122, 26, 0.18);
-  border: 1px solid rgba(255, 154, 31, 0.35);
+  border-radius: 12px 12px 0 0;
+  background: var(--admin-orange-pill);
+  border: 1px solid var(--admin-orange-border-soft);
   color: var(--ink);
   text-align: center;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
@@ -374,7 +384,8 @@ body.admin-layout-active #app {
   width: min(90%, 560px);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 0;
+  margin-top: -1px;
 }
 
 .admin-layout__info-odds.is-empty {
@@ -383,9 +394,9 @@ body.admin-layout-active #app {
 
 .admin-layout__info-odd {
   padding: 8px 4px;
-  border-radius: 8px;
-  background: var(--surface-strong);
-  border: 1px solid var(--outline-dark);
+  border-radius: 0 0 10px 10px;
+  background: var(--admin-orange-soft);
+  border: 1px solid var(--admin-orange-border-soft);
   color: var(--ink);
   font-size: 1.05rem;
   font-weight: 700;
@@ -395,7 +406,7 @@ body.admin-layout-active #app {
 
 .admin-layout__info-odd.is-highlighted {
   background: var(--accent-gradient);
-  border-color: var(--outline-dark);
+  border-color: var(--admin-orange-border);
   color: #0b0b0d;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
 }
