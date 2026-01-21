@@ -16,6 +16,9 @@
    - Бокові (чорно-фонові) колонки — кнопки перемикання (prev/next) з круглими стрілками.
    - Центральна ліва (`.admin-layout__center--left`) та права колонки (`.admin-layout__center--right`) — фон `#ff3b3b` і `#8b0000`, `overflow: visible`, `position: relative`.
    - Логотипи (`renderTeamLogo`) обгорнуті в `.admin-layout__logo-frame`: повна ширина колонки, `display: grid`, `place-items: center`, логотип абсолютний, центрований, займає `40vw`, `max-width/max-height: 40vw`, розташований на `z-index: 2`.
+   - Верхній ряд (`30%`) — `div.admin-layout__info`:
+     * Інформаційний блок про турнір/стадію (`.admin-layout__info-card`).
+     * Ряд 1Х2 імовірностей (`.admin-layout__info-odds`), три осередки з відсотками.
    - Контрол `score-controls` рендериться всередині `.admin-layout__logo-frame`, як накладка над фоном і під логотипом по z-index:
      * Контейнер `.admin-layout__score-controls` позиціонується абсолютним блоком на `bottom: 20%`, центрований через `left: 50%` + `transform: translateX(-50%)`, ширина `calc(40vw * 0.96)`.
      * Фон напівпрозорий, заокруглений, з тінню та blur (fallback до темнішого фону без blur).

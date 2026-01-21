@@ -1226,7 +1226,17 @@ function renderUser(
             </div>
           </div>
           <div class="admin-layout__body">
-            <div class="admin-layout__info" aria-hidden="true"></div>
+            <div class="admin-layout__info" aria-hidden="true">
+              <div class="admin-layout__info-card">
+                <div class="admin-layout__info-title">UEFA Champions League</div>
+                <div class="admin-layout__info-subtitle">League stage - 7</div>
+              </div>
+              <div class="admin-layout__info-odds">
+                <div class="admin-layout__info-odd">25%</div>
+                <div class="admin-layout__info-odd">25%</div>
+                <div class="admin-layout__info-odd">49%</div>
+              </div>
+            </div>
             <div class="admin-layout__side admin-layout__side--left">
               <button class="admin-layout__nav" type="button" data-admin-layout-prev aria-label="Попередній матч">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
