@@ -3420,16 +3420,14 @@ function setupAdminLayoutScoreControls(matchId: number): void {
       return;
     }
 
+    probability.classList.remove("is-empty");
     if (!match.odds_json) {
-      probability.textContent = "";
-      probability.classList.add("is-empty");
+      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — 12%`;
       return;
     }
-
-    probability.classList.remove("is-empty");
     const probabilityValue = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
     if (probabilityValue === null) {
-      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
+      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — 12%`;
       return;
     }
 
