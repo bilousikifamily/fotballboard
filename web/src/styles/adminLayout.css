@@ -66,7 +66,7 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__body {
   display: grid;
   grid-template-columns: 10% 40% 40% 10%;
-  grid-template-rows: 22% 50% 10%;
+  grid-template-rows: 22% 60% 18%;
   position: relative;
 }
 
@@ -303,8 +303,12 @@ body.admin-layout-active .tabbar-button.is-active {
   text-align: center;
   text-transform: none;
   letter-spacing: 0.04em;
-  margin-bottom: 2px;
+  margin-bottom: -4px;
   z-index: 3;
+}
+
+.admin-layout__score-probability.is-empty {
+  opacity: 0;
 }
 
 .admin-layout__vote-button {

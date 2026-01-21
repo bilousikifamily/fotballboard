@@ -3357,17 +3357,17 @@ function setupAdminLayoutScoreControls(matchId: number): void {
     const awayScore = getScoreValue("away");
     if (!match || homeScore === null || awayScore === null) {
       probability.textContent = "";
-      probability.classList.add("is-hidden");
+      probability.classList.add("is-empty");
       return;
     }
 
     if (!match.odds_json) {
       probability.textContent = "";
-      probability.classList.add("is-hidden");
+      probability.classList.add("is-empty");
       return;
     }
 
-    probability.classList.remove("is-hidden");
+    probability.classList.remove("is-empty");
     const probabilityValue = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
     if (probabilityValue === null) {
       probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
