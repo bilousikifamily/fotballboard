@@ -6989,7 +6989,7 @@ function formatAverageMatchPredictionScore(predictions: MatchPredictionRecord[])
 
 function buildMatchStartDigestMessage(
   match: DbMatch,
-  faction: FactionBranchSlug,
+  _faction: FactionBranchSlug,
   predictions: MatchPredictionRecord[]
 ): string {
   const homeLabel = getMatchTeamLabel(match, "home") || "Домашня команда";
@@ -6997,14 +6997,13 @@ function buildMatchStartDigestMessage(
   const averageScore = formatAverageMatchPredictionScore(predictions);
   const prettyAverage = averageScore.replace(":", " : ");
   const header = `${homeLabel} ${prettyAverage}  ${awayLabel}`;
-  const factionLabel = formatFactionName(faction).toUpperCase();
   if (predictions.length === 0) {
-    return `${factionLabel}\n${header}\n\nПоки що прогнози відсутні.`;
+    return `${header}\n\nПоки що прогнози відсутні.`;
   }
   const rows = predictions
     .map((prediction) => `${formatPredictionUserLabel(prediction.user)} — ${prediction.home_pred}:${prediction.away_pred}`)
     .join("\n");
-  return `${factionLabel}\n${header}\n\n${rows}`;
+  return `${header}\n\n${rows}`;
 }
 
 async function handleMatchStartDigests(env: Env): Promise<void> {
@@ -7022,33 +7021,31 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
   const refs = getFactionChatRefs(env);
   for (const match of matches) {
     const predictions = await listMatchPredictionsWithUsers(supabase, match.id);
-    const grouped = predictions ? groupMatchPredictionsByFaction(predictions) : null;
+    if (!predictions || predictions.length === 0) {
+      continue;
+    }
+    const grouped = groupMatchPredictionsByFaction(predictions);
     const now = new Date().toISOString();
     let anySent = false;
 
-    if (grouped) {
-      for (const faction of ALL_FACTION_BRANCHES) {
-        const factionPredictions = grouped[faction] ?? [];
-        if (factionPredictions.length === 0) {
-          continue;
-        }
-        const chatRef = refs.bySlug[faction];
-        if (!chatRef) {
-          continue;
-        }
-        const target =
-          typeof chatRef.chatId === "number"
-            ? chatRef.chatId
-            : chatRef.chatUsername
-              ? `@${chatRef.chatUsername}`
-              : null;
-        if (!target) {
-          continue;
-        }
-        const message = buildMatchStartDigestMessage(match, faction, factionPredictions);
-        await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
-        anySent = true;
+    for (const faction of ALL_FACTION_BRANCHES) {
+      const factionPredictions = grouped[faction] ?? [];
+      const chatRef = refs.bySlug[faction];
+      if (!chatRef) {
+        continue;
       }
+      const target =
+        typeof chatRef.chatId === "number"
+          ? chatRef.chatId
+          : chatRef.chatUsername
+            ? `@${chatRef.chatUsername}`
+            : null;
+      if (!target) {
+        continue;
+      }
+      const message = buildMatchStartDigestMessage(match, faction, factionPredictions);
+      await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
+      anySent = true;
     }
 
     const { error } = await supabase
