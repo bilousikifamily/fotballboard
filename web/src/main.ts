@@ -3230,8 +3230,23 @@ function updateAdminLayoutView(): void {
   const normalizedHumidity = normalizeRainProbability(humidityValue);
   const humidityPercent = formatRainProbability(normalizedHumidity);
   const weatherIcon = getWeatherIcon(match.weather_condition ?? null);
-  homeSlot.innerHTML = renderTeamLogo(homeName, homeLogo);
-  awaySlot.innerHTML = renderTeamLogo(awayName, awayLogo);
+  const renderScoreControls = (team: "home" | "away"): string => `
+    <div class="score-controls admin-layout__score-controls">
+      <div class="score-control" data-score-control data-team="${team}">
+        <button class="score-btn" type="button" data-score-inc>+</button>
+        <div class="score-value" data-score-value>0</div>
+        <button class="score-btn" type="button" data-score-dec>-</button>
+      </div>
+    </div>
+  `;
+  homeSlot.innerHTML = `
+    <div class="admin-layout__logo-frame">${renderTeamLogo(homeName, homeLogo)}</div>
+    <div class="admin-layout__score-panel" aria-hidden="true">${renderScoreControls("home")}</div>
+  `;
+  awaySlot.innerHTML = `
+    <div class="admin-layout__logo-frame">${renderTeamLogo(awayName, awayLogo)}</div>
+    <div class="admin-layout__score-panel" aria-hidden="true">${renderScoreControls("away")}</div>
+  `;
   pagination.innerHTML = adminLayoutMatches
     .map((_, index) => {
       const isActive = index === adminLayoutIndex;
