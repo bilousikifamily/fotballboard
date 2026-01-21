@@ -102,6 +102,7 @@ let adminLayoutMatches: Match[] = [];
 let adminLayoutIndex = 0;
 let adminLayoutAverageMatchId: number | null = null;
 let adminLayoutHasPrediction = false;
+let adminLayoutIsFinished = false;
 let adminLayoutVoteMatchId: number | null = null;
 let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
@@ -3115,7 +3116,7 @@ function renderPredictionsPanel(matchId: number, predictions: PredictionView[]):
 }
 
 function updateAdminLayoutScoreValuesFromAverage(matchId: number): void {
-  if (!adminLayoutHasPrediction || adminLayoutAverageMatchId !== matchId) {
+  if (adminLayoutIsFinished || !adminLayoutHasPrediction || adminLayoutAverageMatchId !== matchId) {
     return;
   }
   const cached = adminLayoutAverageCache.get(matchId);
@@ -3135,6 +3136,29 @@ function updateAdminLayoutScoreValuesFromAverage(matchId: number): void {
   }
   if (awayValueEl) {
     awayValueEl.textContent = awayValue;
+  }
+}
+
+function updateAdminLayoutScoreValuesFromResult(match: Match): void {
+  if (match.status !== "finished") {
+    return;
+  }
+  const homeScore = match.home_score;
+  const awayScore = match.away_score;
+  if (homeScore === null || awayScore === null) {
+    return;
+  }
+  const homeValueEl = app.querySelector<HTMLElement>(
+    '.admin-layout__score-controls [data-team="home"] [data-score-value]'
+  );
+  const awayValueEl = app.querySelector<HTMLElement>(
+    '.admin-layout__score-controls [data-team="away"] [data-score-value]'
+  );
+  if (homeValueEl) {
+    homeValueEl.textContent = String(homeScore);
+  }
+  if (awayValueEl) {
+    awayValueEl.textContent = String(awayScore);
   }
 }
 
@@ -3242,7 +3266,7 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
     probability.classList.toggle("is-hidden", hasPrediction);
   }
   averageBadges.forEach((badge) => {
-    badge.classList.toggle("is-faded", hasPrediction);
+    badge.classList.toggle("is-faded", hasPrediction && !adminLayoutIsFinished);
   });
   scoreButtons.forEach((button) => {
     button.classList.toggle("is-hidden", hasPrediction);
@@ -3458,6 +3482,7 @@ function updateAdminLayoutView(): void {
 
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
   adminLayoutHasPrediction = Boolean(match.has_prediction);
+  adminLayoutIsFinished = match.status === "finished";
   const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
@@ -3493,6 +3518,7 @@ function updateAdminLayoutView(): void {
   `;
   updateAdminLayoutAverage(match.id);
   applyAdminLayoutPredictionState(match.id, adminLayoutHasPrediction);
+  updateAdminLayoutScoreValuesFromResult(match);
   setupAdminLayoutVoteButton(match.id);
   setupAdminLayoutScoreControls(match.id);
   updateAdminLayoutCountdown();
@@ -3785,6 +3811,12 @@ function updateAdminLayoutCountdown(): void {
   if (Number.isNaN(kickoffMs)) {
     countdown.textContent = "початок матчу через --:--:--";
     countdown.classList.remove("is-closed");
+    return;
+  }
+
+  if (match.status === "finished") {
+    countdown.textContent = "МАТЧ ЗАВЕРШЕНО";
+    countdown.classList.add("is-closed");
     return;
   }
 
