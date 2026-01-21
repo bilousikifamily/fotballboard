@@ -101,6 +101,7 @@ let currentProfileStats: ProfileStatsPayload | null = null;
 let adminLayoutMatches: Match[] = [];
 let adminLayoutIndex = 0;
 let adminLayoutAverageMatchId: number | null = null;
+let adminLayoutHasPrediction = false;
 let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
@@ -3112,6 +3113,30 @@ function renderPredictionsPanel(matchId: number, predictions: PredictionView[]):
   `;
 }
 
+function updateAdminLayoutScoreValuesFromAverage(matchId: number): void {
+  if (!adminLayoutHasPrediction || adminLayoutAverageMatchId !== matchId) {
+    return;
+  }
+  const cached = adminLayoutAverageCache.get(matchId);
+  if (!cached) {
+    return;
+  }
+  const homeValue = cached.count ? formatAverageValue(cached.homeAvg) : "0";
+  const awayValue = cached.count ? formatAverageValue(cached.awayAvg) : "0";
+  const homeValueEl = app.querySelector<HTMLElement>(
+    '.admin-layout__score-controls [data-team="home"] [data-score-value]'
+  );
+  const awayValueEl = app.querySelector<HTMLElement>(
+    '.admin-layout__score-controls [data-team="away"] [data-score-value]'
+  );
+  if (homeValueEl) {
+    homeValueEl.textContent = homeValue;
+  }
+  if (awayValueEl) {
+    awayValueEl.textContent = awayValue;
+  }
+}
+
 function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[]): void {
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
   const count = predictions.length;
@@ -3129,6 +3154,7 @@ function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[])
 
   homeAverageEl.textContent = count ? formatAverageValue(homeAvg) : "0";
   awayAverageEl.textContent = count ? formatAverageValue(awayAvg) : "0";
+  updateAdminLayoutScoreValuesFromAverage(matchId);
 }
 
 function updateAdminLayoutAverage(matchId: number): void {
@@ -3143,6 +3169,7 @@ function updateAdminLayoutAverage(matchId: number): void {
   if (cached) {
     homeAverageEl.textContent = cached.count ? formatAverageValue(cached.homeAvg) : "0";
     awayAverageEl.textContent = cached.count ? formatAverageValue(cached.awayAvg) : "0";
+    updateAdminLayoutScoreValuesFromAverage(matchId);
     return;
   }
 
@@ -3197,6 +3224,31 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
       ${awayLogoMarkup}
     </div>
   `;
+}
+
+function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean): void {
+  const voteButton = app.querySelector<HTMLElement>(".admin-layout__vote-button");
+  const probability = app.querySelector<HTMLElement>("[data-admin-layout-probability]");
+  const averageBadges = app.querySelectorAll<HTMLElement>(".admin-layout__average-score");
+  const scoreButtons = app.querySelectorAll<HTMLButtonElement>(".admin-layout__score-controls .score-btn");
+
+  if (voteButton) {
+    voteButton.classList.toggle("is-hidden", hasPrediction);
+  }
+  if (probability) {
+    probability.classList.toggle("is-hidden", hasPrediction);
+  }
+  averageBadges.forEach((badge) => {
+    badge.classList.toggle("is-hidden", hasPrediction);
+  });
+  scoreButtons.forEach((button) => {
+    button.classList.toggle("is-hidden", hasPrediction);
+    button.disabled = hasPrediction;
+  });
+
+  if (hasPrediction) {
+    updateAdminLayoutScoreValuesFromAverage(matchId);
+  }
 }
 
 function renderPredictionRows(self: PredictionView | null, others: PredictionView[]): string {
@@ -3328,6 +3380,7 @@ function updateAdminLayoutView(): void {
   }
 
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
+  adminLayoutHasPrediction = Boolean(match.has_prediction);
   const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
@@ -3362,6 +3415,7 @@ function updateAdminLayoutView(): void {
     </div>
   `;
   updateAdminLayoutAverage(match.id);
+  applyAdminLayoutPredictionState(match.id, adminLayoutHasPrediction);
   setupAdminLayoutScoreControls(match.id);
   updateAdminLayoutCountdown();
   pagination.innerHTML = adminLayoutMatches
