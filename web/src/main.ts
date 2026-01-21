@@ -3205,6 +3205,7 @@ function updateAdminLayoutView(): void {
   const oddHomeEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='home']");
   const oddDrawEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='draw']");
   const oddAwayEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='away']");
+  const oddsBlock = app.querySelector<HTMLElement>(".admin-layout__info-odds");
   const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
   const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
   const localTimeEl = app.querySelector<HTMLElement>("[data-admin-layout-local-time]");
@@ -3226,6 +3227,7 @@ function updateAdminLayoutView(): void {
     !oddHomeEl ||
     !oddDrawEl ||
     !oddAwayEl ||
+    !oddsBlock ||
     !prevButton ||
     !nextButton ||
     !timeEl ||
@@ -3247,12 +3249,14 @@ function updateAdminLayoutView(): void {
     pagination.innerHTML = "";
     countdown.textContent = "початок матчу через --:--:--";
     countdown.classList.remove("is-closed");
-    probability.textContent = "ймовірність рахунку 0:0 —";
+    probability.textContent = "";
+    probability.classList.add("is-hidden");
     tournamentEl.textContent = "—";
     stageEl.textContent = "—";
     oddHomeEl.textContent = "—";
     oddDrawEl.textContent = "—";
     oddAwayEl.textContent = "—";
+    oddsBlock.classList.add("is-hidden");
     timeEl.textContent = "--:--";
     cityEl.textContent = "—";
     localTimeEl.textContent = "(--:--)";
@@ -3314,6 +3318,7 @@ function updateAdminLayoutView(): void {
   oddHomeEl.textContent = matchOdds ? formatProbability(matchOdds.home) : "—";
   oddDrawEl.textContent = matchOdds ? formatProbability(matchOdds.draw) : "—";
   oddAwayEl.textContent = matchOdds ? formatProbability(matchOdds.away) : "—";
+  oddsBlock.classList.toggle("is-hidden", !matchOdds);
   timeEl.textContent = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
   cityEl.textContent = (match.venue_city ?? match.venue_name ?? "").trim().toUpperCase() || "—";
   localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, localTimezone)})`;
@@ -3351,15 +3356,18 @@ function setupAdminLayoutScoreControls(matchId: number): void {
     const homeScore = getScoreValue("home");
     const awayScore = getScoreValue("away");
     if (!match || homeScore === null || awayScore === null) {
-      probability.textContent = "ймовірність рахунку 0:0 —";
+      probability.textContent = "";
+      probability.classList.add("is-hidden");
       return;
     }
 
     if (!match.odds_json) {
-      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
+      probability.textContent = "";
+      probability.classList.add("is-hidden");
       return;
     }
 
+    probability.classList.remove("is-hidden");
     const probabilityValue = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
     if (probabilityValue === null) {
       probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
