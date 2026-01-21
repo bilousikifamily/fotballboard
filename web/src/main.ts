@@ -3245,7 +3245,7 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
     badge.classList.toggle("is-faded", hasPrediction);
   });
   scoreButtons.forEach((button) => {
-    button.classList.toggle("is-faded", hasPrediction);
+    button.classList.toggle("is-hidden", hasPrediction);
     button.disabled = hasPrediction;
   });
   scoreControls.forEach((control) => {
