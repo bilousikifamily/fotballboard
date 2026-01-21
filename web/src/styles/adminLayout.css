@@ -61,7 +61,6 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__center--left {
-  background: #ff3b3b;
   display: grid;
   place-items: center;
   overflow: visible;
@@ -70,7 +69,6 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__center--right {
-  background: #8b0000;
   display: grid;
   place-items: center;
   overflow: visible;
@@ -117,13 +115,15 @@ body.admin-layout-active #app {
   transform: translateX(-50%);
   width: calc(40vw * 0.96);
   box-sizing: border-box;
-  background: var(--surface-strong);
-  border: 1px solid var(--outline-dark);
+  background: rgba(255, 154, 31, 0.22);
+  border: 1px solid rgba(255, 154, 31, 0.45);
   border-radius: 18px;
   padding: 2px 10px;
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1px var(--outline-dark);
+    0 14px 32px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   z-index: 3;
 }
 
@@ -212,15 +212,15 @@ body.admin-layout-active #app {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--outline-light);
+  background: rgba(17, 17, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--ink);
   font-size: 1.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
   flex-shrink: 0;
 }
 
@@ -251,11 +251,11 @@ body.admin-layout-active #app {
   letter-spacing: 0.02em;
   padding: 3px 10px;
   border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--outline-dark);
+  background: rgba(255, 122, 26, 0.18);
+  border: 1px solid rgba(255, 154, 31, 0.35);
   box-shadow:
     0 6px 18px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px var(--outline-dark);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35);
   z-index: 3;
 }
 
@@ -338,17 +338,21 @@ body.admin-layout-active #app {
   height: 48px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+  background: var(--accent-gradient);
+  border: 1px solid rgba(255, 154, 31, 0.35);
+  color: #0b0b0d;
+  font-weight: 700;
 }
 
 .admin-layout__info-card {
   width: min(90%, 560px);
   padding: 10px 14px;
   border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--outline-dark);
+  background: rgba(255, 122, 26, 0.18);
+  border: 1px solid rgba(255, 154, 31, 0.35);
   color: var(--ink);
   text-align: center;
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
 }
 
 .admin-layout__info-title {
@@ -438,7 +442,7 @@ body.admin-layout-active #app {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  border: none;
   background: transparent;
   color: #ffffff;
   display: grid;
