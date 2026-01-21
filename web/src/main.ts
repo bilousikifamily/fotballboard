@@ -3256,7 +3256,7 @@ function updateAdminLayoutView(): void {
     oddHomeEl.textContent = "—";
     oddDrawEl.textContent = "—";
     oddAwayEl.textContent = "—";
-    oddsBlock.classList.add("is-hidden");
+    oddsBlock.classList.add("is-empty");
     timeEl.textContent = "--:--";
     cityEl.textContent = "—";
     localTimeEl.textContent = "(--:--)";
@@ -3318,7 +3318,7 @@ function updateAdminLayoutView(): void {
   oddHomeEl.textContent = matchOdds ? formatProbability(matchOdds.home) : "—";
   oddDrawEl.textContent = matchOdds ? formatProbability(matchOdds.draw) : "—";
   oddAwayEl.textContent = matchOdds ? formatProbability(matchOdds.away) : "—";
-  oddsBlock.classList.toggle("is-hidden", !matchOdds);
+  oddsBlock.classList.toggle("is-empty", !matchOdds);
   timeEl.textContent = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
   cityEl.textContent = (match.venue_city ?? match.venue_name ?? "").trim().toUpperCase() || "—";
   localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, localTimezone)})`;

@@ -339,6 +339,10 @@ body.admin-layout-active .tabbar-button.is-active {
   gap: 6px;
 }
 
+.admin-layout__info-odds.is-empty {
+  opacity: 0;
+}
+
 .admin-layout__info-odd {
   padding: 8px 4px;
   border-radius: 8px;
