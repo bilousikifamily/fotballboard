@@ -254,7 +254,7 @@ body.admin-layout-active #app {
 
 .admin-layout__logo-frame .admin-layout__average-score {
   position: absolute;
-  bottom: calc(4% - 20px);
+  bottom: calc(11% - 20px);
   left: 50%;
   transform: translateX(-50%);
   font-size: 1.2rem;
@@ -262,6 +262,7 @@ body.admin-layout-active #app {
   color: var(--ink);
   line-height: 1;
   letter-spacing: 0.02em;
+  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
   padding: 3px 10px;
   border-radius: 12px;
   background: var(--admin-orange-pill);
