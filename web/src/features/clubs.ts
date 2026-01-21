@@ -79,9 +79,15 @@ const UEFA_LOGO_LEAGUE_MAP: Record<MatchLeagueId, LogoLeagueId> = {
 };
 
 const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
-  "uefa-champions-league": new Set(["sporting"]),
+  "uefa-champions-league": new Set(["sporting", "benfica", "pafos", "slavia-praga"]),
   "uefa-europa-league": new Set(),
   "uefa-europa-conference-league": new Set()
+};
+
+const CLUB_LOGO_FILE_OVERRIDES: Partial<Record<LogoLeagueId, Record<string, string>>> = {
+  "champions-league": {
+    "slavia-praga": "slavia"
+  }
 };
 
 function getUefaLogoLeague(clubSlug: string | null, leagueId: MatchLeagueId | null): LogoLeagueId | null {
@@ -111,7 +117,9 @@ export function resolveTeamLogoLeague(clubSlug: string | null, leagueId: MatchLe
 }
 
 export function getClubLogoPath(leagueId: LogoLeagueId, clubId: string): string {
-  return `/logos/football-logos/${leagueId}/${clubId}.png`;
+  const overrides = CLUB_LOGO_FILE_OVERRIDES[leagueId];
+  const fileId = overrides?.[clubId] ?? clubId;
+  return `/logos/football-logos/${leagueId}/${fileId}.png`;
 }
 
 export function getClassicoLogoSlug(choice: "real_madrid" | "barcelona" | null): string | null {
