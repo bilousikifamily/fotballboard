@@ -66,6 +66,7 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__body {
   display: grid;
   grid-template-columns: 10% 40% 40% 10%;
+  grid-template-rows: 30% 50% 20%;
   position: relative;
 }
 
@@ -73,6 +74,8 @@ body.admin-layout-active .tabbar-button.is-active {
   background: #000000;
   display: grid;
   place-items: center;
+  grid-row: 1 / -1;
+  align-self: center;
 }
 
 .admin-layout__center--left {
@@ -91,6 +94,15 @@ body.admin-layout-active .tabbar-button.is-active {
   overflow: visible;
   min-width: 0;
   position: relative;
+}
+
+.admin-layout__info {
+  grid-column: 2 / 4;
+  grid-row: 1 / 2;
+}
+
+.admin-layout__center {
+  grid-row: 2 / 3;
 }
 
 .admin-layout__logo-frame {
@@ -260,17 +272,16 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__vote {
-  position: absolute;
-  left: 50%;
-  bottom: 6%;
-  transform: translateX(-50%);
-  width: 80vw;
+  grid-column: 2 / 4;
+  grid-row: 3 / 4;
+  width: 100%;
   max-width: 560px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   z-index: 3;
+  justify-self: center;
 }
 
 .admin-layout__probability {

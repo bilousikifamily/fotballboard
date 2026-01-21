@@ -1226,6 +1226,7 @@ function renderUser(
             </div>
           </div>
           <div class="admin-layout__body">
+            <div class="admin-layout__info" aria-hidden="true"></div>
             <div class="admin-layout__side admin-layout__side--left">
               <button class="admin-layout__nav" type="button" data-admin-layout-prev aria-label="Попередній матч">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
