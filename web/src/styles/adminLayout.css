@@ -278,6 +278,15 @@ body.admin-layout-active .tabbar-button.is-active {
   z-index: 3;
 }
 
+.admin-layout__logo-frame .admin-layout__average-score.is-faded {
+  opacity: 0;
+}
+
+.admin-layout__score-controls .score-btn.is-faded {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .admin-layout__footer {
   background: #0a27ff;
   display: flex;

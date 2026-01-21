@@ -3240,10 +3240,10 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
     probability.classList.toggle("is-hidden", hasPrediction);
   }
   averageBadges.forEach((badge) => {
-    badge.classList.toggle("is-hidden", hasPrediction);
+    badge.classList.toggle("is-faded", hasPrediction);
   });
   scoreButtons.forEach((button) => {
-    button.classList.toggle("is-hidden", hasPrediction);
+    button.classList.toggle("is-faded", hasPrediction);
     button.disabled = hasPrediction;
   });
 
