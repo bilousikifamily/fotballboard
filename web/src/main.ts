@@ -102,6 +102,7 @@ let adminLayoutMatches: Match[] = [];
 let adminLayoutIndex = 0;
 let adminLayoutAverageMatchId: number | null = null;
 let adminLayoutHasPrediction = false;
+let adminLayoutVoteMatchId: number | null = null;
 let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
@@ -1260,7 +1261,7 @@ function renderUser(
               <div class="admin-layout__score-probability" data-admin-layout-probability>
                 ймовірність рахунку 0:0 — 3%
               </div>
-              <button class="prediction-submit admin-layout__vote-button" type="button">
+              <button class="prediction-submit admin-layout__vote-button" type="button" data-admin-layout-vote>
                 Проголосувати
               </button>
             </div>
@@ -3251,6 +3252,77 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   }
 }
 
+function setupAdminLayoutVoteButton(matchId: number): void {
+  const button = app.querySelector<HTMLButtonElement>("[data-admin-layout-vote]");
+  if (!button) {
+    return;
+  }
+
+  adminLayoutVoteMatchId = matchId;
+  button.dataset.matchId = String(matchId);
+  if (button.dataset.bound === "true") {
+    return;
+  }
+  button.dataset.bound = "true";
+
+  button.addEventListener("click", async () => {
+    if (!apiBase || adminLayoutHasPrediction) {
+      return;
+    }
+    const matchIdRaw = button.dataset.matchId || "";
+    const resolvedMatchId = Number.parseInt(matchIdRaw, 10);
+    if (!Number.isFinite(resolvedMatchId)) {
+      return;
+    }
+
+    const homeControl = app.querySelector<HTMLElement>(
+      '.admin-layout__score-controls [data-team="home"] input[type="hidden"]'
+    );
+    const awayControl = app.querySelector<HTMLElement>(
+      '.admin-layout__score-controls [data-team="away"] input[type="hidden"]'
+    );
+    const home = parseScore((homeControl as HTMLInputElement | null)?.value);
+    const away = parseScore((awayControl as HTMLInputElement | null)?.value);
+    if (home === null || away === null) {
+      return;
+    }
+
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Збереження...";
+
+    try {
+      const { response, data } = await postPrediction(apiBase, {
+        initData,
+        match_id: resolvedMatchId,
+        home_pred: home,
+        away_pred: away
+      });
+      if (!response.ok || !data.ok) {
+        button.textContent = getPredictionError(data.error);
+        button.disabled = false;
+        return;
+      }
+
+      button.textContent = "Збережено ✅";
+      const match = matchesById.get(resolvedMatchId);
+      if (match) {
+        match.has_prediction = true;
+      }
+      adminLayoutHasPrediction = true;
+      updateAdminLayoutAverage(resolvedMatchId);
+      applyAdminLayoutPredictionState(resolvedMatchId, true);
+    } catch {
+      button.textContent = "Не вдалося зберегти прогноз.";
+      button.disabled = false;
+    } finally {
+      if (!adminLayoutHasPrediction) {
+        button.textContent = originalText;
+      }
+    }
+  });
+}
+
 function renderPredictionRows(self: PredictionView | null, others: PredictionView[]): string {
   const rows: string[] = [];
 
@@ -3416,6 +3488,7 @@ function updateAdminLayoutView(): void {
   `;
   updateAdminLayoutAverage(match.id);
   applyAdminLayoutPredictionState(match.id, adminLayoutHasPrediction);
+  setupAdminLayoutVoteButton(match.id);
   setupAdminLayoutScoreControls(match.id);
   updateAdminLayoutCountdown();
   pagination.innerHTML = adminLayoutMatches
