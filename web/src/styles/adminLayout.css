@@ -122,7 +122,9 @@ body.admin-layout-active #app {
   bottom: 8%;
   left: 50%;
   transform: translateX(-50%);
-  width: clamp(140px, 45vw, 240px);
+  width: calc(40vw * 0.95);
+  max-width: calc(40vw * 0.95);
+  min-width: 140px;
   box-sizing: border-box;
   background: var(--admin-orange-glass);
   border: 1px solid var(--admin-orange-border);
