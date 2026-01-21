@@ -128,6 +128,34 @@ export function findClubLeague(clubId: string): AllLeagueId | null {
   return CLUB_REGISTRY[clubId]?.leagueId ?? null;
 }
 
+function deriveClubSlugFromName(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = normalizeTeamSlugValue(value);
+  if (!normalized) {
+    return null;
+  }
+  if (CLUB_REGISTRY[normalized]) {
+    return normalized;
+  }
+
+  const segments = normalized.split("-").filter(Boolean);
+  if (!segments.length) {
+    return null;
+  }
+
+  for (let length = segments.length; length > 0; length--) {
+    for (let start = 0; start <= segments.length - length; start++) {
+      const candidate = segments.slice(start, start + length).join("-");
+      if (CLUB_REGISTRY[candidate]) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
 export function getMatchTeamInfo(match: Match): {
   homeName: string;
   awayName: string;
@@ -139,8 +167,8 @@ export function getMatchTeamInfo(match: Match): {
   const homeClubId = match.home_club_id ?? null;
   const awayClubId = match.away_club_id ?? null;
   const matchLeagueId = (match.league_id as MatchLeagueId | null) ?? null;
-  const homeSlug = homeClubId ?? normalizeTeamSlugValue(match.home_team);
-  const awaySlug = awayClubId ?? normalizeTeamSlugValue(match.away_team);
+  const homeSlug = homeClubId ?? deriveClubSlugFromName(match.home_team);
+  const awaySlug = awayClubId ?? deriveClubSlugFromName(match.away_team);
 
   const homeName = homeSlug ? formatClubName(homeSlug) : match.home_team;
   const awayName = awaySlug ? formatClubName(awaySlug) : match.away_team;
