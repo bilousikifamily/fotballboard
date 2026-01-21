@@ -3137,6 +3137,7 @@ function updateAdminLayoutScoreValuesFromAverage(matchId: number): void {
   if (awayValueEl) {
     awayValueEl.textContent = awayValue;
   }
+  updateAdminLayoutOddsHighlight(matchId);
 }
 
 function updateAdminLayoutScoreValuesFromResult(match: Match): void {
@@ -3160,6 +3161,55 @@ function updateAdminLayoutScoreValuesFromResult(match: Match): void {
   if (awayValueEl) {
     awayValueEl.textContent = String(awayScore);
   }
+  updateAdminLayoutOddsHighlight(match.id);
+}
+
+function updateAdminLayoutOddsHighlight(matchId: number): void {
+  const odds = app.querySelectorAll<HTMLElement>(".admin-layout__info-odd");
+  if (!odds.length) {
+    return;
+  }
+
+  const match = matchesById.get(matchId) ?? adminLayoutMatches[adminLayoutIndex] ?? null;
+  if (!match) {
+    odds.forEach((el) => el.classList.remove("is-highlighted"));
+    return;
+  }
+
+  let homeScore: number | null = null;
+  let awayScore: number | null = null;
+
+  if (match.status === "finished" && match.home_score !== null && match.away_score !== null) {
+    homeScore = match.home_score;
+    awayScore = match.away_score;
+  } else if (adminLayoutHasPrediction) {
+    const cached = adminLayoutAverageCache.get(matchId);
+    if (!cached || cached.count === 0) {
+      odds.forEach((el) => el.classList.remove("is-highlighted"));
+      return;
+    }
+    homeScore = cached.homeAvg;
+    awayScore = cached.awayAvg;
+  } else {
+    const homeInput = app.querySelector<HTMLInputElement>(
+      '.admin-layout__score-controls [data-team="home"] input[type="hidden"]'
+    );
+    const awayInput = app.querySelector<HTMLInputElement>(
+      '.admin-layout__score-controls [data-team="away"] input[type="hidden"]'
+    );
+    homeScore = parseScore(homeInput?.value);
+    awayScore = parseScore(awayInput?.value);
+  }
+
+  if (homeScore === null || awayScore === null) {
+    odds.forEach((el) => el.classList.remove("is-highlighted"));
+    return;
+  }
+
+  const choice = homeScore === awayScore ? "draw" : homeScore > awayScore ? "home" : "away";
+  odds.forEach((el) => {
+    el.classList.toggle("is-highlighted", el.dataset.adminLayoutOdd === choice);
+  });
 }
 
 function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[]): void {
@@ -3519,6 +3569,7 @@ function updateAdminLayoutView(): void {
   updateAdminLayoutAverage(match.id);
   applyAdminLayoutPredictionState(match.id, adminLayoutHasPrediction);
   updateAdminLayoutScoreValuesFromResult(match);
+  updateAdminLayoutOddsHighlight(match.id);
   setupAdminLayoutVoteButton(match.id);
   setupAdminLayoutScoreControls(match.id);
   updateAdminLayoutCountdown();
@@ -3610,6 +3661,7 @@ function setupAdminLayoutScoreControls(matchId: number): void {
       input.value = String(safeValue);
       valueEl.textContent = String(safeValue);
       updateProbability();
+      updateAdminLayoutOddsHighlight(matchId);
     };
 
     inc.addEventListener("click", () => {

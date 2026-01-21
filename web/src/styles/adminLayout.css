@@ -417,6 +417,12 @@ body.admin-layout-active .tabbar-button.is-active {
   letter-spacing: 0.04em;
 }
 
+.admin-layout__info-odd.is-highlighted {
+  background: linear-gradient(180deg, #ff9a1f 0%, #ff7a1a 100%);
+  border-color: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
+}
+
 .admin-layout__header .date-pill {
   text-align: center;
 }
