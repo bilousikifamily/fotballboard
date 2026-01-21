@@ -175,6 +175,11 @@ body.admin-layout-active .tabbar-button.is-active {
   gap: 8px;
 }
 
+.admin-layout__logo-frame .score-control.is-locked {
+  gap: 0;
+  justify-content: center;
+}
+
 .admin-layout__logo-frame .score-control .score-btn {
   min-width: 48px;
   min-height: 48px;
@@ -283,6 +288,15 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__score-controls .score-btn.is-faded {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-width: 0;
+}
+
+.admin-layout__vote-button.is-faded {
   opacity: 0;
   pointer-events: none;
 }

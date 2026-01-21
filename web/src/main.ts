@@ -3232,9 +3232,11 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   const probability = app.querySelector<HTMLElement>("[data-admin-layout-probability]");
   const averageBadges = app.querySelectorAll<HTMLElement>(".admin-layout__average-score");
   const scoreButtons = app.querySelectorAll<HTMLButtonElement>(".admin-layout__score-controls .score-btn");
+  const scoreControls = app.querySelectorAll<HTMLElement>(".admin-layout__score-controls .score-control");
 
   if (voteButton) {
-    voteButton.classList.toggle("is-hidden", hasPrediction);
+    voteButton.classList.toggle("is-faded", hasPrediction);
+    voteButton.toggleAttribute("disabled", hasPrediction);
   }
   if (probability) {
     probability.classList.toggle("is-hidden", hasPrediction);
@@ -3245,6 +3247,9 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   scoreButtons.forEach((button) => {
     button.classList.toggle("is-faded", hasPrediction);
     button.disabled = hasPrediction;
+  });
+  scoreControls.forEach((control) => {
+    control.classList.toggle("is-locked", hasPrediction);
   });
 
   if (hasPrediction) {
