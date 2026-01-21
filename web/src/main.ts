@@ -3307,13 +3307,16 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   const averageBadges = app.querySelectorAll<HTMLElement>(".admin-layout__average-score");
   const scoreButtons = app.querySelectorAll<HTMLButtonElement>(".admin-layout__score-controls .score-btn");
   const scoreControls = app.querySelectorAll<HTMLElement>(".admin-layout__score-controls .score-control");
+  const match = matchesById.get(matchId);
+  const isClosed = match?.status === "finished" || match?.status === "started";
+  const shouldHideVote = hasPrediction || isClosed;
 
   if (voteButton) {
-    voteButton.classList.toggle("is-faded", hasPrediction);
-    voteButton.toggleAttribute("disabled", hasPrediction);
+    voteButton.classList.toggle("is-faded", shouldHideVote);
+    voteButton.toggleAttribute("disabled", shouldHideVote);
   }
   if (probability) {
-    probability.classList.toggle("is-hidden", hasPrediction);
+    probability.classList.toggle("is-hidden", shouldHideVote);
   }
   averageBadges.forEach((badge) => {
     badge.classList.toggle("is-faded", hasPrediction && !adminLayoutIsFinished);
