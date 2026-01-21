@@ -60,7 +60,7 @@ body.admin-layout-active .tabbar-button.is-active {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .admin-layout__body {
@@ -425,6 +425,12 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__header .date-pill {
   text-align: center;
+}
+
+.admin-layout__header .date-switcher {
+  gap: 4px;
+  grid-template-columns: 30px auto 30px;
+  padding: 2px 4px;
 }
 
 .admin-layout__time {
