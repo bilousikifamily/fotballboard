@@ -130,11 +130,12 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__score-panel .score-control {
   background: rgba(7, 7, 9, 0.75);
   border-radius: 16px;
-  padding: 6px 10px;
-  min-width: 64px;
-  display: grid;
-  gap: 6px;
-  justify-items: center;
+  padding: 6px 12px;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
 }
 
 .admin-layout__score-panel .score-btn {
@@ -145,6 +146,11 @@ body.admin-layout-active .tabbar-button.is-active {
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
   font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
 }
 
 .admin-layout__score-panel .score-value {

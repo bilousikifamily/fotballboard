@@ -3233,9 +3233,10 @@ function updateAdminLayoutView(): void {
   const renderScoreControls = (team: "home" | "away"): string => `
     <div class="score-controls admin-layout__score-controls">
       <div class="score-control" data-score-control data-team="${team}">
-        <button class="score-btn" type="button" data-score-inc>+</button>
+        <button class="score-btn" type="button" data-score-dec aria-label="minus">-</button>
         <div class="score-value" data-score-value>0</div>
-        <button class="score-btn" type="button" data-score-dec>-</button>
+        <button class="score-btn" type="button" data-score-inc aria-label="plus">+</button>
+        <input type="hidden" name="${team === "home" ? "home_pred" : "away_pred"}" value="0" />
       </div>
     </div>
   `;
