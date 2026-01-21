@@ -40,7 +40,7 @@ import {
 import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, getMatchTeamInfo } from "./features/clubs";
-import { extractCorrectScoreProbability, formatProbability } from "./features/odds";
+import { extractCorrectScoreProbability, formatProbability, getMatchWinnerProbabilities } from "./features/odds";
 import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
 import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
 import { formatPredictionName, formatTelegramName } from "./formatters/names";
@@ -1226,15 +1226,15 @@ function renderUser(
             </div>
           </div>
           <div class="admin-layout__body">
-            <div class="admin-layout__info" aria-hidden="true">
+            <div class="admin-layout__info">
               <div class="admin-layout__info-card">
-                <div class="admin-layout__info-title">UEFA Champions League</div>
-                <div class="admin-layout__info-subtitle">League stage - 7</div>
+                <div class="admin-layout__info-title" data-admin-layout-tournament>—</div>
+                <div class="admin-layout__info-subtitle" data-admin-layout-stage>—</div>
               </div>
               <div class="admin-layout__info-odds">
-                <div class="admin-layout__info-odd">25%</div>
-                <div class="admin-layout__info-odd">25%</div>
-                <div class="admin-layout__info-odd">49%</div>
+                <div class="admin-layout__info-odd" data-admin-layout-odd="home">—</div>
+                <div class="admin-layout__info-odd" data-admin-layout-odd="draw">—</div>
+                <div class="admin-layout__info-odd" data-admin-layout-odd="away">—</div>
               </div>
             </div>
             <div class="admin-layout__side admin-layout__side--left">
@@ -3200,6 +3200,11 @@ function updateAdminLayoutView(): void {
   const pagination = app.querySelector<HTMLElement>("[data-admin-layout-pagination]");
   const countdown = app.querySelector<HTMLElement>("[data-admin-layout-countdown]");
   const probability = app.querySelector<HTMLElement>("[data-admin-layout-probability]");
+  const tournamentEl = app.querySelector<HTMLElement>("[data-admin-layout-tournament]");
+  const stageEl = app.querySelector<HTMLElement>("[data-admin-layout-stage]");
+  const oddHomeEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='home']");
+  const oddDrawEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='draw']");
+  const oddAwayEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='away']");
   const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
   const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
   const localTimeEl = app.querySelector<HTMLElement>("[data-admin-layout-local-time]");
@@ -3216,6 +3221,11 @@ function updateAdminLayoutView(): void {
     !pagination ||
     !countdown ||
     !probability ||
+    !tournamentEl ||
+    !stageEl ||
+    !oddHomeEl ||
+    !oddDrawEl ||
+    !oddAwayEl ||
     !prevButton ||
     !nextButton ||
     !timeEl ||
@@ -3238,6 +3248,11 @@ function updateAdminLayoutView(): void {
     countdown.textContent = "початок матчу через --:--:--";
     countdown.classList.remove("is-closed");
     probability.textContent = "ймовірність рахунку 0:0 —";
+    tournamentEl.textContent = "—";
+    stageEl.textContent = "—";
+    oddHomeEl.textContent = "—";
+    oddDrawEl.textContent = "—";
+    oddAwayEl.textContent = "—";
     timeEl.textContent = "--:--";
     cityEl.textContent = "—";
     localTimeEl.textContent = "(--:--)";
@@ -3253,6 +3268,9 @@ function updateAdminLayoutView(): void {
 
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
   const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
+  const tournamentName = match.tournament_name?.trim() ?? "";
+  const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
+  const matchOdds = getMatchWinnerProbabilities(match, homeName, awayName);
   const localTimezone = match.weather_timezone ?? matchWeatherTimezoneCache.get(match.id) ?? "Europe/Kyiv";
   const tempValue = match.weather_temp_c ?? matchWeatherTempCache.get(match.id) ?? null;
   const humidityValue = match.rain_probability ?? matchWeatherCache.get(match.id) ?? null;
@@ -3289,6 +3307,13 @@ function updateAdminLayoutView(): void {
       return `<span class="admin-layout__dot${isActive ? " is-active" : ""}"></span>`;
     })
     .join("");
+  tournamentEl.textContent = tournamentName || "—";
+  stageEl.textContent = tournamentStage || "—";
+  tournamentEl.classList.toggle("is-hidden", !tournamentName);
+  stageEl.classList.toggle("is-hidden", !tournamentStage);
+  oddHomeEl.textContent = matchOdds ? formatProbability(matchOdds.home) : "—";
+  oddDrawEl.textContent = matchOdds ? formatProbability(matchOdds.draw) : "—";
+  oddAwayEl.textContent = matchOdds ? formatProbability(matchOdds.away) : "—";
   timeEl.textContent = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
   cityEl.textContent = (match.venue_city ?? match.venue_name ?? "").trim().toUpperCase() || "—";
   localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, localTimezone)})`;
@@ -3439,6 +3464,56 @@ function getConfirmMatchError(error: string | undefined): string {
     default:
       return "Не вдалося підтвердити матч.";
   }
+}
+
+function formatTournamentStageAdmin(stage: string): string {
+  const trimmed = stage.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("quarter-final")) {
+    return "ЧВЕРТЬФІНАЛ";
+  }
+  if (lower.includes("semi-final")) {
+    return "ПІВФІНАЛ";
+  }
+  if (lower.includes("final")) {
+    return "ФІНАЛ";
+  }
+  if (lower.includes("1/8")) {
+    return "1/8 ФІНАЛУ";
+  }
+  if (lower.includes("1/4")) {
+    return "1/4 ФІНАЛУ";
+  }
+  if (lower.includes("1/2")) {
+    return "1/2 ФІНАЛУ";
+  }
+  const roundOfMatch = lower.match(/round\s+of\s+(\d+)/);
+  if (roundOfMatch) {
+    const roundNumber = Number.parseInt(roundOfMatch[1], 10);
+    if (roundNumber === 16) {
+      return "1/8 ФІНАЛУ";
+    }
+    if (roundNumber === 8) {
+      return "1/4 ФІНАЛУ";
+    }
+    if (roundNumber === 4) {
+      return "ПІВФІНАЛ";
+    }
+    if (roundNumber === 2) {
+      return "ФІНАЛ";
+    }
+    if (roundNumber === 32) {
+      return "1/16 ФІНАЛУ";
+    }
+  }
+  const regularMatch = lower.match(/regular\s+season\s*-\s*(\d+)/);
+  if (regularMatch) {
+    return `${regularMatch[1]} РАУНД`;
+  }
+  return trimmed;
 }
 
 function updateScoreOddsIndicator(form: HTMLFormElement): void {

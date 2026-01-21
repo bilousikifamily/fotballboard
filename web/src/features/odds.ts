@@ -1,7 +1,7 @@
 import type { Match } from "../types";
 
 export function renderMatchOdds(match: Match, homeName: string, awayName: string): string {
-  const probabilities = extractOddsProbabilities(match.odds_json, homeName, awayName);
+  const probabilities = getMatchWinnerProbabilities(match, homeName, awayName);
   if (!probabilities) {
     return "";
   }
@@ -23,6 +23,14 @@ export function renderMatchOdds(match: Match, homeName: string, awayName: string
       </span>
     </div>
   `;
+}
+
+export function getMatchWinnerProbabilities(
+  match: Match,
+  homeName: string,
+  awayName: string
+): { home: number; draw: number; away: number } | null {
+  return extractOddsProbabilities(match.odds_json, homeName, awayName);
 }
 
 function extractOddsProbabilities(
