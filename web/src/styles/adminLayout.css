@@ -260,6 +260,11 @@ body.admin-layout-active .tabbar-button.is-active {
   color: #ffffff;
 }
 
+.admin-layout__logo-frame .score-control.is-locked .score-value {
+  width: 100%;
+  text-align: center;
+}
+
 .admin-layout__logo-frame .admin-layout__average-score {
   position: absolute;
   bottom: calc(4% - 20px);
