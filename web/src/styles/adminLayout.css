@@ -66,7 +66,7 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__body {
   display: grid;
   grid-template-columns: 10% 40% 40% 10%;
-  grid-template-rows: 22% 63% 15%;
+  grid-template-rows: 22% 70% 8%;
   position: relative;
 }
 
@@ -106,6 +106,7 @@ body.admin-layout-active .tabbar-button.is-active {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
+  z-index: 4;
 }
 
 .admin-layout__center {
@@ -291,13 +292,19 @@ body.admin-layout-active .tabbar-button.is-active {
   justify-self: center;
 }
 
-.admin-layout__probability {
+.admin-layout__score-probability {
+  grid-column: 2 / 4;
+  grid-row: 2 / 3;
+  align-self: end;
+  justify-self: center;
   color: #ffffff;
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 0.735rem;
+  font-weight: 420;
   text-align: center;
   text-transform: none;
   letter-spacing: 0.04em;
+  margin-bottom: 2px;
+  z-index: 3;
 }
 
 .admin-layout__vote-button {
