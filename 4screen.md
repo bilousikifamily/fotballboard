@@ -16,10 +16,11 @@
    - Бокові (чорно-фонові) колонки — кнопки перемикання (prev/next) з круглими стрілками.
    - Центральна ліва (`.admin-layout__center--left`) та права колонки (`.admin-layout__center--right`) — фон `#ff3b3b` і `#8b0000`, `overflow: visible`, `position: relative`.
    - Логотипи (`renderTeamLogo`) обгорнуті в `.admin-layout__logo-frame`: повна ширина колонки, `display: grid`, `place-items: center`, логотип абсолютний, центрований, займає `40vw`, `max-width/max-height: 40vw`, розташований на `z-index: 2`.
-   - Нижче логотипів (на `bottom:12%`, `z-index:3`) плаваючі блоки `admin-layout__score-panel`:
-     * Білий напівпрозорий фон, заокруглені кути, тінь.
-     * Всередині горизонтальний `score-control` з кнопками `+`/`-` і значенням, оформлений у стилі `predictions.css` (круглі кнопки, середній значок).
-     * У кожному блоці також є прихований `<input>` з `name="home_pred"` або `away_pred`.
+   - Контрол `score-controls` рендериться всередині `.admin-layout__logo-frame`, як накладка над фоном і під логотипом по z-index:
+     * Контейнер `.admin-layout__score-controls` позиціонується абсолютним блоком на `bottom: 20%`, центрований через `left: 50%` + `transform: translateX(-50%)`, ширина `calc(40vw * 0.96)`.
+     * Фон напівпрозорий, заокруглений, з тінню та blur (fallback до темнішого фону без blur).
+     * Всередині один горизонтальний `score-control` з кнопками `+`/`-` і значенням, центрований через `flex`.
+     * У кожному блоці є прихований `<input>` з `name="home_pred"` або `away_pred`.
 4. **Нижній ряд (синій + пагінація)** — `div.admin-layout__footer` з круглими точками (`.admin-layout__dot`), текуще положення матчів відображається як набір точок.
 
 ## Стили

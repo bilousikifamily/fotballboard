@@ -112,7 +112,7 @@ body.admin-layout-active .tabbar-button.is-active {
   bottom: 20%;
   left: 50%;
   transform: translateX(-50%);
-  width: 40vw;
+  width: calc(40vw * 0.96);
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -229,7 +229,7 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__logo-frame .score-value {
-  font-size: 1.5rem;
+  font-size: 3rem;
   font-weight: 700;
   color: #ffffff;
 }
