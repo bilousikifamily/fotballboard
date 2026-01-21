@@ -66,7 +66,7 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__body {
   display: grid;
   grid-template-columns: 10% 40% 40% 10%;
-  grid-template-rows: 30% 50% 20%;
+  grid-template-rows: 22% 63% 15%;
   position: relative;
 }
 
@@ -100,9 +100,11 @@ body.admin-layout-active .tabbar-button.is-active {
   grid-column: 2 / 4;
   grid-row: 1 / 2;
   display: grid;
+  grid-template-rows: 8fr 14fr;
   justify-items: center;
-  align-content: center;
-  gap: 10px;
+  align-content: stretch;
+  align-items: center;
+  gap: 6px;
   padding: 8px 12px;
 }
 
