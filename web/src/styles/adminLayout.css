@@ -109,7 +109,7 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__score-panel {
   position: absolute;
-  bottom: 10%;
+  bottom: -5%;
   left: 50%;
   transform: translateX(-50%);
   width: 36vw;
@@ -138,10 +138,28 @@ body.admin-layout-active .tabbar-button.is-active {
   width: 90%;
   height: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, auto) minmax(32px, 48px) minmax(0, auto);
   align-items: center;
-  justify-items: center;
   gap: 18px;
+}
+
+.admin-layout__score-panel .score-control .score-btn {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.admin-layout__score-panel .score-center {
+  justify-self: center;
+  width: 48px;
+  text-align: center;
+}
+
+.admin-layout__score-panel .score-control > button:first-child {
+  justify-self: start;
+}
+
+.admin-layout__score-panel .score-control > button:last-child {
+  justify-self: end;
 }
 
 .admin-layout__score-panel .score-btn {
