@@ -1,14 +1,23 @@
+html,
+body {
+  height: 100%;
+}
+
 body.admin-layout-active {
   overflow: hidden;
-  height: 100dvh;
+  height: 100%;
   touch-action: none;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 body.admin-layout-active #app {
   width: 100%;
   padding: 0;
-  height: 100dvh;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
 }
 
 body.admin-layout-active .tabbar {
