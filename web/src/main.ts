@@ -1257,7 +1257,7 @@ function renderUser(
             </div>
             <div class="admin-layout__vote">
               <div class="admin-layout__score-probability" data-admin-layout-probability>
-                ймовірність рахунку 0:0 — 10%
+                ймовірність рахунку 0:0 — 3%
               </div>
               <button class="prediction-submit admin-layout__vote-button" type="button">
                 Проголосувати
@@ -3422,12 +3422,14 @@ function setupAdminLayoutScoreControls(matchId: number): void {
 
     probability.classList.remove("is-empty");
     if (!match.odds_json) {
-      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — 12%`;
+      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — 3%`;
+      probability.classList.add("is-empty");
       return;
     }
     const probabilityValue = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
     if (probabilityValue === null) {
-      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — 12%`;
+      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — 3%`;
+      probability.classList.add("is-empty");
       return;
     }
 
