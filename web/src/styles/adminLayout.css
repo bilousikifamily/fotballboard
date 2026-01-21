@@ -107,7 +107,7 @@ body.admin-layout-active .tabbar-button.is-active {
   transform: translate(0, 0);
 }
 
-.admin-layout__score-panel {
+.admin-layout__logo-frame .admin-layout__score-controls {
   position: absolute;
   bottom: 20%;
   left: 50%;
@@ -127,7 +127,7 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .admin-layout__score-panel {
+  .admin-layout__logo-frame .admin-layout__score-controls {
     background: rgba(25, 25, 25, 0.35);
   }
 }
@@ -141,7 +141,7 @@ body.admin-layout-active .tabbar-button.is-active {
   width: 100%;
 }
 
-.admin-layout__score-panel .score-control {
+.admin-layout__logo-frame .score-control {
   background: transparent;
   border-radius: 0;
   padding: 0 6px;
@@ -156,53 +156,53 @@ body.admin-layout-active .tabbar-button.is-active {
   gap: 8px;
 }
 
-.admin-layout__score-panel .score-control .score-btn {
+.admin-layout__logo-frame .score-control .score-btn {
   min-width: 48px;
   min-height: 48px;
 }
 
-.admin-layout__score-panel .score-center {
+.admin-layout__logo-frame .score-center {
   justify-self: center;
   width: 48px;
   text-align: center;
 }
 
-.admin-layout__score-panel .score-control > button:first-child {
+.admin-layout__logo-frame .score-control > button:first-child {
   justify-self: start;
 }
 
-.admin-layout__score-panel .score-control > button:last-child {
+.admin-layout__logo-frame .score-control > button:last-child {
   justify-self: end;
 }
 
-.admin-layout__score-panel *,
-.admin-layout__score-panel {
+.admin-layout__logo-frame .admin-layout__score-controls *,
+.admin-layout__logo-frame .admin-layout__score-controls {
   outline: none;
 }
 
-.admin-layout__score-panel button {
+.admin-layout__logo-frame .admin-layout__score-controls button {
   -webkit-tap-highlight-color: transparent;
 }
 
-.admin-layout__score-panel button:focus,
-.admin-layout__score-panel button:focus-visible {
+.admin-layout__logo-frame .admin-layout__score-controls button:focus,
+.admin-layout__logo-frame .admin-layout__score-controls button:focus-visible {
   outline: none;
   box-shadow: none;
 }
 
-.admin-layout__score-panel .score-control {
+.admin-layout__logo-frame .score-control {
   border: 0 !important;
   outline: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
 }
 
-.admin-layout__score-panel .score-control * {
+.admin-layout__logo-frame .score-control * {
   outline: 0 !important;
 }
 
-.admin-layout__score-panel .score-control::before,
-.admin-layout__score-panel .score-control::after {
+.admin-layout__logo-frame .score-control::before,
+.admin-layout__logo-frame .score-control::after {
   content: none !important;
 }
 
@@ -210,7 +210,7 @@ body.admin-layout-active .tabbar-button.is-active {
   border: 0 !important;
 }
 
-.admin-layout__score-panel .score-btn {
+.admin-layout__logo-frame .score-btn {
   width: 36px;
   height: 36px;
   border-radius: 999px;
@@ -226,11 +226,11 @@ body.admin-layout-active .tabbar-button.is-active {
   flex-shrink: 0;
 }
 
-.admin-layout__score-panel .score-btn:active {
+.admin-layout__logo-frame .score-btn:active {
   transform: scale(0.96);
 }
 
-.admin-layout__score-panel .score-value {
+.admin-layout__logo-frame .score-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: #ffffff;

@@ -3241,12 +3241,16 @@ function updateAdminLayoutView(): void {
     </div>
   `;
   homeSlot.innerHTML = `
-    <div class="admin-layout__logo-frame">${renderTeamLogo(homeName, homeLogo)}</div>
-    <div class="admin-layout__score-panel" aria-hidden="true">${renderScoreControls("home")}</div>
+    <div class="admin-layout__logo-frame">
+      ${renderTeamLogo(homeName, homeLogo)}
+      ${renderScoreControls("home")}
+    </div>
   `;
   awaySlot.innerHTML = `
-    <div class="admin-layout__logo-frame">${renderTeamLogo(awayName, awayLogo)}</div>
-    <div class="admin-layout__score-panel" aria-hidden="true">${renderScoreControls("away")}</div>
+    <div class="admin-layout__logo-frame">
+      ${renderTeamLogo(awayName, awayLogo)}
+      ${renderScoreControls("away")}
+    </div>
   `;
   pagination.innerHTML = adminLayoutMatches
     .map((_, index) => {
