@@ -80,6 +80,7 @@ body.admin-layout-active .tabbar-button.is-active {
   place-items: center;
   overflow: visible;
   min-width: 0;
+  position: relative;
 }
 
 .admin-layout__center--right {
@@ -88,6 +89,7 @@ body.admin-layout-active .tabbar-button.is-active {
   place-items: center;
   overflow: visible;
   min-width: 0;
+  position: relative;
 }
 
 .admin-layout__footer {
@@ -170,6 +172,10 @@ body.admin-layout-active .tabbar-button.is-active {
   width: 224px;
   height: 224px;
   max-width: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .admin-layout__logo-placeholder {
