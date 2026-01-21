@@ -1242,8 +1242,19 @@ function renderUser(
                 </svg>
               </button>
             </div>
+            <div class="admin-layout__vote">
+              <div class="admin-layout__probability" data-admin-layout-probability>
+                ймовірність рахунку 0:0 — 10%
+              </div>
+              <button class="prediction-submit admin-layout__vote-button" type="button">
+                Проголосувати
+              </button>
+            </div>
           </div>
           <div class="admin-layout__footer">
+            <div class="admin-layout__countdown" data-admin-layout-countdown>
+              початок матчу через --:--:--
+            </div>
             <span class="admin-layout__pagination" data-admin-layout-pagination></span>
           </div>
         </div>
@@ -3176,6 +3187,8 @@ function updateAdminLayoutView(): void {
   const homeSlot = app.querySelector<HTMLElement>("[data-admin-layout-home]");
   const awaySlot = app.querySelector<HTMLElement>("[data-admin-layout-away]");
   const pagination = app.querySelector<HTMLElement>("[data-admin-layout-pagination]");
+  const countdown = app.querySelector<HTMLElement>("[data-admin-layout-countdown]");
+  const probability = app.querySelector<HTMLElement>("[data-admin-layout-probability]");
   const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
   const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
   const localTimeEl = app.querySelector<HTMLElement>("[data-admin-layout-local-time]");
@@ -3190,6 +3203,8 @@ function updateAdminLayoutView(): void {
     !homeSlot ||
     !awaySlot ||
     !pagination ||
+    !countdown ||
+    !probability ||
     !prevButton ||
     !nextButton ||
     !timeEl ||
@@ -3209,6 +3224,9 @@ function updateAdminLayoutView(): void {
     homeSlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     awaySlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     pagination.innerHTML = "";
+    countdown.textContent = "початок матчу через --:--:--";
+    countdown.classList.remove("is-closed");
+    probability.textContent = "ймовірність рахунку 0:0 —";
     timeEl.textContent = "--:--";
     cityEl.textContent = "—";
     localTimeEl.textContent = "(--:--)";
@@ -3252,6 +3270,8 @@ function updateAdminLayoutView(): void {
       ${renderScoreControls("away")}
     </div>
   `;
+  setupAdminLayoutScoreControls(match.id);
+  updateAdminLayoutCountdown();
   pagination.innerHTML = adminLayoutMatches
     .map((_, index) => {
       const isActive = index === adminLayoutIndex;
@@ -3268,6 +3288,81 @@ function updateAdminLayoutView(): void {
   weatherFillEl.style.width = `${normalizedHumidity ?? 0}%`;
   prevButton.disabled = total < 2;
   nextButton.disabled = total < 2;
+}
+
+function setupAdminLayoutScoreControls(matchId: number): void {
+  const controls = app.querySelectorAll<HTMLElement>(".admin-layout__score-controls [data-score-control]");
+  if (!controls.length) {
+    return;
+  }
+
+  const probability = app.querySelector<HTMLElement>("[data-admin-layout-probability]");
+  if (!probability) {
+    return;
+  }
+
+  const getScoreValue = (team: "home" | "away"): number | null => {
+    const control = app.querySelector<HTMLElement>(`.admin-layout__score-controls [data-team="${team}"]`);
+    if (!control) {
+      return null;
+    }
+    const input = control.querySelector<HTMLInputElement>("input[type=hidden]");
+    return parseScore(input?.value);
+  };
+
+  const updateProbability = (): void => {
+    const match = matchesById.get(matchId);
+    const homeScore = getScoreValue("home");
+    const awayScore = getScoreValue("away");
+    if (!match || homeScore === null || awayScore === null) {
+      probability.textContent = "ймовірність рахунку 0:0 —";
+      return;
+    }
+
+    if (!match.odds_json) {
+      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
+      return;
+    }
+
+    const probabilityValue = extractCorrectScoreProbability(match.odds_json, homeScore, awayScore);
+    if (probabilityValue === null) {
+      probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} —`;
+      return;
+    }
+
+    probability.textContent = `ймовірність рахунку ${homeScore}:${awayScore} — ${formatProbability(
+      probabilityValue
+    )}`;
+  };
+
+  controls.forEach((control) => {
+    const input = control.querySelector<HTMLInputElement>("input[type=hidden]");
+    const valueEl = control.querySelector<HTMLElement>("[data-score-value]");
+    const inc = control.querySelector<HTMLButtonElement>("[data-score-inc]");
+    const dec = control.querySelector<HTMLButtonElement>("[data-score-dec]");
+    if (!input || !valueEl || !inc || !dec) {
+      return;
+    }
+
+    const update = (nextValue: number) => {
+      const safeValue = Math.max(0, Math.min(20, nextValue));
+      input.value = String(safeValue);
+      valueEl.textContent = String(safeValue);
+      updateProbability();
+    };
+
+    inc.addEventListener("click", () => {
+      const current = parseScore(input.value) ?? 0;
+      update(current + 1);
+    });
+
+    dec.addEventListener("click", () => {
+      const current = parseScore(input.value) ?? 0;
+      update(current - 1);
+    });
+  });
+
+  updateProbability();
 }
 
 function shiftAdminLayoutMatch(delta: number): void {
@@ -3388,52 +3483,91 @@ function updateOddsHighlight(matchId: number, homeScore: number, awayScore: numb
   });
 }
 
-function updatePredictionCountdowns(): void {
-  const elements = app.querySelectorAll<HTMLElement>("[data-prediction-countdown]");
-  if (!elements.length) {
+function updateAdminLayoutCountdown(): void {
+  const countdown = app.querySelector<HTMLElement>("[data-admin-layout-countdown]");
+  if (!countdown) {
     return;
   }
 
-  const now = Date.now();
-  elements.forEach((el) => {
-    const matchId = Number.parseInt(el.dataset.matchId || "", 10);
-    if (!Number.isFinite(matchId)) {
-      el.textContent = "";
-      return;
-    }
-    const match = matchesById.get(matchId);
-    if (!match) {
-      el.textContent = "";
-      return;
-    }
+  const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
+  if (!match) {
+    countdown.textContent = "початок матчу через --:--:--";
+    countdown.classList.remove("is-closed");
+    return;
+  }
 
-    const closeAtMs = getMatchPredictionCloseAtMs(match);
-    if (closeAtMs === null) {
-      el.textContent = "закриття прогнозу через --:--";
-      return;
-    }
+  const kickoffMs = new Date(match.kickoff_at).getTime();
+  if (Number.isNaN(kickoffMs)) {
+    countdown.textContent = "початок матчу через --:--:--";
+    countdown.classList.remove("is-closed");
+    return;
+  }
 
-    const remaining = closeAtMs - now;
-    if (remaining <= 0) {
-      el.textContent = "Прогнози закрито.";
-      el.classList.add("is-closed");
-      const form = app.querySelector<HTMLFormElement>(`[data-prediction-form][data-match-id="${matchId}"]`);
-      if (form) {
-        form.classList.add("is-closed");
-        form.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
-          button.disabled = true;
-        });
-        const status = form.querySelector<HTMLElement>("[data-prediction-status]");
-        if (status) {
-          status.textContent = "Прогнози закрито.";
-        }
+  const remaining = kickoffMs - Date.now();
+  if (remaining <= 0) {
+    countdown.textContent = "Матч розпочався.";
+    countdown.classList.add("is-closed");
+    return;
+  }
+
+  countdown.classList.remove("is-closed");
+  countdown.textContent = `початок матчу через ${formatCountdown(remaining)}`;
+}
+
+function updatePredictionCountdowns(): void {
+  const elements = app.querySelectorAll<HTMLElement>("[data-prediction-countdown]");
+  const hasPredictionCountdowns = elements.length > 0;
+  const hasAdminCountdown = Boolean(app.querySelector("[data-admin-layout-countdown]"));
+  if (!hasPredictionCountdowns && !hasAdminCountdown) {
+    return;
+  }
+
+  if (hasPredictionCountdowns) {
+    const now = Date.now();
+    elements.forEach((el) => {
+      const matchId = Number.parseInt(el.dataset.matchId || "", 10);
+      if (!Number.isFinite(matchId)) {
+        el.textContent = "";
+        return;
       }
-      return;
-    }
+      const match = matchesById.get(matchId);
+      if (!match) {
+        el.textContent = "";
+        return;
+      }
 
-    el.classList.remove("is-closed");
-    el.textContent = `закриття прогнозу через ${formatCountdown(remaining)}`;
-  });
+      const closeAtMs = getMatchPredictionCloseAtMs(match);
+      if (closeAtMs === null) {
+        el.textContent = "закриття прогнозу через --:--";
+        return;
+      }
+
+      const remaining = closeAtMs - now;
+      if (remaining <= 0) {
+        el.textContent = "Прогнози закрито.";
+        el.classList.add("is-closed");
+        const form = app.querySelector<HTMLFormElement>(`[data-prediction-form][data-match-id="${matchId}"]`);
+        if (form) {
+          form.classList.add("is-closed");
+          form.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+            button.disabled = true;
+          });
+          const status = form.querySelector<HTMLElement>("[data-prediction-status]");
+          if (status) {
+            status.textContent = "Прогнози закрито.";
+          }
+        }
+        return;
+      }
+
+      el.classList.remove("is-closed");
+      el.textContent = `закриття прогнозу через ${formatCountdown(remaining)}`;
+    });
+  }
+
+  if (hasAdminCountdown) {
+    updateAdminLayoutCountdown();
+  }
 }
 
 function startPredictionCountdowns(): void {

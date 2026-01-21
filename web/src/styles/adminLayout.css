@@ -66,6 +66,7 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__body {
   display: grid;
   grid-template-columns: 10% 40% 40% 10%;
+  position: relative;
 }
 
 .admin-layout__side {
@@ -109,7 +110,7 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__logo-frame .admin-layout__score-controls {
   position: absolute;
-  bottom: 20%;
+  bottom: 12%;
   left: 50%;
   transform: translateX(-50%);
   width: calc(40vw * 0.96);
@@ -236,12 +237,58 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__footer {
   background: #0a27ff;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: #ffffff;
   font-size: 1rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
+}
+
+.admin-layout__countdown {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
+.admin-layout__countdown.is-closed {
+  opacity: 0.8;
+}
+
+.admin-layout__vote {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  width: 80vw;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 3;
+}
+
+.admin-layout__probability {
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.admin-layout__vote-button {
+  width: 100%;
+  border-radius: 16px;
+  min-height: 56px;
+  height: 56px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .admin-layout__header .date-pill {
