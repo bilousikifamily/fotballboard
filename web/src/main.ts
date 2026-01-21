@@ -1189,9 +1189,8 @@ function renderUser(
         </button>
       `
     : "";
-  const adminLayoutScreen = admin
-    ? `
-      <section class="screen screen--admin-layout" data-screen="admin-layout">
+  const adminLayoutScreen = `
+      <section class="screen screen--admin-layout${admin ? "" : " is-active"}" data-screen="admin-layout">
         <div class="admin-layout">
           <div class="admin-layout__top"></div>
           <div class="admin-layout__header">
@@ -1275,16 +1274,38 @@ function renderUser(
           </div>
         </div>
       </section>
-    `
-    : "";
-  const adminLayoutTabButton = admin
+    `;
+  const matchesScreen = admin
     ? `
+        <section class="screen is-active" data-screen="matches">
+          <section class="panel matches">
+            <div class="section-header">
+              <div class="date-switcher" data-date-switcher>
+                <button class="date-nav" type="button" data-date-prev aria-label="Попередній день">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6"></path>
+                  </svg>
+                </button>
+                <div class="date-pill" data-date-label>${safeDateLabel}</div>
+                <button class="date-nav" type="button" data-date-next aria-label="Наступний день">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="matches-list" data-matches></div>
+          </section>
+        </section>
+      `
+    : "";
+  const adminLayoutTabButton = `
         <button
-          class="tabbar-button"
+          class="tabbar-button${admin ? "" : " is-active"}"
           type="button"
           data-tab="admin-layout"
           role="tab"
-          aria-selected="false"
+          aria-selected="${admin ? "false" : "true"}"
           aria-label="Адмін екран"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1294,6 +1315,19 @@ function renderUser(
             <path d="M12 10v10"></path>
             <path d="M17 10v10"></path>
           </svg>
+        </button>
+      `;
+  const matchesTabButton = admin
+    ? `
+        <button
+          class="tabbar-button is-active"
+          type="button"
+          data-tab="matches"
+          role="tab"
+          aria-selected="true"
+          aria-label="Прогнози"
+        >
+          <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
         </button>
       `
     : "";
@@ -1340,26 +1374,7 @@ function renderUser(
           </div>
         </section>
 
-        <section class="screen is-active" data-screen="matches">
-          <section class="panel matches">
-            <div class="section-header">
-              <div class="date-switcher" data-date-switcher>
-                <button class="date-nav" type="button" data-date-prev aria-label="Попередній день">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M15 6l-6 6 6 6"></path>
-                  </svg>
-                </button>
-                <div class="date-pill" data-date-label>${safeDateLabel}</div>
-                <button class="date-nav" type="button" data-date-next aria-label="Наступний день">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M9 6l6 6-6 6"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="matches-list" data-matches></div>
-          </section>
-        </section>
+        ${matchesScreen}
 
         ${adminScreen}
         ${adminLayoutScreen}
@@ -1385,16 +1400,7 @@ function renderUser(
         >
           <span class="tabbar-icon tabbar-icon--profile" aria-hidden="true"></span>
         </button>
-        <button
-          class="tabbar-button is-active"
-          type="button"
-          data-tab="matches"
-          role="tab"
-          aria-selected="true"
-          aria-label="Прогнози"
-        >
-          <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
-        </button>
+        ${matchesTabButton}
         <button
           class="tabbar-button"
           type="button"
@@ -1706,7 +1712,7 @@ async function loadMatches(date: string): Promise<void> {
     data.matches.forEach((match) => {
       matchesById.set(match.id, match);
     });
-    if (isAdmin) {
+    if (app.querySelector("[data-admin-layout-home]")) {
       adminLayoutMatches = data.matches.slice();
       adminLayoutIndex = 0;
       updateAdminLayoutView();
