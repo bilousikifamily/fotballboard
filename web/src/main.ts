@@ -1256,7 +1256,7 @@ function renderUser(
               </button>
             </div>
             <div class="admin-layout__vote">
-              <div class="admin-layout__probability" data-admin-layout-probability>
+              <div class="admin-layout__score-probability" data-admin-layout-probability>
                 ймовірність рахунку 0:0 — 10%
               </div>
               <button class="prediction-submit admin-layout__vote-button" type="button">

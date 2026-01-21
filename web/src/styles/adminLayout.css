@@ -315,22 +315,19 @@ body.admin-layout-active .tabbar-button.is-active {
   justify-self: center;
 }
 
-.admin-layout__score-probability {
-  grid-column: 2 / 4;
-  grid-row: 2 / 3;
-  align-self: end;
-  justify-self: center;
+.admin-layout__vote .admin-layout__score-probability {
+  align-self: center;
   color: #ffffff;
   font-size: 0.735rem;
   font-weight: 420;
   text-align: center;
   text-transform: none;
   letter-spacing: 0.04em;
-  margin-bottom: -20px;
+  margin-bottom: 0;
   z-index: 3;
 }
 
-.admin-layout__score-probability.is-empty {
+.admin-layout__vote .admin-layout__score-probability.is-empty {
   opacity: 0;
 }
 
