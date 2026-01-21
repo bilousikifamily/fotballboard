@@ -68,20 +68,41 @@ export function resolveLogoLeagueId(leagueId: MatchLeagueId | null): LogoLeagueI
       return "bundesliga";
     case "coupe-de-france":
       return "ligue-1";
-    case "uefa-champions-league":
-      return "champions-league";
-    case "uefa-europa-league":
-      return "europa-league";
-    case "uefa-europa-conference-league":
-      return "conference-league";
   }
   return null;
+}
+
+const UEFA_LOGO_LEAGUE_MAP: Record<MatchLeagueId, LogoLeagueId> = {
+  "uefa-champions-league": "champions-league",
+  "uefa-europa-league": "europa-league",
+  "uefa-europa-conference-league": "conference-league"
+};
+
+const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
+  "uefa-champions-league": new Set(["sporting"]),
+  "uefa-europa-league": new Set(),
+  "uefa-europa-conference-league": new Set()
+};
+
+function getUefaLogoLeague(clubSlug: string | null, leagueId: MatchLeagueId | null): LogoLeagueId | null {
+  if (!clubSlug || !leagueId) {
+    return null;
+  }
+  const allowedSlugs = UEFA_LOGO_SLUGS[leagueId];
+  if (!allowedSlugs || !allowedSlugs.has(clubSlug)) {
+    return null;
+  }
+  return UEFA_LOGO_LEAGUE_MAP[leagueId] ?? null;
 }
 
 export function resolveTeamLogoLeague(clubSlug: string | null, leagueId: MatchLeagueId | null): LogoLeagueId | null {
   const resolvedLeague = resolveLogoLeagueId(leagueId);
   if (resolvedLeague) {
     return resolvedLeague;
+  }
+  const specialLeague = getUefaLogoLeague(clubSlug, leagueId);
+  if (specialLeague) {
+    return specialLeague;
   }
   if (!clubSlug) {
     return null;
