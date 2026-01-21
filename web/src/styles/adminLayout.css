@@ -130,7 +130,7 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__logo-frame .admin-layout__score-controls {
   position: absolute;
-  bottom: 12%;
+  bottom: 8%;
   left: 50%;
   transform: translateX(-50%);
   width: calc(40vw * 0.96);
@@ -257,17 +257,17 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__logo-frame .admin-layout__average-score {
   position: absolute;
-  bottom: calc(4% - 12px);
+  bottom: calc(4% - 20px);
   left: 50%;
   transform: translateX(-50%);
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: #ffffff;
   line-height: 1;
   letter-spacing: 0.02em;
   text-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  padding: 4px 12px;
-  border-radius: 14px;
+  padding: 3px 10px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow:
@@ -310,7 +310,7 @@ body.admin-layout-active .tabbar-button.is-active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   z-index: 3;
   justify-self: center;
 }
@@ -334,8 +334,8 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__vote-button {
   width: 100%;
   border-radius: 16px;
-  min-height: 56px;
-  height: 56px;
+  min-height: 48px;
+  height: 48px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
