@@ -109,7 +109,7 @@ body.admin-layout-active .tabbar-button.is-active {
 
 .admin-layout__score-panel {
   position: absolute;
-  bottom: 18%;
+  top: 12%;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.18);
@@ -117,6 +117,7 @@ body.admin-layout-active .tabbar-button.is-active {
   border-radius: 14px;
   padding: 10px 18px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 3;
 }
 
 .admin-layout__score-controls {
