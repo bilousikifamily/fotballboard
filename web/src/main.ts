@@ -100,6 +100,7 @@ let currentOnboarding: OnboardingInfo | null = null;
 let currentProfileStats: ProfileStatsPayload | null = null;
 let adminLayoutMatches: Match[] = [];
 let adminLayoutIndex = 0;
+let adminLayoutAverageMatchId: number | null = null;
 let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
@@ -107,6 +108,7 @@ const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
 const analitikaTeamInFlight = new Map<string, Promise<TeamMatchStat[] | null>>();
 const predictionsLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
+const adminLayoutAverageCache = new Map<number, { homeAvg: number; awayAvg: number; count: number }>();
 const matchWeatherCache = new Map<number, number | null>();
 const matchWeatherConditionCache = new Map<number, string | null>();
 const matchWeatherTempCache = new Map<number, number | null>();
@@ -3110,7 +3112,62 @@ function renderPredictionsPanel(matchId: number, predictions: PredictionView[]):
   `;
 }
 
+function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[]): void {
+  const { homeAvg, awayAvg } = getAveragePrediction(predictions);
+  const count = predictions.length;
+  adminLayoutAverageCache.set(matchId, { homeAvg, awayAvg, count });
+
+  if (adminLayoutAverageMatchId !== matchId) {
+    return;
+  }
+
+  const homeAverageEl = app.querySelector<HTMLElement>('[data-admin-layout-average="home"]');
+  const awayAverageEl = app.querySelector<HTMLElement>('[data-admin-layout-average="away"]');
+  if (!homeAverageEl || !awayAverageEl) {
+    return;
+  }
+
+  homeAverageEl.textContent = count ? formatAverageValue(homeAvg) : "0";
+  awayAverageEl.textContent = count ? formatAverageValue(awayAvg) : "0";
+}
+
+function updateAdminLayoutAverage(matchId: number): void {
+  const homeAverageEl = app.querySelector<HTMLElement>('[data-admin-layout-average="home"]');
+  const awayAverageEl = app.querySelector<HTMLElement>('[data-admin-layout-average="away"]');
+  if (!homeAverageEl || !awayAverageEl) {
+    return;
+  }
+
+  adminLayoutAverageMatchId = matchId;
+  const cached = adminLayoutAverageCache.get(matchId);
+  if (cached) {
+    homeAverageEl.textContent = cached.count ? formatAverageValue(cached.homeAvg) : "0";
+    awayAverageEl.textContent = cached.count ? formatAverageValue(cached.awayAvg) : "0";
+    return;
+  }
+
+  homeAverageEl.textContent = "0";
+  awayAverageEl.textContent = "0";
+
+  if (!apiBase) {
+    return;
+  }
+
+  void (async () => {
+    try {
+      const { response, data } = await fetchPredictions(apiBase, initData, matchId);
+      if (!response.ok || !data.ok) {
+        return;
+      }
+      storeAdminLayoutAverage(matchId, data.predictions);
+    } catch {
+      return;
+    }
+  })();
+}
+
 function updateMatchAverage(matchId: number, predictions: PredictionView[]): void {
+  storeAdminLayoutAverage(matchId, predictions);
   const averageEl = app.querySelector<HTMLElement>(
     `[data-match-average][data-match-id="${matchId}"]`
   );
@@ -3290,6 +3347,7 @@ function updateAdminLayoutView(): void {
         <input type="hidden" name="${team === "home" ? "home_pred" : "away_pred"}" value="0" />
       </div>
     </div>
+    <div class="admin-layout__average-score" data-admin-layout-average="${team}">0</div>
   `;
   homeSlot.innerHTML = `
     <div class="admin-layout__logo-frame">
@@ -3303,6 +3361,7 @@ function updateAdminLayoutView(): void {
       ${renderScoreControls("away")}
     </div>
   `;
+  updateAdminLayoutAverage(match.id);
   setupAdminLayoutScoreControls(match.id);
   updateAdminLayoutCountdown();
   pagination.innerHTML = adminLayoutMatches
