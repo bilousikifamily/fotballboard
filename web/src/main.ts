@@ -1203,11 +1203,26 @@ function renderUser(
                 </svg>
               </button>
             </div>
-            <div class="admin-layout__meta">
-              <span class="admin-layout__meta-item" data-admin-layout-time>--:--</span>
-              <span class="admin-layout__meta-item" data-admin-layout-city>—</span>
-              <span class="admin-layout__meta-item" data-admin-layout-temp>—°C</span>
-              <span class="admin-layout__meta-item" data-admin-layout-humidity>—%</span>
+            <div class="match-time admin-layout__time">
+              <div class="match-time-row">
+                <span data-admin-layout-time>--:--</span>
+                <span class="match-meta-sep">·</span>
+                <span class="match-city" data-admin-layout-city>—</span>
+                <span class="match-time-alt" data-admin-layout-local-time>(--:--)</span>
+                <span class="match-meta-sep">·</span>
+                <span class="match-temp" data-admin-layout-temp>—°C</span>
+              </div>
+              <div
+                class="match-weather-row"
+                data-admin-layout-weather
+                aria-label="Вологість: —"
+              >
+                <span class="match-weather-icon" data-admin-layout-weather-icon aria-hidden="true">🌧️</span>
+                <span class="match-weather-bar" aria-hidden="true">
+                  <span class="match-weather-bar-fill" data-admin-layout-weather-fill style="width: 0%"></span>
+                </span>
+                <span class="match-weather-value" data-admin-layout-humidity>—</span>
+              </div>
             </div>
           </div>
           <div class="admin-layout__body">
@@ -3163,8 +3178,12 @@ function updateAdminLayoutView(): void {
   const pagination = app.querySelector<HTMLElement>("[data-admin-layout-pagination]");
   const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
   const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
+  const localTimeEl = app.querySelector<HTMLElement>("[data-admin-layout-local-time]");
   const tempEl = app.querySelector<HTMLElement>("[data-admin-layout-temp]");
   const humidityEl = app.querySelector<HTMLElement>("[data-admin-layout-humidity]");
+  const weatherEl = app.querySelector<HTMLElement>("[data-admin-layout-weather]");
+  const weatherIconEl = app.querySelector<HTMLElement>("[data-admin-layout-weather-icon]");
+  const weatherFillEl = app.querySelector<HTMLElement>("[data-admin-layout-weather-fill]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
   const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
   if (
@@ -3175,8 +3194,12 @@ function updateAdminLayoutView(): void {
     !nextButton ||
     !timeEl ||
     !cityEl ||
+    !localTimeEl ||
     !tempEl ||
-    !humidityEl
+    !humidityEl ||
+    !weatherEl ||
+    !weatherIconEl ||
+    !weatherFillEl
   ) {
     return;
   }
@@ -3188,8 +3211,12 @@ function updateAdminLayoutView(): void {
     pagination.innerHTML = "";
     timeEl.textContent = "--:--";
     cityEl.textContent = "—";
+    localTimeEl.textContent = "(--:--)";
     tempEl.textContent = "—°C";
-    humidityEl.textContent = "—%";
+    humidityEl.textContent = "—";
+    weatherEl.setAttribute("aria-label", "Вологість: —");
+    weatherIconEl.textContent = "🌧️";
+    weatherFillEl.style.width = "0%";
     prevButton.disabled = true;
     nextButton.disabled = true;
     return;
@@ -3197,10 +3224,12 @@ function updateAdminLayoutView(): void {
 
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
   const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
-  const timezone = match.weather_timezone ?? matchWeatherTimezoneCache.get(match.id) ?? "Europe/Kyiv";
+  const localTimezone = match.weather_timezone ?? matchWeatherTimezoneCache.get(match.id) ?? "Europe/Kyiv";
   const tempValue = match.weather_temp_c ?? matchWeatherTempCache.get(match.id) ?? null;
   const humidityValue = match.rain_probability ?? matchWeatherCache.get(match.id) ?? null;
-  const humidityPercent = formatRainProbability(normalizeRainProbability(humidityValue));
+  const normalizedHumidity = normalizeRainProbability(humidityValue);
+  const humidityPercent = formatRainProbability(normalizedHumidity);
+  const weatherIcon = getWeatherIcon(match.weather_condition ?? null);
   homeSlot.innerHTML = renderTeamLogo(homeName, homeLogo);
   awaySlot.innerHTML = renderTeamLogo(awayName, awayLogo);
   pagination.innerHTML = adminLayoutMatches
@@ -3209,10 +3238,14 @@ function updateAdminLayoutView(): void {
       return `<span class="admin-layout__dot${isActive ? " is-active" : ""}"></span>`;
     })
     .join("");
-  timeEl.textContent = formatTimeInZone(match.kickoff_at, timezone);
-  cityEl.textContent = match.venue_city?.trim() || "—";
+  timeEl.textContent = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
+  cityEl.textContent = (match.venue_city ?? match.venue_name ?? "").trim().toUpperCase() || "—";
+  localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, localTimezone)})`;
   tempEl.textContent = formatTemperature(tempValue);
   humidityEl.textContent = `${humidityPercent}`;
+  weatherEl.setAttribute("aria-label", `Вологість: ${humidityPercent}`);
+  weatherIconEl.textContent = weatherIcon;
+  weatherFillEl.style.width = `${normalizedHumidity ?? 0}%`;
   prevButton.disabled = total < 2;
   nextButton.disabled = total < 2;
 }

@@ -69,12 +69,14 @@ body.admin-layout-active .tabbar-button.is-active {
   background: #ff3b3b;
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 .admin-layout__center--right {
   background: #8b0000;
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 .admin-layout__footer {
@@ -91,22 +93,12 @@ body.admin-layout-active .tabbar-button.is-active {
   text-align: center;
 }
 
-.admin-layout__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  justify-content: center;
-  align-items: center;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.admin-layout__meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.admin-layout__time {
+  min-height: unset;
+  height: auto;
+  max-height: none;
+  padding-top: 0;
+  color: #dbe9ff;
 }
 
 .admin-layout__pagination {
@@ -164,14 +156,15 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout .match-logo {
-  width: 112px;
-  height: 112px;
+  width: 224px;
+  height: 224px;
+  max-width: none;
 }
 
 .admin-layout__logo-placeholder {
-  width: 112px;
-  height: 112px;
-  border-radius: 26px;
+  width: 224px;
+  height: 224px;
+  border-radius: 38px;
   border: 2px dashed rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.08);
 }
