@@ -84,6 +84,15 @@ const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
   "uefa-europa-conference-league": new Set()
 };
 
+function isUefaLogoSlug(slug: string): boolean {
+  for (const set of Object.values(UEFA_LOGO_SLUGS)) {
+    if (set.has(slug)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const CLUB_LOGO_FILE_OVERRIDES: Partial<Record<LogoLeagueId, Record<string, string>>> = {
   "champions-league": {
     "slavia-praga": "slavia"
@@ -166,6 +175,9 @@ function deriveClubSlugFromName(value: string | null | undefined): string | null
     return null;
   }
   if (CLUB_REGISTRY[normalized]) {
+    return normalized;
+  }
+  if (isUefaLogoSlug(normalized)) {
     return normalized;
   }
 
