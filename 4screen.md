@@ -1,36 +1,36 @@
-# Screen 4 layout
+# Екран 4 — верстка
 
-This admin-only screen is a fixed, non-scrollable layout that fills the full viewport width and the height above the tab bar. The structure is a vertical stack of four rows, with the middle row containing four columns.
+Це адмін-екран із фіксованою, нерухомою версткою, що займає всю ширину в’юпорта та висоту над таббаром. Структура — вертикальний стек із чотирьох рядів, де середній ряд містить чотири колонки.
 
-## Structure
+## Структура
 
-- Root container: full width, height = `100dvh - tabbar offset`
-- Rows (top to bottom):
-  1. Top strip (light gray)
-  2. Header strip (blue)
-  3. Body block (four columns)
-  4. Footer strip (blue, sits directly above the tab bar)
+- Кореневий контейнер: повна ширина, висота = `100dvh - tabbar offset`
+- Ряди (зверху вниз):
+  1. Верхня смуга (світло-сіра)
+  2. Смуга заголовка (синя) з перемикачем дати з екрана прогнозів
+  3. Основний блок (чотири колонки) для навігації матчів і логотипів
+  4. Нижня смуга (синя, безпосередньо над таббаром) з пагінацією
 
-## Body columns
+## Колонки основного блоку
 
-From left to right:
+Зліва направо:
 
-- Left side column: black
-- Center left column: bright red
-- Center right column: dark red
-- Right side column: black
+- Ліва бокова колонка: чорна, містить кнопку-стрілку для попереднього матчу
+- Центральна ліва колонка: яскраво-червона, містить лише логотип команди №1
+- Центральна права колонка: темно-червона, містить лише логотип команди №2
+- Права бокова колонка: чорна, містить кнопку-стрілку для наступного матчу
 
-## Sizes (relative)
+## Розміри (відносні)
 
-- Row heights: top 8%, header 12%, body 1fr, footer 10%
-- Column widths: 14% / 36% / 36% / 14%
+- Висоти рядів: верхня 8%, заголовок 12%, основний блок 1fr, нижня 10%
+- Ширини колонок: 14% / 36% / 36% / 14%
 
-## Colors
+## Кольори
 
-- Light gray: `#d7d7d7`
-- Blue: `#0a27ff`
-- Black: `#000000`
-- Bright red: `#ff3b3b`
-- Dark red: `#8b0000`
-- Background gray: `#7f7f7f`
-- Tab bar (this screen only): `#ff0000`
+- Світло-сірий: `#d7d7d7`
+- Синій: `#0a27ff`
+- Чорний: `#000000`
+- Яскраво-червоний: `#ff3b3b`
+- Темно-червоний: `#8b0000`
+- Сірий фон: `#7f7f7f`
+- Таббар (тільки для цього екрана): `#ff0000`

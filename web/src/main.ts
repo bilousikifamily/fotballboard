@@ -98,6 +98,8 @@ let currentNickname: string | null = null;
 let currentAvatarChoice: string | null = null;
 let currentOnboarding: OnboardingInfo | null = null;
 let currentProfileStats: ProfileStatsPayload | null = null;
+let adminLayoutMatches: Match[] = [];
+let adminLayoutIndex = 0;
 let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
@@ -1187,14 +1189,42 @@ function renderUser(
       <section class="screen screen--admin-layout" data-screen="admin-layout">
         <div class="admin-layout">
           <div class="admin-layout__top"></div>
-          <div class="admin-layout__header"></div>
-          <div class="admin-layout__body">
-            <div class="admin-layout__side admin-layout__side--left"></div>
-            <div class="admin-layout__center admin-layout__center--left"></div>
-            <div class="admin-layout__center admin-layout__center--right"></div>
-            <div class="admin-layout__side admin-layout__side--right"></div>
+          <div class="admin-layout__header">
+            <div class="date-switcher" data-admin-layout-date>
+              <button class="date-nav" type="button" data-admin-layout-date-prev aria-label="Попередній день">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6"></path>
+                </svg>
+              </button>
+              <div class="date-pill" data-admin-layout-date-label>${safeDateLabel}</div>
+              <button class="date-nav" type="button" data-admin-layout-date-next aria-label="Наступний день">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6"></path>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="admin-layout__footer"></div>
+          <div class="admin-layout__body">
+            <div class="admin-layout__side admin-layout__side--left">
+              <button class="admin-layout__nav" type="button" data-admin-layout-prev aria-label="Попередній матч">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="admin-layout__center admin-layout__center--left" data-admin-layout-home></div>
+            <div class="admin-layout__center admin-layout__center--right" data-admin-layout-away></div>
+            <div class="admin-layout__side admin-layout__side--right">
+              <button class="admin-layout__nav" type="button" data-admin-layout-next aria-label="Наступний матч">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="admin-layout__footer">
+            <span class="admin-layout__pagination" data-admin-layout-pagination></span>
+          </div>
         </div>
       </section>
     `
@@ -1343,6 +1373,11 @@ function renderUser(
   const dateLabel = app.querySelector<HTMLElement>("[data-date-label]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-date-prev]");
   const nextButton = app.querySelector<HTMLButtonElement>("[data-date-next]");
+  const adminLayoutDateLabel = app.querySelector<HTMLElement>("[data-admin-layout-date-label]");
+  const adminLayoutPrevDate = app.querySelector<HTMLButtonElement>("[data-admin-layout-date-prev]");
+  const adminLayoutNextDate = app.querySelector<HTMLButtonElement>("[data-admin-layout-date-next]");
+  const adminLayoutPrevMatch = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
+  const adminLayoutNextMatch = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
 
   const setDate = (nextDate: string): void => {
     if (!nextDate) {
@@ -1351,6 +1386,9 @@ function renderUser(
     currentDate = nextDate;
     if (dateLabel) {
       dateLabel.textContent = formatKyivDateLabel(nextDate);
+    }
+    if (adminLayoutDateLabel) {
+      adminLayoutDateLabel.textContent = formatKyivDateLabel(nextDate);
     }
     void loadMatches(nextDate);
   };
@@ -1364,6 +1402,30 @@ function renderUser(
   if (nextButton) {
     nextButton.addEventListener("click", () => {
       setDate(addKyivDays(currentDate, 1));
+    });
+  }
+
+  if (adminLayoutPrevDate) {
+    adminLayoutPrevDate.addEventListener("click", () => {
+      setDate(addKyivDays(currentDate, -1));
+    });
+  }
+
+  if (adminLayoutNextDate) {
+    adminLayoutNextDate.addEventListener("click", () => {
+      setDate(addKyivDays(currentDate, 1));
+    });
+  }
+
+  if (adminLayoutPrevMatch) {
+    adminLayoutPrevMatch.addEventListener("click", () => {
+      shiftAdminLayoutMatch(-1);
+    });
+  }
+
+  if (adminLayoutNextMatch) {
+    adminLayoutNextMatch.addEventListener("click", () => {
+      shiftAdminLayoutMatch(1);
     });
   }
 
@@ -1596,6 +1658,11 @@ async function loadMatches(date: string): Promise<void> {
     data.matches.forEach((match) => {
       matchesById.set(match.id, match);
     });
+    if (isAdmin) {
+      adminLayoutMatches = data.matches.slice();
+      adminLayoutIndex = 0;
+      updateAdminLayoutView();
+    }
     container.innerHTML = renderMatchesList(data.matches);
     centerMatchList(container);
     bindMatchActions();
@@ -1634,11 +1701,12 @@ async function loadPendingMatches(): Promise<void> {
     }
 
     data.matches.forEach((match) => {
-      matchesById.set(match.id, match);
-    });
-    const orderedPending = data.matches.slice().sort((left, right) => right.id - left.id);
-    list.innerHTML = renderPendingMatchesList(orderedPending);
-    bindMatchActions(list);
+    matchesById.set(match.id, match);
+  });
+  const orderedPending = data.matches.slice().sort((left, right) => right.id - left.id);
+  list.innerHTML = renderPendingMatchesList(orderedPending);
+  updateAdminLayoutView();
+  bindMatchActions(list);
     setupMatchAnalitikaFilters(list);
     void loadMatchWeather(data.matches);
     if (status) {
@@ -3079,6 +3147,45 @@ function getTopPredictions(predictions: PredictionView[], limit: number): Predic
 function getUserPointsTotal(user: PredictionUser | null): number {
   return typeof user?.points_total === "number" ? user.points_total : 0;
 }
+
+function updateAdminLayoutView(): void {
+  const homeSlot = app.querySelector<HTMLElement>("[data-admin-layout-home]");
+  const awaySlot = app.querySelector<HTMLElement>("[data-admin-layout-away]");
+  const pagination = app.querySelector<HTMLElement>("[data-admin-layout-pagination]");
+  const prevButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
+  const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
+  if (!homeSlot || !awaySlot || !pagination || !prevButton || !nextButton) {
+    return;
+  }
+
+  const total = adminLayoutMatches.length;
+  if (!total) {
+    homeSlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
+    awaySlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
+    pagination.textContent = "0 / 0";
+    prevButton.disabled = true;
+    nextButton.disabled = true;
+    return;
+  }
+
+  const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
+  const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
+  homeSlot.innerHTML = renderTeamLogo(homeName, homeLogo);
+  awaySlot.innerHTML = renderTeamLogo(awayName, awayLogo);
+  pagination.textContent = `${adminLayoutIndex + 1} / ${total}`;
+  prevButton.disabled = total < 2;
+  nextButton.disabled = total < 2;
+}
+
+function shiftAdminLayoutMatch(delta: number): void {
+  if (adminLayoutMatches.length < 2) {
+    return;
+  }
+  const total = adminLayoutMatches.length;
+  adminLayoutIndex = (adminLayoutIndex + delta + total) % total;
+  updateAdminLayoutView();
+}
+
 function getAveragePrediction(predictions: PredictionView[]): { homeAvg: number; awayAvg: number } {
   const total = predictions.reduce(
     (acc, item) => {
