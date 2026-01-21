@@ -1203,6 +1203,12 @@ function renderUser(
                 </svg>
               </button>
             </div>
+            <div class="admin-layout__meta">
+              <span class="admin-layout__meta-item" data-admin-layout-time>--:--</span>
+              <span class="admin-layout__meta-item" data-admin-layout-city>—</span>
+              <span class="admin-layout__meta-item" data-admin-layout-temp>—°C</span>
+              <span class="admin-layout__meta-item" data-admin-layout-humidity>—%</span>
+            </div>
           </div>
           <div class="admin-layout__body">
             <div class="admin-layout__side admin-layout__side--left">
@@ -2003,25 +2009,24 @@ function updateMatchWeather(
   timezone: string | null
 ): void {
   const el = app.querySelector<HTMLElement>(`[data-match-rain][data-match-id="${matchId}"]`);
-  if (!el) {
-    return;
+  if (el) {
+    const percent = normalizeRainProbability(rainProbability);
+    const value = formatRainProbability(percent);
+    const icon = getWeatherIcon(condition);
+    const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
+    const iconEl = el.querySelector<HTMLElement>("[data-match-rain-icon]");
+    const fillEl = el.querySelector<HTMLElement>("[data-match-rain-fill]");
+    if (valueEl) {
+      valueEl.textContent = value;
+    }
+    if (iconEl) {
+      iconEl.textContent = icon;
+    }
+    if (fillEl) {
+      fillEl.style.width = `${percent ?? 0}%`;
+    }
+    el.setAttribute("aria-label", `Дощ: ${value}`);
   }
-  const percent = normalizeRainProbability(rainProbability);
-  const value = formatRainProbability(percent);
-  const icon = getWeatherIcon(condition);
-  const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
-  const iconEl = el.querySelector<HTMLElement>("[data-match-rain-icon]");
-  const fillEl = el.querySelector<HTMLElement>("[data-match-rain-fill]");
-  if (valueEl) {
-    valueEl.textContent = value;
-  }
-  if (iconEl) {
-    iconEl.textContent = icon;
-  }
-  if (fillEl) {
-    fillEl.style.width = `${percent ?? 0}%`;
-  }
-  el.setAttribute("aria-label", `Дощ: ${value}`);
 
   const match = matchesById.get(matchId);
   if (!match) {
@@ -2035,6 +2040,10 @@ function updateMatchWeather(
   const localTimeEl = app.querySelector<HTMLElement>(`[data-match-local-time][data-match-id="${matchId}"]`);
   if (localTimeEl) {
     localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, tz)})`;
+  }
+
+  if (isAdmin) {
+    updateAdminLayoutView();
   }
 }
 
@@ -3152,9 +3161,23 @@ function updateAdminLayoutView(): void {
   const homeSlot = app.querySelector<HTMLElement>("[data-admin-layout-home]");
   const awaySlot = app.querySelector<HTMLElement>("[data-admin-layout-away]");
   const pagination = app.querySelector<HTMLElement>("[data-admin-layout-pagination]");
+  const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
+  const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
+  const tempEl = app.querySelector<HTMLElement>("[data-admin-layout-temp]");
+  const humidityEl = app.querySelector<HTMLElement>("[data-admin-layout-humidity]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
   const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
-  if (!homeSlot || !awaySlot || !pagination || !prevButton || !nextButton) {
+  if (
+    !homeSlot ||
+    !awaySlot ||
+    !pagination ||
+    !prevButton ||
+    !nextButton ||
+    !timeEl ||
+    !cityEl ||
+    !tempEl ||
+    !humidityEl
+  ) {
     return;
   }
 
@@ -3162,7 +3185,11 @@ function updateAdminLayoutView(): void {
   if (!total) {
     homeSlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     awaySlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
-    pagination.textContent = "0 / 0";
+    pagination.innerHTML = "";
+    timeEl.textContent = "--:--";
+    cityEl.textContent = "—";
+    tempEl.textContent = "—°C";
+    humidityEl.textContent = "—%";
     prevButton.disabled = true;
     nextButton.disabled = true;
     return;
@@ -3170,9 +3197,22 @@ function updateAdminLayoutView(): void {
 
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
   const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
+  const timezone = match.weather_timezone ?? matchWeatherTimezoneCache.get(match.id) ?? "Europe/Kyiv";
+  const tempValue = match.weather_temp_c ?? matchWeatherTempCache.get(match.id) ?? null;
+  const humidityValue = match.rain_probability ?? matchWeatherCache.get(match.id) ?? null;
+  const humidityPercent = formatRainProbability(normalizeRainProbability(humidityValue));
   homeSlot.innerHTML = renderTeamLogo(homeName, homeLogo);
   awaySlot.innerHTML = renderTeamLogo(awayName, awayLogo);
-  pagination.textContent = `${adminLayoutIndex + 1} / ${total}`;
+  pagination.innerHTML = adminLayoutMatches
+    .map((_, index) => {
+      const isActive = index === adminLayoutIndex;
+      return `<span class="admin-layout__dot${isActive ? " is-active" : ""}"></span>`;
+    })
+    .join("");
+  timeEl.textContent = formatTimeInZone(match.kickoff_at, timezone);
+  cityEl.textContent = match.venue_city?.trim() || "—";
+  tempEl.textContent = formatTemperature(tempValue);
+  humidityEl.textContent = `${humidityPercent}`;
   prevButton.disabled = total < 2;
   nextButton.disabled = total < 2;
 }
