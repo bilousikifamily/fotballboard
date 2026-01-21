@@ -20,22 +20,6 @@ body.admin-layout-active #app {
   overflow: hidden;
 }
 
-body.admin-layout-active .tabbar {
-  background: #ff0000;
-  border-top: none;
-  backdrop-filter: none;
-}
-
-body.admin-layout-active .tabbar-button {
-  color: #111111;
-}
-
-body.admin-layout-active .tabbar-button.is-active {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.18);
-}
-
 .screen--admin-layout {
   padding: 0;
   min-height: calc(100dvh - var(--tabbar-offset));
@@ -47,15 +31,14 @@ body.admin-layout-active .tabbar-button.is-active {
   height: calc(100dvh - var(--tabbar-offset));
   display: grid;
   grid-template-rows: 4% 16% 1fr 7%;
-  background: #7f7f7f;
+  background: transparent;
 }
 
 .admin-layout__top {
-  background: #d7d7d7;
+  background: transparent;
 }
 
 .admin-layout__header {
-  background: #0a27ff;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -71,7 +54,6 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__side {
-  background: #000000;
   display: grid;
   place-items: center;
   grid-row: 1 / -1;
@@ -135,22 +117,14 @@ body.admin-layout-active .tabbar-button.is-active {
   transform: translateX(-50%);
   width: calc(40vw * 0.96);
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--surface-strong);
+  border: 1px solid var(--outline-dark);
   border-radius: 18px;
   padding: 2px 10px;
   box-shadow:
-    0 14px 40px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+    0 10px 30px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px var(--outline-dark);
   z-index: 3;
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .admin-layout__logo-frame .admin-layout__score-controls {
-    background: rgba(25, 25, 25, 0.35);
-  }
 }
 
 .admin-layout__score-controls {
@@ -238,15 +212,15 @@ body.admin-layout-active .tabbar-button.is-active {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.20);
-  color: #ffffff;
+  background: var(--surface);
+  border: 1px solid var(--outline-light);
+  color: var(--ink);
   font-size: 1.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
   flex-shrink: 0;
 }
 
@@ -257,7 +231,7 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__logo-frame .score-value {
   font-size: 3rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--ink);
 }
 
 .admin-layout__logo-frame .score-control.is-locked .score-value {
@@ -272,19 +246,16 @@ body.admin-layout-active .tabbar-button.is-active {
   transform: translateX(-50%);
   font-size: 1.2rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--ink);
   line-height: 1;
   letter-spacing: 0.02em;
-  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   padding: 3px 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--surface);
+  border: 1px solid var(--outline-dark);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+    0 6px 18px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px var(--outline-dark);
   z-index: 3;
 }
 
@@ -307,13 +278,13 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__footer {
-  background: #0a27ff;
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #ffffff;
+  color: var(--ink);
   font-size: 1rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -373,11 +344,11 @@ body.admin-layout-active .tabbar-button.is-active {
   width: min(90%, 560px);
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+  background: var(--surface);
+  border: 1px solid var(--outline-dark);
+  color: var(--ink);
   text-align: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset;
 }
 
 .admin-layout__info-title {
@@ -392,6 +363,7 @@ body.admin-layout-active .tabbar-button.is-active {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--muted);
 }
 
 .admin-layout__info-odds {
@@ -408,9 +380,9 @@ body.admin-layout-active .tabbar-button.is-active {
 .admin-layout__info-odd {
   padding: 8px 4px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+  background: var(--surface-strong);
+  border: 1px solid var(--outline-dark);
+  color: var(--ink);
   font-size: 1.05rem;
   font-weight: 700;
   text-align: center;
@@ -418,9 +390,10 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__info-odd.is-highlighted {
-  background: linear-gradient(180deg, #ff9a1f 0%, #ff7a1a 100%);
-  border-color: rgba(0, 0, 0, 0.2);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
+  background: var(--accent-gradient);
+  border-color: var(--outline-dark);
+  color: #0b0b0d;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
 }
 
 .admin-layout__header .date-pill {
@@ -438,7 +411,7 @@ body.admin-layout-active .tabbar-button.is-active {
   height: auto;
   max-height: none;
   padding-top: 0;
-  color: #dbe9ff;
+  color: var(--ink);
 }
 
 .admin-layout__pagination {
