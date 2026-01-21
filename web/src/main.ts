@@ -1182,6 +1182,43 @@ function renderUser(
         </button>
       `
     : "";
+  const adminLayoutScreen = admin
+    ? `
+      <section class="screen screen--admin-layout" data-screen="admin-layout">
+        <div class="admin-layout">
+          <div class="admin-layout__top"></div>
+          <div class="admin-layout__header"></div>
+          <div class="admin-layout__body">
+            <div class="admin-layout__side admin-layout__side--left"></div>
+            <div class="admin-layout__center admin-layout__center--left"></div>
+            <div class="admin-layout__center admin-layout__center--right"></div>
+            <div class="admin-layout__side admin-layout__side--right"></div>
+          </div>
+          <div class="admin-layout__footer"></div>
+        </div>
+      </section>
+    `
+    : "";
+  const adminLayoutTabButton = admin
+    ? `
+        <button
+          class="tabbar-button"
+          type="button"
+          data-tab="admin-layout"
+          role="tab"
+          aria-selected="false"
+          aria-label="Адмін екран"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5h16v3H4z"></path>
+            <path d="M4 10h16v10H4z"></path>
+            <path d="M7 10v10"></path>
+            <path d="M12 10v10"></path>
+            <path d="M17 10v10"></path>
+          </svg>
+        </button>
+      `
+    : "";
   const tabbarClass = admin ? "tabbar is-admin" : "tabbar";
 
   app.innerHTML = `
@@ -1247,6 +1284,7 @@ function renderUser(
         </section>
 
         ${adminScreen}
+        ${adminLayoutScreen}
 
         <section class="screen" data-screen="leaderboard">
           <div class="leaderboard-shell">
@@ -1294,6 +1332,7 @@ function renderUser(
           </svg>
         </button>
         ${adminTabButton}
+        ${adminLayoutTabButton}
       </nav>
     </div>
   `;
@@ -2613,6 +2652,7 @@ function setupTabs(): void {
       button.setAttribute("aria-selected", isActive ? "true" : "false");
     });
     document.body.classList.toggle("profile-tab-active", tab === "profile");
+    document.body.classList.toggle("admin-layout-active", tab === "admin-layout");
     if (tab === "leaderboard") {
       void loadLeaderboard();
     }

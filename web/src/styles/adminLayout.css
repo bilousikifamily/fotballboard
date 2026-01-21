@@ -1,0 +1,71 @@
+body.admin-layout-active {
+  overflow: hidden;
+  height: 100dvh;
+  touch-action: none;
+  padding: 0;
+}
+
+body.admin-layout-active #app {
+  width: 100%;
+  padding: 0;
+  height: 100dvh;
+}
+
+body.admin-layout-active .tabbar {
+  background: #ff0000;
+  border-top: none;
+  backdrop-filter: none;
+}
+
+body.admin-layout-active .tabbar-button {
+  color: #111111;
+}
+
+body.admin-layout-active .tabbar-button.is-active {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.screen--admin-layout {
+  padding: 0;
+  min-height: calc(100dvh - var(--tabbar-offset));
+  align-content: stretch;
+}
+
+.admin-layout {
+  width: 100%;
+  height: calc(100dvh - var(--tabbar-offset));
+  display: grid;
+  grid-template-rows: 8% 12% 1fr 10%;
+  background: #7f7f7f;
+}
+
+.admin-layout__top {
+  background: #d7d7d7;
+}
+
+.admin-layout__header {
+  background: #0a27ff;
+}
+
+.admin-layout__body {
+  display: grid;
+  grid-template-columns: 14% 36% 36% 14%;
+}
+
+.admin-layout__side {
+  background: #000000;
+}
+
+.admin-layout__center--left {
+  background: #ff3b3b;
+}
+
+.admin-layout__center--right {
+  background: #8b0000;
+}
+
+.admin-layout__footer {
+  background: #0a27ff;
+}
