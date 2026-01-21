@@ -46,7 +46,7 @@ body.admin-layout-active .tabbar-button.is-active {
   width: 100%;
   height: calc(100dvh - var(--tabbar-offset));
   display: grid;
-  grid-template-rows: 4% 16% 1fr 10%;
+  grid-template-rows: 4% 16% 1fr 7%;
   background: #7f7f7f;
 }
 
@@ -266,8 +266,8 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__countdown {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.665rem;
+  font-weight: 300;
   letter-spacing: 0.08em;
   text-transform: none;
 }
@@ -376,15 +376,15 @@ body.admin-layout-active .tabbar-button.is-active {
 }
 
 .admin-layout__dot {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.35);
 }
 
 .admin-layout__dot.is-active {
   background: #f6d65b;
-  box-shadow: 0 0 0 4px rgba(246, 214, 91, 0.2);
+  box-shadow: 0 0 0 3px rgba(246, 214, 91, 0.2);
 }
 
 .admin-layout__nav {
