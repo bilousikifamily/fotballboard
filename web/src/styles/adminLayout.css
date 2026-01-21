@@ -79,6 +79,7 @@ body.admin-layout-active .tabbar-button.is-active {
   display: grid;
   place-items: center;
   overflow: visible;
+  min-width: 0;
 }
 
 .admin-layout__center--right {
@@ -86,6 +87,7 @@ body.admin-layout-active .tabbar-button.is-active {
   display: grid;
   place-items: center;
   overflow: visible;
+  min-width: 0;
 }
 
 .admin-layout__footer {
