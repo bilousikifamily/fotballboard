@@ -2312,8 +2312,7 @@ async function listRecentPredictionResults(supabase: SupabaseClient, userId: num
         .from("predictions")
         .select("id, match_id, points, matches!inner(kickoff_at, status)")
         .eq("user_id", userId)
-        .eq("matches.status", "finished")
-        .not("points", "is", null),
+        .eq("matches.status", "finished"),
       supabase
         .from("missed_predictions")
         .select("id, match_id, matches!inner(kickoff_at, status)")
