@@ -6885,7 +6885,7 @@ function buildMatchResultSupportTarget(notification: MatchResultNotification): s
   const home = resolveUkrainianClubName(notification.home_team, null).toUpperCase();
   const away = resolveUkrainianClubName(notification.away_team, null).toUpperCase();
   if (notification.home_score === notification.away_score) {
-    return "нічию";
+    return "НІЧИЮ";
   }
   const team = notification.home_score > notification.away_score ? home : away;
   return escapeTelegramHtml(team);

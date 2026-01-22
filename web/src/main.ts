@@ -167,27 +167,6 @@ const MATCH_LEAGUES: Array<{ id: MatchLeagueId; label: string }> = [
   { id: "dfb-pokal", label: "Кубок Німеччини" },
   { id: "coupe-de-france", label: "Кубок Франції" }
 ];
-
-const ADMIN_FACTION_OPTIONS: Array<{ slug: string; label: string }> = [
-  { slug: "real_madrid", label: "Реал Мадрид" },
-  { slug: "barcelona", label: "Барселона" },
-  { slug: "atletico-madrid", label: "Атлетіко" },
-  { slug: "bayern-munchen", label: "Баварія" },
-  { slug: "borussia-dortmund", label: "Дортмунд" },
-  { slug: "chelsea", label: "Челсі" },
-  { slug: "manchester-city", label: "Манчестер Сіті" },
-  { slug: "liverpool", label: "Ліверпуль" },
-  { slug: "arsenal", label: "Арсенал" },
-  { slug: "manchester-united", label: "Манчестер Юнайтед" },
-  { slug: "paris-saint-germain", label: "ПСЖ" },
-  { slug: "milan", label: "Мілан" },
-  { slug: "juventus", label: "Ювентус" },
-  { slug: "inter", label: "Інтер" },
-  { slug: "napoli", label: "Наполі" },
-  { slug: "dynamo-kyiv", label: "Динамо Київ" },
-  { slug: "shakhtar", label: "Шахтар" }
-];
-
 const NOTICE_RULES = [
   "Вгаданий результат +1 голос",
   "Вгаданий рахунок +5 голосів",
@@ -1061,7 +1040,6 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-add>ДОДАТИ МАТЧ</button>
           <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
-          <button class="button secondary" type="button" data-admin-toggle-clubs>СИНХ КЛУБІВ</button>
           <button class="button secondary" type="button" data-admin-toggle-users>КОРИСТУВАЧІ</button>
           <button class="button secondary" type="button" data-admin-toggle-debug>DEBUG</button>
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
@@ -1075,19 +1053,6 @@ function renderUser(
         <div class="admin-debug" data-admin-debug>
           <p class="muted small">Чернетка для тестів (не зберігається).</p>
           <textarea class="admin-debug-input" rows="4" placeholder="Тут можна занотувати тести або гіпотези."></textarea>
-        </div>
-        <div class="admin-test" data-admin-test>
-          <p class="muted small">Тестове надсилання прогнозів фракції</p>
-          <label class="field">
-            <span>Матч</span>
-            <select data-admin-test-match></select>
-          </label>
-          <label class="field">
-            <span>Фракція</span>
-            <select data-admin-test-faction></select>
-          </label>
-          <button class="button" type="button" data-admin-test-send>ВІДПРАВИТИ ТЕСТ</button>
-          <p class="muted small" data-admin-test-status></p>
         </div>
         <form class="admin-form" data-admin-form>
           <label class="field">
@@ -1139,24 +1104,6 @@ function renderUser(
           </label>
           <button class="button" type="submit">Підтягнути коефіцієнти</button>
           <p class="muted small" data-admin-odds-status></p>
-        </form>
-        <form class="admin-form" data-admin-clubs-form>
-          <label class="field">
-            <span>Ліга</span>
-            <select name="league_id" data-admin-clubs-league required>
-              ${leagueOptions}
-            </select>
-          </label>
-          <label class="field">
-            <span>API ліга ID</span>
-            <input type="number" name="api_league_id" inputmode="numeric" placeholder="2 для ЛЧ" />
-          </label>
-          <label class="field">
-            <span>Сезон</span>
-            <input type="number" name="season" inputmode="numeric" placeholder="2025" />
-          </label>
-          <button class="button" type="submit">Синхронізувати клуби</button>
-          <p class="muted small" data-admin-clubs-status></p>
         </form>
         <div class="admin-users" data-admin-users>
           <p class="muted small">Аналітика користувачів</p>
@@ -1511,7 +1458,6 @@ function renderUser(
     const toggleAdd = app.querySelector<HTMLButtonElement>("[data-admin-toggle-add]");
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
-    const toggleClubs = app.querySelector<HTMLButtonElement>("[data-admin-toggle-clubs]");
     const toggleUsers = app.querySelector<HTMLButtonElement>("[data-admin-toggle-users]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
@@ -1520,12 +1466,8 @@ function renderUser(
     const form = app.querySelector<HTMLFormElement>("[data-admin-form]");
     const resultForm = app.querySelector<HTMLFormElement>("[data-admin-result-form]");
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
-    const clubsForm = app.querySelector<HTMLFormElement>("[data-admin-clubs-form]");
     const debugPanel = app.querySelector<HTMLElement>("[data-admin-debug]");
     const usersPanel = app.querySelector<HTMLElement>("[data-admin-users]");
-    renderAdminFactionOptions();
-    setupAdminTestControls();
-
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
       toggleAdd.addEventListener("click", () => {
@@ -1554,16 +1496,6 @@ function renderUser(
       oddsForm.addEventListener("submit", (event) => {
         event.preventDefault();
         void submitOddsRefresh(oddsForm);
-      });
-    }
-
-    if (toggleClubs && clubsForm) {
-      toggleClubs.addEventListener("click", () => {
-        clubsForm.classList.toggle("is-open");
-      });
-      clubsForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        void submitClubSync(clubsForm);
       });
     }
 
@@ -2871,73 +2803,9 @@ function setupAdminMatchForm(form: HTMLFormElement): void {
   });
 }
 
-function setupAdminTestControls(): void {
-  const button = app.querySelector<HTMLButtonElement>("[data-admin-test-send]");
-  const matchSelect = app.querySelector<HTMLSelectElement>("[data-admin-test-match]");
-  const factionSelect = app.querySelector<HTMLSelectElement>("[data-admin-test-faction]");
-  const status = app.querySelector<HTMLElement>("[data-admin-test-status]");
-  if (!button || !matchSelect || !factionSelect) {
-    return;
-  }
-
-  button.addEventListener("click", async () => {
-    if (!apiBase) {
-      if (status) {
-        status.textContent = "API не налаштовано.";
-      }
-      return;
-    }
-    const matchId = Number(matchSelect.value);
-    const faction = factionSelect.value;
-    if (!Number.isInteger(matchId) || !faction) {
-      if (status) {
-        status.textContent = "Оберіть матч і фракцію.";
-      }
-      return;
-    }
-    button.disabled = true;
-    if (status) {
-      status.textContent = "Надсилаю...";
-    }
-    try {
-      const response = await fetch(`${apiBase}/api/match-faction-predictions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          initData,
-          match_id: matchId,
-          faction
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data.ok) {
-        if (status) {
-          status.textContent = "Повідомлення відправлено до гілки.";
-        }
-      } else {
-        if (status) {
-          if (data?.error === "no_predictions") {
-            status.textContent = "Немає прогнозів для цієї фракції.";
-          } else {
-            status.textContent = `Не вдалося надіслати повідомлення${data?.error ? `: ${data.error}` : ""}.`;
-          }
-        }
-      }
-    } catch (error) {
-      if (status) {
-        status.textContent = "Помилка зв’язку.";
-      }
-      console.error("Failed to send faction predictions test", error);
-    } finally {
-      button.disabled = false;
-    }
-  });
-}
-
 function renderAdminMatchOptions(matches: Match[]): void {
   const select = app.querySelector<HTMLSelectElement>("[data-admin-match]");
   const oddsSelect = app.querySelector<HTMLSelectElement>("[data-admin-odds-match]");
-  const testSelect = app.querySelector<HTMLSelectElement>("[data-admin-test-match]");
   if (!select) {
     return;
   }
@@ -2948,10 +2816,6 @@ function renderAdminMatchOptions(matches: Match[]): void {
     if (oddsSelect) {
       oddsSelect.innerHTML = `<option value="">Немає матчів</option>`;
       oddsSelect.disabled = true;
-    }
-    if (testSelect) {
-      testSelect.innerHTML = `<option value="">Немає матчів</option>`;
-      testSelect.disabled = true;
     }
     return;
   }
@@ -2969,20 +2833,6 @@ function renderAdminMatchOptions(matches: Match[]): void {
     oddsSelect.disabled = false;
     oddsSelect.innerHTML = select.innerHTML;
   }
-  if (testSelect) {
-    testSelect.disabled = false;
-    testSelect.innerHTML = select.innerHTML;
-  }
-}
-
-function renderAdminFactionOptions(): void {
-  const select = app.querySelector<HTMLSelectElement>("[data-admin-test-faction]");
-  if (!select) {
-    return;
-  }
-  select.innerHTML = ADMIN_FACTION_OPTIONS.map(
-    (option) => `<option value="${option.slug}">${escapeHtml(option.label)}</option>`
-  ).join("");
 }
 
 async function submitPrediction(form: HTMLFormElement): Promise<void> {
