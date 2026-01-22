@@ -55,7 +55,7 @@ body.admin-layout-active #app {
   gap: 4px;
   background: radial-gradient(circle at 50% 30%, rgba(255, 200, 130, 0.35), rgba(255, 120, 50, 0.08));
   border-radius: 24px;
-  padding: 10px 16px;
+  padding: clamp(6px, 2.2vh, 12px) clamp(10px, 4vw, 18px);
 }
 
 .admin-layout__body {
@@ -456,12 +456,14 @@ body.admin-layout-active #app {
 
 .admin-layout__header .date-pill {
   text-align: center;
+  font-size: clamp(0.82rem, 2.4vh, 1rem);
+  padding: clamp(6px, 1.8vh, 10px) clamp(10px, 3vw, 16px);
 }
 
 .admin-layout__header .date-switcher {
   gap: 4px;
   grid-template-columns: 30px auto 30px;
-  padding: 2px 4px;
+  padding: clamp(2px, 0.6vh, 6px) clamp(4px, 2vw, 8px);
 }
 
 .admin-layout__time {
@@ -472,7 +474,9 @@ body.admin-layout-active #app {
   color: var(--ink);
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
-  padding: 6px 12px;
+  padding: clamp(4px, 1.4vh, 8px) clamp(10px, 3vw, 16px);
+  font-size: clamp(0.72rem, 2.1vh, 0.9rem);
+  gap: clamp(2px, 0.8vh, 6px);
 }
 
 .admin-layout__pagination {
