@@ -315,14 +315,14 @@ body.admin-layout-active #app {
 .admin-layout__footer {
   background: rgba(12, 12, 20, 0.92);
   border-radius: 0;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  padding: clamp(6px, 1.6vh, 10px) 16px calc(clamp(6px, 1.6vh, 10px) + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: clamp(4px, 1vh, 8px);
   color: var(--ink);
-  font-size: 1rem;
+  font-size: clamp(0.82rem, 2.1vh, 1rem);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   width: 100%;
@@ -331,13 +331,14 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__countdown {
-  font-size: 0.665rem;
+  font-size: clamp(0.6rem, 1.6vh, 0.665rem);
   font-weight: 300;
   letter-spacing: 0.08em;
   text-transform: none;
-  padding: 6px 14px;
+  padding: clamp(4px, 1.2vh, 6px) 14px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
+  line-height: 1.1;
 }
 
 .admin-layout__countdown.is-closed {
@@ -484,7 +485,7 @@ body.admin-layout-active #app {
   gap: 10px;
   align-items: center;
   justify-content: center;
-  min-height: 16px;
+  min-height: 0;
   padding: 4px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
