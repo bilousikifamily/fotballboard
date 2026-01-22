@@ -39,12 +39,12 @@ body.admin-layout-active #app {
   width: 100%;
   height: calc(100dvh - var(--tabbar-offset));
   display: grid;
-  grid-template-rows: 4% 16% 1fr 7%;
+  grid-template-rows: auto auto 1fr auto;
   background: transparent;
 }
 
 .admin-layout__top {
-  background: transparent;
+  display: none;
 }
 
 .admin-layout__header {
