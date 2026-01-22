@@ -5094,13 +5094,6 @@ function parseRetryAfterSeconds(value: string | null): number | null {
   return diffMs > 0 ? Math.ceil(diffMs / 1000) : 0;
 }
 
-function sleep(ms: number): Promise<void> {
-  if (ms <= 0) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function findClosestTimeIndex(times: string[], target: string): number {
   if (!times.length) {
     return -1;
