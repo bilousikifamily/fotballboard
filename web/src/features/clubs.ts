@@ -230,13 +230,16 @@ export function getMatchTeamInfo(match: Match): {
   awayLogo: string | null;
   homeLogoFallback: string | null;
   awayLogoFallback: string | null;
+  homeSlug: string | null;
+  awaySlug: string | null;
 } {
   const homeClubId = match.home_club_id ?? null;
   const awayClubId = match.away_club_id ?? null;
-  const matchLeagueId = (match.league_id as MatchLeagueId | null) ?? null;
   const homeSlug = homeClubId ?? deriveClubSlugFromName(match.home_team);
   const awaySlug = awayClubId ?? deriveClubSlugFromName(match.away_team);
-
+  const resolvedHomeSlug = homeSlug ?? null;
+  const resolvedAwaySlug = awaySlug ?? null;
+  const matchLeagueId = (match.league_id as MatchLeagueId | null) ?? null;
   const homeName = homeSlug ? formatClubName(homeSlug) : match.home_team;
   const awayName = awaySlug ? formatClubName(awaySlug) : match.away_team;
 
@@ -257,5 +260,14 @@ export function getMatchTeamInfo(match: Match): {
       ? getClubLogoPath(awayBaseLeague, awaySlug)
       : null;
 
-  return { homeName, awayName, homeLogo, awayLogo, homeLogoFallback, awayLogoFallback };
+  return {
+    homeName,
+    awayName,
+    homeLogo,
+    awayLogo,
+    homeLogoFallback,
+    awayLogoFallback,
+    homeSlug: resolvedHomeSlug,
+    awaySlug: resolvedAwaySlug
+  };
 }

@@ -259,8 +259,8 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__logo-frame .score-value {
-  font-size: clamp(1.5rem, 7vw, 3rem);
-  font-weight: 700;
+  font-size: 2.5rem;
+  font-weight: 900;
   color: var(--ink);
   font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
 }
@@ -303,14 +303,68 @@ body.admin-layout-active #app {
   pointer-events: none;
 }
 
+.admin-layout__team-graph-popup {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.admin-layout__team-graph-popup:not(.is-hidden) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.admin-layout__team-graph-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.admin-layout__team-graph-panel {
+  position: relative;
+  background: rgba(8, 10, 16, 0.95);
+  border-radius: 20px;
+  padding: 16px;
+  width: min(90vw, 400px);
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.admin-layout__team-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.team-graph-close {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
 .admin-layout__footer {
-  padding: 4px;
-  padding-bottom: 4px;
+  padding-bottom: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 1vh, 8px);
   color: var(--ink);
   font-size: clamp(0.82rem, 2.1vh, 1rem);
   letter-spacing: 0.2em;
@@ -327,7 +381,6 @@ body.admin-layout-active #app {
   text-transform: none;
   padding: clamp(4px, 1.2vh, 6px) 14px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
   line-height: 1.1;
 }
 
@@ -463,7 +516,6 @@ body.admin-layout-active #app {
   min-height: 0;
   padding: 4px 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .admin-layout__dot {

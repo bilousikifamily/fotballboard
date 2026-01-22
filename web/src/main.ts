@@ -40,6 +40,7 @@ import {
 import { ANALITIKA_TEAM_SLUGS, renderTeamMatchStatsList } from "./features/analitika";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, getMatchTeamInfo } from "./features/clubs";
+import { normalizeTeamSlugValue } from "./features/teamSlugs";
 import { extractCorrectScoreProbability, formatProbability, getMatchWinnerProbabilities } from "./features/odds";
 import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
 import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
@@ -70,6 +71,10 @@ const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
   throw new Error("Missing #app element");
 }
+
+let teamGraphPopup: HTMLDivElement | null = null;
+let teamGraphBodyEl: HTMLElement | null = null;
+let teamGraphTitleEl: HTMLElement | null = null;
 
 const INTRO_SEEN_KEY = "intro_seen";
 const INTRO_TIMEOUT_MS = 900;
@@ -3605,7 +3610,7 @@ function updateAdminLayoutView(): void {
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
   adminLayoutHasPrediction = Boolean(match.has_prediction);
   adminLayoutIsFinished = match.status === "finished";
-  const { homeName, awayName, homeLogo, awayLogo } = getMatchTeamInfo(match);
+  const { homeName, awayName, homeLogo, awayLogo, homeSlug, awaySlug } = getMatchTeamInfo(match);
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
   const matchOdds = getMatchWinnerProbabilities(match, homeName, awayName);
@@ -3638,6 +3643,8 @@ function updateAdminLayoutView(): void {
       ${renderScoreControls("away")}
     </div>
   `;
+  attachTeamGraphTrigger(homeSlot, homeSlug, homeName);
+  attachTeamGraphTrigger(awaySlot, awaySlug, awayName);
   updateAdminLayoutAverage(match.id);
   applyAdminLayoutPredictionState(match.id, adminLayoutHasPrediction);
   updateAdminLayoutScoreValuesFromResult(match);
@@ -3748,6 +3755,105 @@ function setupAdminLayoutScoreControls(matchId: number): void {
   });
 
   updateProbability();
+}
+
+function attachTeamGraphTrigger(slot: HTMLElement, teamSlug: string | null, teamName: string): void {
+  const frame = slot.querySelector<HTMLElement>(".admin-layout__logo-frame");
+  if (!frame) {
+    return;
+  }
+  frame.dataset.teamSlug = teamSlug ?? "";
+  frame.dataset.teamName = teamName;
+  frame.addEventListener("click", () => {
+    void openTeamGraphPopup(teamSlug, teamName);
+  });
+}
+
+async function openTeamGraphPopup(teamSlug: string | null, teamName: string): Promise<void> {
+  ensureTeamGraphPopup();
+  if (!teamGraphPopup || !teamGraphBodyEl || !teamGraphTitleEl) {
+    return;
+  }
+  const slug = teamSlug ?? normalizeTeamSlugValue(teamName) ?? teamName.toLowerCase();
+  teamGraphTitleEl.textContent = `Історія ${teamName}`;
+  teamGraphBodyEl.innerHTML = `<p class="muted">Завантаження...</p>`;
+  teamGraphPopup.classList.remove("is-hidden");
+  teamGraphPopup.focus();
+  try {
+    const stats = await loadTeamGraphStats(slug);
+    if (stats && stats.length) {
+      teamGraphBodyEl.innerHTML = renderTeamMatchStatsList(stats, slug);
+    } else {
+      teamGraphBodyEl.innerHTML = `<p class="muted">Немає графіка для ${escapeHtml(teamName)}.</p>`;
+    }
+  } catch {
+    teamGraphBodyEl.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
+  }
+}
+
+function closeTeamGraphPopup(): void {
+  if (!teamGraphPopup) {
+    return;
+  }
+  teamGraphPopup.classList.add("is-hidden");
+}
+
+function ensureTeamGraphPopup(): void {
+  if (teamGraphPopup) {
+    return;
+  }
+  const popup = document.createElement("div");
+  popup.className = "admin-layout__team-graph-popup is-hidden";
+  popup.tabIndex = -1;
+  popup.innerHTML = `
+    <div class="admin-layout__team-graph-backdrop" data-team-graph-close></div>
+    <div class="admin-layout__team-graph-panel" role="dialog" aria-modal="true">
+      <div class="admin-layout__team-graph-header">
+        <span data-team-graph-title></span>
+        <button class="team-graph-close" type="button" data-team-graph-close aria-label="Закрити">×</button>
+      </div>
+      <div class="admin-layout__team-graph-body" data-team-graph-body></div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  teamGraphPopup = popup;
+  teamGraphBodyEl = popup.querySelector<HTMLElement>("[data-team-graph-body]");
+  teamGraphTitleEl = popup.querySelector<HTMLElement>("[data-team-graph-title]");
+  popup.querySelectorAll<HTMLElement>("[data-team-graph-close]").forEach((el) => {
+    el.addEventListener("click", closeTeamGraphPopup);
+  });
+  popup.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeTeamGraphPopup();
+    }
+  });
+}
+
+async function loadTeamGraphStats(teamSlug: string): Promise<TeamMatchStat[] | null> {
+  if (import.meta.env.DEV && DEV_BYPASS) {
+    return getDevTeamGraphStats(teamSlug);
+  }
+  if (!apiBase || !initData) {
+    return null;
+  }
+  return fetchAnalitikaTeam(teamSlug);
+}
+
+function getDevTeamGraphStats(teamSlug: string): TeamMatchStat[] {
+  const now = Date.now();
+  return Array.from({ length: 5 }, (_, index) => {
+    const daysAgo = index * 3;
+    return {
+      id: `${teamSlug}-${index}`,
+      team_name: teamSlug,
+      opponent_name: `Команда ${index + 1}`,
+      match_date: new Date(now - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
+      is_home: index % 2 === 0,
+      team_goals: Math.floor(Math.random() * 4),
+      opponent_goals: Math.floor(Math.random() * 4),
+      avg_rating: (6 + index * 0.3).toFixed(1)
+    };
+  });
 }
 
 function shiftAdminLayoutMatch(delta: number): void {

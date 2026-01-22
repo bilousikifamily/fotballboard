@@ -7,6 +7,7 @@ import { normalizeTeamSlugValue } from "./teamSlugs";
 
 export const ANALITIKA_TEAMS = [
   { slug: "arsenal", label: "Arsenal" },
+  { slug: "aston-villa", label: "Aston Villa" },
   { slug: "barcelona", label: "Barcelona" },
   { slug: "chelsea", label: "Chelsea" },
   { slug: "fiorentina", label: "Fiorentina" },
