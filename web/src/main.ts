@@ -1137,7 +1137,7 @@ function renderUser(
       `
     : "";
   const adminLayoutScreen = `
-      <section class="screen screen--admin-layout${admin ? "" : " is-active"}" data-screen="admin-layout">
+      <section class="screen screen--admin-layout is-active" data-screen="admin-layout">
         <div class="admin-layout">
           <div class="admin-layout__top"></div>
           <div class="admin-layout__header">
@@ -1224,7 +1224,7 @@ function renderUser(
     `;
   const matchesScreen = admin
     ? `
-        <section class="screen is-active" data-screen="matches">
+        <section class="screen" data-screen="matches">
           <section class="panel matches">
             <div class="section-header">
               <div class="date-switcher" data-date-switcher>
@@ -1248,12 +1248,12 @@ function renderUser(
     : "";
   const adminLayoutTabButton = `
         <button
-          class="tabbar-button${admin ? "" : " is-active"}"
+          class="tabbar-button"
           type="button"
           data-tab="admin-layout"
           role="tab"
-          aria-selected="${admin ? "false" : "true"}"
-          aria-label="Адмін екран"
+          aria-selected="false"
+          aria-label="Прогнози"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 5h16v3H4z"></path>
@@ -1267,12 +1267,12 @@ function renderUser(
   const matchesTabButton = admin
     ? `
         <button
-          class="tabbar-button is-active"
+          class="tabbar-button"
           type="button"
           data-tab="matches"
           role="tab"
-          aria-selected="true"
-          aria-label="Прогнози"
+          aria-selected="false"
+          aria-label="Загальні прогнози"
         >
           <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
         </button>
@@ -2742,8 +2742,9 @@ function setupTabs(): void {
     .map((button) => button.dataset.tab)
     .filter((tab): tab is string => Boolean(tab));
   const normalizedQueryTab = QUERY_TAB_PARAM?.trim().toLowerCase();
+  const fallbackTab = tabIds.includes("admin-layout") ? "admin-layout" : tabIds[0] ?? "profile";
   const initialTab =
-    normalizedQueryTab && tabIds.includes(normalizedQueryTab) ? normalizedQueryTab : "matches";
+    normalizedQueryTab && tabIds.includes(normalizedQueryTab) ? normalizedQueryTab : fallbackTab;
   setActive(initialTab);
 }
 
