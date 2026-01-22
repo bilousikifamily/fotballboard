@@ -329,8 +329,6 @@ body.admin-layout-active #app {
 .admin-layout__team-graph-panel {
   position: relative;
   background: rgba(8, 10, 16, 0.95);
-  border-radius: 20px;
-  padding: 16px;
   width: min(90vw, 400px);
   max-height: 80vh;
   overflow: auto;
@@ -342,7 +340,7 @@ body.admin-layout-active #app {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
@@ -425,7 +423,7 @@ body.admin-layout-active #app {
   border: 1px solid rgba(255, 154, 31, 0.35);
   color: #000000;
   font-weight: 300;
- font-size: 0.8rem;
+ font-size: 1rem;
 }
 
 .admin-layout__info-card {

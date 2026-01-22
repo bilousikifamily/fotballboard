@@ -748,7 +748,7 @@
   grid-template-columns: 26px 1fr;
   gap: 4px;
   --line-logo-size: 36px;
-  --line-score-gap: 8px;
+  --line-score-gap: 4px;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
@@ -765,7 +765,7 @@
   justify-content: space-between;
   font-size: 0.75rem;
   color: var(--muted);
-  padding: 16px 0 120px;
+  padding: 12px 8px 120px;
   align-items: flex-start;
 }
 
