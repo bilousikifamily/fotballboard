@@ -345,6 +345,7 @@ body.admin-layout-active #app {
   gap: 2px;
   z-index: 3;
   padding: 0px 32px;
+  margin-top: 16px;
 }
 
 .admin-layout__vote .admin-layout__score-probability {
