@@ -315,7 +315,8 @@ body.admin-layout-active #app {
 .admin-layout__footer {
   background: rgba(12, 12, 20, 0.92);
   border-radius: 0;
-  padding: clamp(6px, 1.6vh, 10px) 16px calc(clamp(6px, 1.6vh, 10px) + env(safe-area-inset-bottom));
+  padding: clamp(6px, 1.2vh, 8px) 16px;
+  padding-bottom: max(env(safe-area-inset-bottom), clamp(6px, 1.2vh, 8px));
   display: flex;
   flex-direction: column;
   align-items: center;
