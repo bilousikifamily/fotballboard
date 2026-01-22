@@ -108,12 +108,13 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__info {
+  display: grid;
   justify-items: center;
   align-content: stretch;
   align-items: center;
-  padding: 6px 0px 0px 0px;
-  width: 100%;
-  max-width: 640px;
+  gap: 0;
+  padding: 0px 12px;
+  width: min(100%, 640px);
   margin: 0 auto;
   z-index: 4;
 }
@@ -378,7 +379,7 @@ body.admin-layout-active #app {
 
 .admin-layout__info-card {
   width: 90%;
-  padding: 4px 8px;
+  padding: 0px 8px;
   border-radius: 12px 12px 12px 12px;
   background: var(--admin-orange-pill);
   border: 1px solid var(--admin-orange-border-soft);
