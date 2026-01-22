@@ -424,12 +424,14 @@ body.admin-layout-active #app {
   background: var(--accent-gradient);
   border: 1px solid rgba(255, 154, 31, 0.35);
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 900;
+ font-size: 1rem;
 }
 
 .admin-layout__info-card {
   width: 90%;
-  padding: 0px 8px;
+  padding: 4px 8px;
+  margin-top: 4px;
   border-radius: 12px 12px 12px 12px;
   background: var(--admin-orange-pill);
   border: 1px solid var(--admin-orange-border-soft);

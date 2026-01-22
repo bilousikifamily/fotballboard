@@ -1336,7 +1336,8 @@ function renderUser(
         </button>
       `
     : "";
-  const adminLayoutScreen = `
+  const adminLayoutScreen = admin
+    ? `
       <section class="screen screen--admin-layout is-active" data-screen="admin-layout">
         <div class="admin-layout">
           <div class="admin-layout__header">
@@ -1412,17 +1413,17 @@ function renderUser(
               Проголосувати
             </button>
           </div>
-          <div class="admin-layout__footer">
-            <div class="admin-layout__countdown" data-admin-layout-countdown>
-              початок матчу через --:--:--
+              <div class="admin-layout__footer">
+                <div class="admin-layout__countdown" data-admin-layout-countdown>
+                  початок матчу через --:--:--
+                </div>
+                <span class="admin-layout__pagination" data-admin-layout-pagination></span>
+              </div>
             </div>
-            <span class="admin-layout__pagination" data-admin-layout-pagination></span>
-          </div>
-        </div>
-      </section>
-    `;
-  const matchesScreen = admin
-    ? `
+          </section>
+    `
+    : "";
+  const matchesScreen = `
         <section class="screen" data-screen="matches">
           <section class="panel matches">
             <div class="section-header">
@@ -1443,9 +1444,9 @@ function renderUser(
             <div class="matches-list" data-matches></div>
           </section>
         </section>
-      `
-    : "";
-  const adminLayoutTabButton = `
+      `;
+  const adminLayoutTabButton = admin
+    ? `
         <button
           class="tabbar-button"
           type="button"
@@ -1462,9 +1463,9 @@ function renderUser(
             <path d="M17 10v10"></path>
           </svg>
         </button>
-      `;
-  const matchesTabButton = admin
-    ? `
+      `
+    : "";
+  const matchesTabButton = `
         <button
           class="tabbar-button"
           type="button"
@@ -1475,8 +1476,7 @@ function renderUser(
         >
           <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
         </button>
-      `
-    : "";
+      `;
   const tabbarClass = admin ? "tabbar is-admin" : "tabbar";
 
   app.innerHTML = `
