@@ -2916,7 +2916,11 @@ function setupAdminTestControls(): void {
         }
       } else {
         if (status) {
-          status.textContent = `Не вдалося надіслати повідомлення${data?.error ? `: ${data.error}` : ""}.`;
+          if (data?.error === "no_predictions") {
+            status.textContent = "Немає прогнозів для цієї фракції.";
+          } else {
+            status.textContent = `Не вдалося надіслати повідомлення${data?.error ? `: ${data.error}` : ""}.`;
+          }
         }
       }
     } catch (error) {

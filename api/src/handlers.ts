@@ -85,6 +85,7 @@ const STARTING_POINTS = 100;
 const PREDICTION_CUTOFF_MS = 0;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 5 * 60 * 1000;
+const MATCH_START_DIGEST_DELAY_MS = 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -739,8 +740,12 @@ export default {
       return jsonResponse({ ok: false, error: "bad_faction" }, 400, corsHeaders());
     }
 
-    const sent = await sendMatchFactionPredictions(env, supabase, matchId, normalizedFaction);
-    return jsonResponse({ ok: sent }, sent ? 200 : 500, corsHeaders());
+    const result = await sendMatchFactionPredictions(env, supabase, matchId, normalizedFaction);
+    if (result.ok) {
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+    const status = result.error === "no_predictions" ? 200 : 500;
+    return jsonResponse({ ok: false, error: result.error }, status, corsHeaders());
   }
 
   if (url.pathname === "/api/analitika") {
@@ -2632,21 +2637,28 @@ function buildFactionPredictionsMessage(
   return `${header}\n\n${rows}`;
 }
 
+type SendMatchFactionPredictionsResult =
+  | { ok: true }
+  | { ok: false; error: "no_match" | "no_predictions" | "no_chat" | "no_target" };
+
 async function sendMatchFactionPredictions(
   env: Env,
   supabase: SupabaseClient,
   matchId: number,
   faction: FactionBranchSlug
-): Promise<boolean> {
+): Promise<SendMatchFactionPredictionsResult> {
   const match = await getMatchById(supabase, matchId);
   if (!match) {
-    return false;
+    return { ok: false, error: "no_match" };
   }
   const predictions = await listFactionPredictions(supabase, matchId, faction);
+  if (predictions.length === 0) {
+    return { ok: false, error: "no_predictions" };
+  }
   const refs = getFactionChatRefs(env);
   const chatRef = refs.bySlug[faction];
   if (!chatRef) {
-    return false;
+    return { ok: false, error: "no_chat" };
   }
   const target =
     typeof chatRef.chatId === "number"
@@ -2655,11 +2667,11 @@ async function sendMatchFactionPredictions(
         ? `@${chatRef.chatUsername}`
         : null;
   if (!target) {
-    return false;
+    return { ok: false, error: "no_target" };
   }
   const message = buildFactionPredictionsMessage(match, faction, predictions);
   await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
-  return true;
+  return { ok: true };
 }
 
 async function checkAdmin(supabase: SupabaseClient, userId: number): Promise<boolean> {
@@ -6836,7 +6848,7 @@ function addDays(dateStr: string, days: number): string {
 function buildMatchResultCaption(notification: MatchResultNotification): string {
   const lines: string[] = [];
   const resultLine = formatMatchResultLine(notification);
-  const statsLines = buildMatchResultStatsLines(notification.prediction_stats);
+  const statsLines = buildMatchResultStatsLines(notification);
 
   if (resultLine) {
     lines.push(resultLine);
@@ -6852,18 +6864,31 @@ function buildMatchResultCaption(notification: MatchResultNotification): string 
   return lines.join("\n");
 }
 
-function buildMatchResultStatsLines(stats: MatchResultPredictionStats | null | undefined): string[] {
+function buildMatchResultStatsLines(notification: MatchResultNotification): string[] {
+  const stats = notification.prediction_stats;
   if (!stats) {
     return [];
   }
-  const lines = [`${stats.result_support_percent}% депутатів проголосували за цей результат.`];
+  const supportTarget = buildMatchResultSupportTarget(notification);
+  const lines = [`${stats.result_support_percent}% депутатів проголосували за ${supportTarget}`];
   const guessers = stats.exact_guessers ?? [];
   if (guessers.length > 0) {
-    const formattedGuessers = guessers.map(formatExactGuessLabel).join(", ");
+    const formattedGuessers = guessers.map(formatExactGuessLabel);
     const verb = guessers.length === 1 ? "Вгадав" : "Вгадали";
-    lines.push(`${verb} рахунок - ${formattedGuessers}`);
+    lines.push(`${verb} рахунок:`);
+    lines.push(...formattedGuessers);
   }
   return lines;
+}
+
+function buildMatchResultSupportTarget(notification: MatchResultNotification): string {
+  const home = resolveUkrainianClubName(notification.home_team, null).toUpperCase();
+  const away = resolveUkrainianClubName(notification.away_team, null).toUpperCase();
+  if (notification.home_score === notification.away_score) {
+    return "нічию";
+  }
+  const team = notification.home_score > notification.away_score ? home : away;
+  return escapeTelegramHtml(team);
 }
 
 function formatExactGuessLabel(user: MatchResultExactGuessUser): string {
@@ -7006,6 +7031,10 @@ function buildMatchStartDigestMessage(
   return `${header}\n\n${rows}`;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function handleMatchStartDigests(env: Env): Promise<void> {
   const supabase = createSupabaseClient(env);
   if (!supabase) {
@@ -7019,7 +7048,8 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
   }
 
   const refs = getFactionChatRefs(env);
-  for (const match of matches) {
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
     const predictions = await listMatchPredictionsWithUsers(supabase, match.id);
     if (!predictions || predictions.length === 0) {
       continue;
@@ -7030,6 +7060,9 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
 
     for (const faction of ALL_FACTION_BRANCHES) {
       const factionPredictions = grouped[faction] ?? [];
+      if (factionPredictions.length === 0) {
+        continue;
+      }
       const chatRef = refs.bySlug[faction];
       if (!chatRef) {
         continue;
@@ -7055,6 +7088,10 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
       .is("start_digest_sent_at", null);
     if (error) {
       console.error("Failed to mark match start digest sent", error, { matchId: match.id, anySent });
+    }
+
+    if (index < matches.length - 1) {
+      await sleep(MATCH_START_DIGEST_DELAY_MS);
     }
   }
 }
