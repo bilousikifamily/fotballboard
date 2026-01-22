@@ -2280,6 +2280,16 @@ async function submitOddsRefresh(form: HTMLFormElement): Promise<void> {
   }
 }
 
+function resolveSeasonForDate(date: Date): number {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  return month >= 7 ? year : year - 1;
+}
+
+function getDefaultSeason(): number {
+  return resolveSeasonForDate(new Date());
+}
+
 async function submitClubSync(form: HTMLFormElement): Promise<void> {
   if (!apiBase || !initData) {
     return;
@@ -2294,7 +2304,7 @@ async function submitClubSync(form: HTMLFormElement): Promise<void> {
   const apiLeagueRaw = (form.querySelector<HTMLInputElement>('input[name="api_league_id"]')?.value ?? "").trim();
   const seasonRaw = (form.querySelector<HTMLInputElement>('input[name="season"]')?.value ?? "").trim();
   const apiLeagueId = apiLeagueRaw ? Number(apiLeagueRaw) : undefined;
-  const season = seasonRaw ? Number(seasonRaw) : undefined;
+  const season = seasonRaw ? Number(seasonRaw) : getDefaultSeason();
 
   try {
     const payload = {
@@ -2354,6 +2364,9 @@ function formatClubSyncError(payload: ClubSyncResponse | null): string {
       case "teams_empty":
         return "Список команд порожній.";
       case "api_error":
+        if (payload.detail === "teams_status_200") {
+          return "API-Football повернуло порожній список команд. Перевір сезон.";
+        }
         return `Помилка API-Football.${detail}`;
       case "db_error":
         return `Помилка бази.${detail}`;
@@ -3170,6 +3183,7 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   const match = matchesById.get(matchId);
   const isClosed = match?.status === "finished" || match?.status === "started";
   const shouldHideVote = hasPrediction || isClosed;
+  const shouldLockScores = hasPrediction || isClosed;
 
   if (voteButton) {
     voteButton.classList.toggle("is-faded", shouldHideVote);
@@ -3182,11 +3196,11 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
     badge.classList.toggle("is-faded", hasPrediction && !adminLayoutIsFinished);
   });
   scoreButtons.forEach((button) => {
-    button.classList.toggle("is-hidden", hasPrediction);
-    button.disabled = hasPrediction;
+    button.classList.toggle("is-hidden", shouldLockScores);
+    button.disabled = shouldLockScores;
   });
   scoreControls.forEach((control) => {
-    control.classList.toggle("is-locked", hasPrediction);
+    control.classList.toggle("is-locked", shouldLockScores);
   });
 
   if (hasPrediction) {

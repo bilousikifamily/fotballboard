@@ -57,7 +57,19 @@ const syncRawResponse = document.querySelector<HTMLElement>("[data-admin-sync-ra
 const curlButton = document.querySelector<HTMLButtonElement>("[data-admin-curl-command]");
 const curlHint = document.querySelector<HTMLElement>("[data-admin-curl-hint]");
 const syncLeagueSelect = document.querySelector<HTMLSelectElement>("[data-admin-sync-league]");
+const syncApiLeagueInput = syncForm?.querySelector<HTMLInputElement>('input[name="api_league_id"]') ?? null;
+const syncSeasonInput = syncForm?.querySelector<HTMLInputElement>('input[name="season"]') ?? null;
 const buildBadge = document.querySelector<HTMLElement>("[data-admin-build]");
+
+function resolveSeasonForDate(date: Date): number {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  return month >= 7 ? year : year - 1;
+}
+
+function getDefaultSeason(): number {
+  return resolveSeasonForDate(new Date());
+}
 
 function showLogin(): void {
   loginPanel?.classList.remove("is-hidden");
@@ -156,6 +168,12 @@ if (syncLeagueSelect) {
   ).join("");
 }
 
+if (syncSeasonInput && !syncSeasonInput.value.trim()) {
+  const defaultSeason = getDefaultSeason();
+  syncSeasonInput.value = String(defaultSeason);
+  syncSeasonInput.placeholder = String(defaultSeason);
+}
+
 if (buildBadge) {
   const baseLabel = BUILD_ID ? `build ${BUILD_ID}` : `build ${import.meta.env.MODE ?? "local"}`;
   const suffix = BUILD_TIME ? ` ${BUILD_TIME}` : "";
@@ -190,10 +208,10 @@ async function submitClubSync(): Promise<void> {
   }
 
   const leagueId = (syncLeagueSelect?.value ?? "").trim();
-  const apiLeagueRaw = (syncForm?.querySelector<HTMLInputElement>('input[name="api_league_id"]')?.value ?? "").trim();
-  const seasonRaw = (syncForm?.querySelector<HTMLInputElement>('input[name="season"]')?.value ?? "").trim();
+  const apiLeagueRaw = (syncApiLeagueInput?.value ?? "").trim();
+  const seasonRaw = (syncSeasonInput?.value ?? "").trim();
   const apiLeagueId = apiLeagueRaw ? Number(apiLeagueRaw) : undefined;
-  const season = seasonRaw ? Number(seasonRaw) : undefined;
+  const season = seasonRaw ? Number(seasonRaw) : getDefaultSeason();
 
   const payload = {
     admin_token: adminToken,
@@ -245,8 +263,8 @@ const buildCurlCommand = (apiLeagueId: number | undefined, leagueParam: string, 
 if (curlButton) {
   curlButton.addEventListener("click", () => {
     const leagueId = (syncLeagueSelect?.value ?? "").trim() || "uefa-champions-league";
-    const seasonValue = (syncForm?.querySelector<HTMLInputElement>('input[name="season"]')?.value ?? "").trim() || "2025";
-    const apiLeagueRaw = (syncForm?.querySelector<HTMLInputElement>('input[name="api_league_id"]')?.value ?? "").trim();
+    const seasonValue = (syncSeasonInput?.value ?? "").trim() || String(getDefaultSeason());
+    const apiLeagueRaw = (syncApiLeagueInput?.value ?? "").trim();
     const apiLeagueId = apiLeagueRaw ? Number(apiLeagueRaw) : undefined;
     const command = buildCurlCommand(apiLeagueId, leagueId, seasonValue);
     if (curlHint) {
@@ -293,6 +311,9 @@ function formatSyncError(payload: ClubSyncResponse | null, status?: number, rawT
       case "teams_empty":
         return `Список команд порожній.${detailSuffix}`;
       case "api_error":
+        if (payload.detail === "teams_status_200") {
+          return `API-Football повернуло порожній список команд. Перевір сезон.${detailSuffix}`;
+        }
         return `Помилка API-Football.${detail}${detailSuffix}`;
       case "db_error":
         return `Помилка бази.${detail}${detailSuffix}`;
