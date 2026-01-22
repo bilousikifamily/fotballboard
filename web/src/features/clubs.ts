@@ -6,6 +6,7 @@ import {
   type LogoLeagueId,
   type MatchLeagueId
 } from "../data/clubs";
+import { UKRAINIAN_CLUB_NAMES } from "../data/clubNamesUk";
 import type { Match } from "../types";
 import { normalizeTeamSlugValue } from "./teamSlugs";
 
@@ -80,8 +81,15 @@ const UEFA_LOGO_LEAGUE_MAP: Record<MatchLeagueId, LogoLeagueId> = {
 
 const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
   "uefa-champions-league": new Set(["sporting", "benfica", "pafos", "slavia-praga"]),
-  "uefa-europa-league": new Set(),
+  "uefa-europa-league": new Set(["fenerbahce", "young-boys"]),
   "uefa-europa-conference-league": new Set()
+};
+
+const UEFA_LOGO_SLUG_OVERRIDES: Partial<Record<MatchLeagueId, Record<string, LogoLeagueId>>> = {
+  "uefa-europa-league": {
+    "fenerbahce": "champions-league",
+    "young-boys": "champions-league"
+  }
 };
 
 function isUefaLogoSlug(slug: string): boolean {
@@ -102,6 +110,10 @@ const CLUB_LOGO_FILE_OVERRIDES: Partial<Record<LogoLeagueId, Record<string, stri
 function getUefaLogoLeague(clubSlug: string | null, leagueId: MatchLeagueId | null): LogoLeagueId | null {
   if (!clubSlug || !leagueId) {
     return null;
+  }
+  const overrideLeague = UEFA_LOGO_SLUG_OVERRIDES[leagueId]?.[clubSlug];
+  if (overrideLeague) {
+    return overrideLeague;
   }
   const allowedSlugs = UEFA_LOGO_SLUGS[leagueId];
   if (!allowedSlugs || !allowedSlugs.has(clubSlug)) {
@@ -150,6 +162,13 @@ export function getAvatarLogoPath(choice: string | null | undefined): string | n
     return null;
   }
   return getClubLogoPath(match[1], match[2]);
+}
+
+export function getUkrainianClubName(slug: string | null | undefined): string | null {
+  if (!slug) {
+    return null;
+  }
+  return UKRAINIAN_CLUB_NAMES[slug] ?? null;
 }
 
 export function findEuropeanClubLeague(clubId: string): LeagueId | null {
