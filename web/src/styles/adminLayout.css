@@ -60,10 +60,11 @@ body.admin-layout-active #app {
 
 .admin-layout__body {
   display: grid;
-  grid-template-columns: 10% 40% 40% 10%;
+  grid-template-columns: minmax(44px, 9%) minmax(0, 1fr) minmax(0, 1fr) minmax(44px, 9%);
   grid-template-rows: 22% 55% 18%;
   position: relative;
   gap: 8px;
+  padding: 0 8px;
 }
 
 .admin-layout__side {
