@@ -423,9 +423,9 @@ body.admin-layout-active #app {
   letter-spacing: 0.12em;
   background: var(--accent-gradient);
   border: 1px solid rgba(255, 154, 31, 0.35);
-  color: #ffffff;
-  font-weight: 900;
- font-size: 1rem;
+  color: #000000;
+  font-weight: 300;
+ font-size: 0.8rem;
 }
 
 .admin-layout__info-card {

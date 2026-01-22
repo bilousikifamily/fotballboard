@@ -180,6 +180,7 @@ const WEATHER_DB_REFRESH_LIMIT = 24;
 
 const ANALITIKA_TEAMS = [
   { slug: "arsenal", name: "Arsenal" },
+  { slug: "aston-villa", name: "Aston Villa" },
   { slug: "barcelona", name: "Barcelona" },
   { slug: "chelsea", name: "Chelsea" },
   { slug: "fiorentina", name: "Fiorentina" },

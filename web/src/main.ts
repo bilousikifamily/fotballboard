@@ -1336,8 +1336,7 @@ function renderUser(
         </button>
       `
     : "";
-  const adminLayoutScreen = admin
-    ? `
+  const adminLayoutScreen = `
       <section class="screen screen--admin-layout is-active" data-screen="admin-layout">
         <div class="admin-layout">
           <div class="admin-layout__header">
@@ -1413,17 +1412,17 @@ function renderUser(
               Проголосувати
             </button>
           </div>
-              <div class="admin-layout__footer">
-                <div class="admin-layout__countdown" data-admin-layout-countdown>
-                  початок матчу через --:--:--
-                </div>
-                <span class="admin-layout__pagination" data-admin-layout-pagination></span>
-              </div>
+          <div class="admin-layout__footer">
+            <div class="admin-layout__countdown" data-admin-layout-countdown>
+              початок матчу через --:--:--
             </div>
-          </section>
-    `
-    : "";
-  const matchesScreen = `
+            <span class="admin-layout__pagination" data-admin-layout-pagination></span>
+          </div>
+        </div>
+      </section>
+    `;
+  const matchesScreen = admin
+    ? `
         <section class="screen" data-screen="matches">
           <section class="panel matches">
             <div class="section-header">
@@ -1444,9 +1443,9 @@ function renderUser(
             <div class="matches-list" data-matches></div>
           </section>
         </section>
-      `;
-  const adminLayoutTabButton = admin
-    ? `
+      `
+    : "";
+  const adminLayoutTabButton = `
         <button
           class="tabbar-button"
           type="button"
@@ -1455,28 +1454,27 @@ function renderUser(
           aria-selected="false"
           aria-label="Прогнози"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 5h16v3H4z"></path>
-            <path d="M4 10h16v10H4z"></path>
-            <path d="M7 10v10"></path>
-            <path d="M12 10v10"></path>
-            <path d="M17 10v10"></path>
-          </svg>
+          <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
         </button>
-      `
-    : "";
-  const matchesTabButton = `
+      `;
+  const matchesTabButton = admin
+    ? `
         <button
           class="tabbar-button"
           type="button"
           data-tab="matches"
           role="tab"
           aria-selected="false"
-          aria-label="Загальні прогнози"
+          aria-label="Матчі"
         >
-          <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 8h12v2H6z"></path>
+            <path d="M6 12h12v2H6z"></path>
+            <path d="M6 16h12v2H6z"></path>
+          </svg>
         </button>
-      `;
+      `
+    : "";
   const tabbarClass = admin ? "tabbar is-admin" : "tabbar";
 
   app.innerHTML = `
@@ -1520,9 +1518,6 @@ function renderUser(
           </div>
         </section>
 
-        ${matchesScreen}
-
-        ${adminScreen}
         ${adminLayoutScreen}
 
         <section class="screen" data-screen="leaderboard">
@@ -1533,6 +1528,9 @@ function renderUser(
             </section>
           </div>
         </section>
+
+        ${adminScreen}
+        ${matchesScreen}
       </main>
 
       <nav class="${tabbarClass}" role="tablist" aria-label="Навігація">
@@ -1546,7 +1544,7 @@ function renderUser(
         >
           <span class="tabbar-icon tabbar-icon--profile" aria-hidden="true"></span>
         </button>
-        ${matchesTabButton}
+        ${adminLayoutTabButton}
         <button
           class="tabbar-button"
           type="button"
@@ -1562,7 +1560,7 @@ function renderUser(
           </svg>
         </button>
         ${adminTabButton}
-        ${adminLayoutTabButton}
+        ${matchesTabButton}
       </nav>
     </div>
   `;
@@ -1825,16 +1823,17 @@ async function loadMatches(date: string): Promise<void> {
   }
 
   const container = app.querySelector<HTMLElement>("[data-matches]");
-  if (!container) {
-    return;
-  }
 
-  container.innerHTML = `<p class="muted">Завантаження...</p>`;
+  if (container) {
+    container.innerHTML = `<p class="muted">Завантаження...</p>`;
+  }
 
   try {
     const { response, data } = await fetchMatches(apiBase, initData, date);
     if (!response.ok || !data.ok) {
-      container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
+      if (container) {
+        container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
+      }
       return;
     }
 
@@ -1848,15 +1847,19 @@ async function loadMatches(date: string): Promise<void> {
       adminLayoutIndex = 0;
       updateAdminLayoutView();
     }
-    container.innerHTML = renderMatchesList(data.matches);
-    centerMatchList(container);
+    if (container) {
+      container.innerHTML = renderMatchesList(data.matches);
+      centerMatchList(container);
+    }
     bindMatchActions();
     setupMatchAnalitikaFilters();
     renderAdminMatchOptions(data.matches);
     void loadMatchWeather(data.matches);
     startPredictionCountdowns();
   } catch {
-    container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
+    if (container) {
+      container.innerHTML = `<p class="muted">Не вдалося завантажити матчі.</p>`;
+    }
   }
 }
 
