@@ -2,7 +2,7 @@ import { CLUB_REGISTRY, type AllLeagueId } from "../data/clubs";
 import type { AnalitikaDebugInfo, AnalitikaItem, AnalitikaRefreshResponse, TeamMatchStat } from "../types";
 import { formatKyivDateShort, formatKyivDateTime } from "../formatters/dates";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
-import { formatClubName, getClubLogoPath } from "./clubs";
+import { formatClubName, getChampionsClubLogo, getClubLogoPath } from "./clubs";
 import { normalizeTeamSlugValue } from "./teamSlugs";
 
 export const ANALITIKA_TEAMS = [
@@ -225,7 +225,10 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "exeter city": "exeter",
   "brighton and hove albion": "brighton",
   "nottingham forest": "nottingham-forest",
-  "portsmouth": "portsmouth"
+  "portsmouth": "portsmouth",
+  "pafos": "pafos",
+  "benfica": "benfica",
+  "slavia praga": "slavia-praga"
 };
 
 type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
@@ -238,6 +241,11 @@ export function resolveClubLogoByName(name: string): string | null {
     return null;
   }
   const aliasSlug = CLUB_NAME_ALIASES[normalized];
+  const candidateSlug = aliasSlug ?? normalized.replace(/\s+/g, "-");
+  const championsLogo = getChampionsClubLogo(candidateSlug);
+  if (championsLogo) {
+    return championsLogo;
+  }
   if (aliasSlug) {
     const entry = CLUB_REGISTRY[aliasSlug];
     return entry ? getClubLogoPath(entry.logoLeagueId, aliasSlug) : null;

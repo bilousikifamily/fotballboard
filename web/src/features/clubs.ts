@@ -101,6 +101,13 @@ function isUefaLogoSlug(slug: string): boolean {
   return false;
 }
 
+export function getChampionsClubLogo(slug: string | null): string | null {
+  if (!slug || !isUefaLogoSlug(slug)) {
+    return null;
+  }
+  return getClubLogoPath("champions-league", slug);
+}
+
 const CLUB_LOGO_FILE_OVERRIDES: Partial<Record<LogoLeagueId, Record<string, string>>> = {
   "champions-league": {
     "slavia-praga": "slavia"
