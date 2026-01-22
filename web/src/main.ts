@@ -173,6 +173,8 @@ const NOTICE_RULES = [
   "Не вгаданий результат -1 голос"
 ];
 const QUERY_TAB_PARAM = new URLSearchParams(window.location.search).get("tab") ?? null;
+const DEV_BYPASS = import.meta.env.DEV && new URLSearchParams(window.location.search).get("dev") === "1";
+const DEV_ADMIN = import.meta.env.DEV && new URLSearchParams(window.location.search).get("admin") === "1";
 
 const tg = window.Telegram?.WebApp;
 if (tg?.ready) {
@@ -182,11 +184,204 @@ if (tg?.ready) {
   }
 }
 
-const initData = tg?.initData || "";
+let initData = tg?.initData || "";
 if (!initData) {
-  renderMessage("Open in Telegram");
+  if (DEV_BYPASS) {
+    queueMicrotask(bootstrapDev);
+  } else {
+    renderMessage("Open in Telegram");
+  }
 } else {
   void bootstrap(initData);
+}
+
+function bootstrapDev(): void {
+  renderLoading();
+
+  apiBase = import.meta.env.VITE_API_BASE || "";
+  isAdmin = DEV_ADMIN;
+  currentUserId = 1;
+  currentUser = {
+    id: 1,
+    first_name: "Dev",
+    last_name: "User",
+    username: "dev"
+  };
+  currentDate = getKyivDateString();
+
+  const factionClubId = "dynamo-kyiv";
+  const factionLeague = findClubLeague(factionClubId);
+  currentOnboarding = {
+    completed: true,
+    faction_club_id: factionClubId,
+    nickname: "Dev",
+    avatar_choice: null
+  };
+  currentNickname = currentOnboarding.nickname ?? null;
+  currentAvatarChoice = getDefaultAvatarChoice({
+    factionClubId,
+    factionLeague
+  });
+
+  const stats: UserStats = {
+    rank: 7,
+    points: 128
+  };
+  const profile: ProfileStatsPayload = {
+    prediction: {
+      total: 24,
+      hits: 11,
+      accuracy_pct: 46,
+      streak: 2,
+      last_results: [
+        { hit: true, points: 5 },
+        { hit: false, points: -1 },
+        { hit: true, points: 1 },
+        { hit: false, points: -1 },
+        { hit: true, points: 5 }
+      ]
+    },
+    factions: [
+      {
+        key: "faction_club_id",
+        value: factionClubId,
+        members: 124,
+        rank: 3
+      }
+    ]
+  };
+
+  document.body.classList.remove("onboarding-active");
+  renderUser(currentUser, stats, isAdmin, currentDate, currentNickname, profile);
+
+  const matches = getDevMatches();
+  matchesById.clear();
+  matches.forEach((match) => {
+    matchesById.set(match.id, match);
+  });
+
+  adminLayoutMatches = matches.slice();
+  adminLayoutIndex = 0;
+  adminLayoutHasPrediction = false;
+  adminLayoutIsFinished = false;
+  adminLayoutVoteMatchId = null;
+  if (isAdmin) {
+    updateAdminLayoutView();
+  }
+
+  const container = app.querySelector<HTMLElement>("[data-matches]");
+  if (container) {
+    container.innerHTML = renderMatchesList(matches);
+    centerMatchList(container);
+  }
+
+  renderAdminMatchOptions(matches);
+  setupMatchAnalitikaFilters();
+  startPredictionCountdowns();
+
+  if (isAdmin) {
+    const list = app.querySelector<HTMLElement>("[data-admin-pending-list]");
+    if (list) {
+      const pendingMatches = matches.filter((match) => match.status === "pending");
+      list.innerHTML = renderPendingMatchesList(pendingMatches);
+    }
+  }
+}
+
+function getDevMatches(): Match[] {
+  const now = Date.now();
+  const upcoming = new Date(now + 2 * 60 * 60 * 1000).toISOString();
+  const closed = new Date(now - 1 * 60 * 60 * 1000).toISOString();
+  const finished = new Date(now - 5 * 60 * 60 * 1000).toISOString();
+
+  return [
+    {
+      id: 101,
+      home_team: "Dynamo Kyiv",
+      away_team: "Shakhtar",
+      league_id: "ukrainian-premier-league",
+      home_club_id: "dynamo-kyiv",
+      away_club_id: "shakhtar",
+      kickoff_at: upcoming,
+      prediction_closes_at: upcoming,
+      status: "scheduled",
+      venue_city: "Kyiv",
+      rain_probability: 40,
+      weather_condition: "thunderstorm",
+      weather_temp_c: 3,
+      tournament_name: "Українська Прем'єр-ліга",
+      tournament_stage: "Group stage",
+      odds_json: [
+        {
+          bookmakers: [
+            {
+              bets: [
+                {
+                  values: [
+                    { value: "1", odd: 1.8 },
+                    { value: "X", odd: 3.2 },
+                    { value: "2", odd: 4.5 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 102,
+      home_team: "Arsenal",
+      away_team: "Chelsea",
+      league_id: "english-premier-league",
+      home_club_id: "arsenal",
+      away_club_id: "chelsea",
+      kickoff_at: closed,
+      prediction_closes_at: closed,
+      status: "pending",
+      venue_city: "London",
+      rain_probability: 10,
+      weather_condition: "snow",
+      weather_temp_c: 1,
+      has_prediction: true,
+      tournament_name: "Premier League",
+      tournament_stage: "Round of 16",
+      odds_json: [
+        {
+          bookmakers: [
+            {
+              bets: [
+                {
+                  values: [
+                    { value: "1", odd: 2.4 },
+                    { value: "X", odd: 3.25 },
+                    { value: "2", odd: 2.9 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 103,
+      home_team: "Barcelona",
+      away_team: "Real Madrid",
+      league_id: "la-liga",
+      home_club_id: "barcelona",
+      away_club_id: "real_madrid",
+      kickoff_at: finished,
+      status: "finished",
+      home_score: 2,
+      away_score: 1,
+      venue_city: "Barcelona",
+      rain_probability: 0,
+      weather_condition: "snow",
+      weather_temp_c: 7,
+      has_prediction: true
+    }
+  ];
 }
 
 function mountIntro(): void {
@@ -1139,7 +1334,6 @@ function renderUser(
   const adminLayoutScreen = `
       <section class="screen screen--admin-layout is-active" data-screen="admin-layout">
         <div class="admin-layout">
-          <div class="admin-layout__top"></div>
           <div class="admin-layout__header">
             <div class="date-switcher" data-admin-layout-date>
               <button class="date-nav" type="button" data-admin-layout-date-prev aria-label="Попередній день">
@@ -1176,18 +1370,18 @@ function renderUser(
               </div>
             </div>
           </div>
-          <div class="admin-layout__body">
-            <div class="admin-layout__info">
-              <div class="admin-layout__info-card">
-                <div class="admin-layout__info-title" data-admin-layout-tournament>—</div>
-                <div class="admin-layout__info-subtitle" data-admin-layout-stage>—</div>
-              </div>
-              <div class="admin-layout__info-odds">
-                <div class="admin-layout__info-odd" data-admin-layout-odd="home">—</div>
-                <div class="admin-layout__info-odd" data-admin-layout-odd="draw">—</div>
-                <div class="admin-layout__info-odd" data-admin-layout-odd="away">—</div>
-              </div>
+          <div class="admin-layout__info">
+            <div class="admin-layout__info-card">
+              <div class="admin-layout__info-title" data-admin-layout-tournament>—</div>
+              <div class="admin-layout__info-subtitle" data-admin-layout-stage>—</div>
             </div>
+            <div class="admin-layout__info-odds">
+              <div class="admin-layout__info-odd" data-admin-layout-odd="home">—</div>
+              <div class="admin-layout__info-odd" data-admin-layout-odd="draw">—</div>
+              <div class="admin-layout__info-odd" data-admin-layout-odd="away">—</div>
+            </div>
+          </div>
+          <div class="admin-layout__body">
             <div class="admin-layout__side admin-layout__side--left">
               <button class="admin-layout__nav" type="button" data-admin-layout-prev aria-label="Попередній матч">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1204,14 +1398,14 @@ function renderUser(
                 </svg>
               </button>
             </div>
-            <div class="admin-layout__vote">
-              <div class="admin-layout__score-probability" data-admin-layout-probability>
-                ймовірність рахунку 0:0 — 3%
-              </div>
-              <button class="prediction-submit admin-layout__vote-button" type="button" data-admin-layout-vote>
-                Проголосувати
-              </button>
+          </div>
+          <div class="admin-layout__vote">
+            <div class="admin-layout__score-probability" data-admin-layout-probability>
+              ймовірність рахунку 0:0 — 3%
             </div>
+            <button class="prediction-submit admin-layout__vote-button" type="button" data-admin-layout-vote>
+              Проголосувати
+            </button>
           </div>
           <div class="admin-layout__footer">
             <div class="admin-layout__countdown" data-admin-layout-countdown>

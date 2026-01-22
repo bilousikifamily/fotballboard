@@ -36,14 +36,14 @@
 }
 
 .date-pill {
-  min-width: 150px;
-  padding: 8px 12px;
+  min-width: 110px;
+  padding: 4px 12px;
   border-radius: 14px;
   background: rgba(255, 122, 26, 0.18);
   border: 1px solid rgba(255, 154, 31, 0.35);
   color: var(--ink);
-  font-size: 1rem;
-  letter-spacing: 0.14em;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -205,16 +205,11 @@
 
 .match-time {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.6rem;
   text-align: center;
   display: grid;
-  gap: 3px;
   justify-items: center;
-  min-height: 56px;
-  height: 56px;
-  max-height: 56px;
   overflow: hidden;
-  padding-top: 4px;
 }
 
 .match-meta-sep {
