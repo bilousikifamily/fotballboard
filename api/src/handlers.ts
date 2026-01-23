@@ -2622,11 +2622,11 @@ function formatMatchKickoff(match: DbMatch): string {
 function formatPredictionUser(prediction: PredictionView): string {
   const nickname = prediction.user?.nickname?.trim();
   if (nickname) {
-    return nickname;
+    return nickname.toUpperCase();
   }
   const username = prediction.user?.username?.trim();
   if (username) {
-    return `@${username}`;
+    return `@${username.toUpperCase()}`;
   }
   return `id:${prediction.user_id}`;
 }
@@ -2672,7 +2672,7 @@ function buildFactionPredictionsMessage(
     return `${header}\n\nПоки що прогнози відсутні.`;
   }
   const rows = predictions
-    .map((prediction) => `${formatPredictionUser(prediction)} — ${prediction.home_pred}:${prediction.away_pred}`)
+    .map((prediction) => `${prediction.home_pred}:${prediction.away_pred} — ${formatPredictionUser(prediction)}`)
     .join("\n");
   return `${header}\n\n${rows}`;
 }
@@ -6903,7 +6903,7 @@ function buildMatchResultStatsLines(notification: MatchResultNotification): stri
     return [];
   }
   const supportTarget = buildMatchResultSupportTarget(notification);
-  const lines = [`${stats.result_support_percent}% депутатів проголосували за ${supportTarget}`];
+  const lines = [`${stats.result_support_percent}% депутатів`, `проголосували за ${supportTarget}`];
   const guessers = stats.exact_guessers ?? [];
   if (guessers.length > 0) {
     const formattedGuessers = guessers.map(formatExactGuessLabel);
@@ -7059,7 +7059,7 @@ function buildMatchStartDigestMessage(
     return `${header}\n\nПоки що прогнози відсутні.`;
   }
   const rows = predictions
-    .map((prediction) => `${formatPredictionUserLabel(prediction.user)} — ${prediction.home_pred}:${prediction.away_pred}`)
+    .map((prediction) => `${prediction.home_pred}:${prediction.away_pred} — ${formatPredictionUserLabel(prediction.user)}`)
     .join("\n");
   return `${header}\n\n${rows}`;
 }
@@ -7341,7 +7341,7 @@ function formatPredictionUserLabel(user: MatchPredictionUser | null): string {
   }
   const nickname = (user.nickname ?? "").trim();
   if (nickname) {
-    return nickname;
+    return nickname.toUpperCase();
   }
   const telegramUser: TelegramUser = {
     id: user.id ?? 0,
@@ -7350,7 +7350,7 @@ function formatPredictionUserLabel(user: MatchPredictionUser | null): string {
     last_name: user.last_name ?? undefined
   };
   const display = formatUserDisplay(telegramUser);
-  return display || "Невідомий";
+  return display ? display.toUpperCase() : "Невідомий";
 }
 
 function formatMatchPredictionLine(
