@@ -788,15 +788,16 @@
 .analitika-line-canvas {
   position: relative;
   height: 320px;
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
+  padding: 0 24px;
 }
 
 .analitika-line-plot {
   position: absolute;
-  inset: 16px 4px 120px;
+  inset: 16px 0 120px;
   overflow: visible;
-  max-width: calc(100% - 8px);
+  width: 100%;
 }
 
 .analitika-line-grid {
@@ -853,6 +854,7 @@
   transform: translate(-50%, -50%);
   width: 0;
   height: 0;
+  z-index: 2;
 }
 
 .analitika-line-logo {
@@ -868,7 +870,13 @@
 .analitika-line-logo .match-logo-fallback {
   width: var(--line-logo-size);
   height: var(--line-logo-size);
+  min-width: var(--line-logo-size);
+  min-height: var(--line-logo-size);
+  max-width: var(--line-logo-size);
+  max-height: var(--line-logo-size);
   border-radius: 10px;
+  object-fit: contain;
+  display: block;
 }
 
 .analitika-line-score {

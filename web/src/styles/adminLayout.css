@@ -305,10 +305,14 @@ body.admin-layout-active #app {
 
 .admin-layout__team-graph-popup {
   position: fixed;
-  inset: 0;
+  top: env(safe-area-inset-top, 0);
+  right: env(safe-area-inset-right, 0);
+  bottom: env(safe-area-inset-bottom, 0);
+  left: env(safe-area-inset-left, 0);
+  width: 100vw;
+  height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   z-index: 5000;
   opacity: 0;
   pointer-events: none;
@@ -323,24 +327,32 @@ body.admin-layout-active #app {
 .admin-layout__team-graph-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
 }
 
 .admin-layout__team-graph-panel {
   position: relative;
-  background: rgba(8, 10, 16, 0.95);
-  width: min(90vw, 400px);
-  max-height: 80vh;
-  overflow: auto;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 10, 16, 0.98);
+  overflow: hidden;
   pointer-events: auto;
 }
 
 .admin-layout__team-graph-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 16px) 20px 16px;
+  background: rgba(8, 10, 16, 0.98);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
@@ -348,13 +360,84 @@ body.admin-layout-active #app {
   text-transform: uppercase;
 }
 
+.admin-layout__team-graph-header > span {
+  flex: 1;
+  text-align: center;
+}
+
+.admin-layout__team-graph-header .team-graph-close {
+  position: absolute;
+  right: 20px;
+}
+
 .team-graph-close {
   background: transparent;
   border: 0;
   color: #fff;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 4px 12px;
+  line-height: 1;
+  transition: opacity 0.2s ease;
+}
+
+.team-graph-close:hover {
+  opacity: 0.7;
+}
+
+.team-graph-close:active {
+  opacity: 0.5;
+}
+
+.admin-layout__team-graph-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-layout__team-graph-body .analitika-card {
+  margin: 0;
+}
+
+/* Покращення читабельності графіка в попапі */
+.admin-layout__team-graph-body .analitika-line {
+  --line-logo-size: 44px;
+  --line-score-gap: 6px;
+}
+
+.admin-layout__team-graph-body .analitika-line-canvas {
+  height: min(400px, 50vh);
+  min-height: 320px;
+}
+
+.admin-layout__team-graph-body .analitika-line-score {
+  font-size: 0.75rem;
+  padding: 5px 10px;
+}
+
+.admin-layout__team-graph-body .analitika-line-date {
+  font-size: 0.75rem;
+}
+
+.admin-layout__team-graph-body .analitika-line-homeaway {
+  font-size: 0.7rem;
+}
+
+@media (max-width: 480px) {
+  .admin-layout__team-graph-body {
+    padding: 16px;
+  }
+  
+  .admin-layout__team-graph-body .analitika-line-canvas {
+    padding: 0 20px;
+  }
+  
+  .admin-layout__team-graph-body .analitika-line {
+    --line-logo-size: 40px;
+  }
 }
 
 .admin-layout__footer {
