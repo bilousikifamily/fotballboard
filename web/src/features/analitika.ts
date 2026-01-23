@@ -298,7 +298,9 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "bodø/glimt": "bodo-glimt",
   "bodo": "bodo-glimt",
   "psv": "psv",
-  "psv eindhoven": "psv"
+  "psv eindhoven": "psv",
+  "psv eindhoven fc": "psv",
+  "philips sport vereniging": "psv"
 };
 
 type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
@@ -329,6 +331,24 @@ export function resolveClubLogoByName(name: string): string | null {
     const entry = CLUB_REGISTRY[aliasSlug];
     if (entry) {
       return getClubLogoPath(entry.logoLeagueId, aliasSlug);
+    }
+  }
+  
+  // Якщо назва складається з кількох слів, спробуємо перевірити перше слово
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    const firstWord = words[0];
+    const firstWordChampionsLogo = getChampionsClubLogo(firstWord);
+    if (firstWordChampionsLogo) {
+      return firstWordChampionsLogo;
+    }
+    // Також перевіряємо аліас для першого слова
+    const firstWordAlias = CLUB_NAME_ALIASES[firstWord];
+    if (firstWordAlias) {
+      const firstWordAliasChampionsLogo = getChampionsClubLogo(firstWordAlias);
+      if (firstWordAliasChampionsLogo) {
+        return firstWordAliasChampionsLogo;
+      }
     }
   }
   
