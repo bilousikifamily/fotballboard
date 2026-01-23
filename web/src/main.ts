@@ -3528,20 +3528,6 @@ function getUserPointsTotal(user: PredictionUser | null): number {
   return typeof user?.points_total === "number" ? user.points_total : 0;
 }
 
-function hasMatchesForPrediction(matches: Match[]): boolean {
-  const now = Date.now();
-  return matches.some((match) => {
-    if (match.status === "finished") {
-      return false;
-    }
-    const closeAtMs = getMatchPredictionCloseAtMs(match);
-    if (closeAtMs !== null && now > closeAtMs) {
-      return false;
-    }
-    return true;
-  });
-}
-
 function updateAdminLayoutView(): void {
   const homeSlot = app.querySelector<HTMLElement>("[data-admin-layout-home]");
   const awaySlot = app.querySelector<HTMLElement>("[data-admin-layout-away]");
@@ -3595,12 +3581,11 @@ function updateAdminLayoutView(): void {
   }
 
   const total = adminLayoutMatches.length;
-  const hasVotingMatches = total > 0 && hasMatchesForPrediction(adminLayoutMatches);
   
-  // Приховуємо/показуємо елементи залежно від наявності матчів для прогнозування
-  adminLayout.classList.toggle("has-no-voting", !hasVotingMatches);
+  // Показуємо "ГОЛОСУВАННЯ ВІДСУТНЄ" тільки коли немає матчів взагалі
+  adminLayout.classList.toggle("has-no-voting", total === 0);
   
-  if (!hasVotingMatches) {
+  if (total === 0) {
     homeSlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     awaySlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     pagination.innerHTML = "";
