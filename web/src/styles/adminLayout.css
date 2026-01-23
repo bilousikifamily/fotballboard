@@ -349,12 +349,12 @@ body.admin-layout-active #app {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: env(safe-area-inset-top, 16px) 20px 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 10px;
   background: rgba(8, 10, 16, 0.98);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -400,7 +400,10 @@ body.admin-layout-active #app {
   display: grid;
   place-items: center;
   overflow: auto;
-  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-top: 18px;
+  padding-right: 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: 20px;
   -webkit-overflow-scrolling: touch;
 }
 

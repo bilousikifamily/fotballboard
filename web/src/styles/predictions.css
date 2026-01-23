@@ -761,10 +761,11 @@
 
 .analitika-line {
   display: grid;
-  grid-template-columns: 26px 1fr;
+  grid-template-columns: 56px minmax(0, 980px);
   gap: 4px;
-  --line-logo-size: 36px;
-  --line-score-gap: 4px;
+  justify-content: center;
+  --line-logo-size: clamp(40px, 7vw, 56px);
+  --line-score-gap: 6px;
   width: 100%;
   max-width: 100%;
   overflow: visible;
@@ -781,7 +782,7 @@
   justify-content: space-between;
   font-size: 0.75rem;
   color: var(--muted);
-  padding: 12px 8px 120px;
+  padding: 44px 8px calc(64px + 60px);
   align-items: flex-start;
 }
 
@@ -794,6 +795,7 @@
   overflow: visible;
   padding: 44px 44px 64px;
   box-sizing: border-box;
+  margin-inline: auto;
 }
 
 /* Адаптивність для малих екранів */
@@ -804,9 +806,12 @@
     padding: 20px 20px 60px;
   }
   
-  .analitika-line-logo {
-    width: clamp(36px, 8vw, 44px);
-    height: clamp(36px, 8vw, 44px);
+  .analitika-line-axis {
+    padding: 20px 8px calc(60px + 60px);
+  }
+  
+  .analitika-line {
+    --line-logo-size: clamp(36px, 8vw, 44px);
   }
   
   .analitika-line-score {
@@ -822,9 +827,12 @@
     padding: 16px 16px 56px;
   }
   
-  .analitika-line-logo {
-    width: 36px;
-    height: 36px;
+  .analitika-line-axis {
+    padding: 16px 8px calc(56px + 60px);
+  }
+  
+  .analitika-line {
+    --line-logo-size: 36px;
   }
   
   .analitika-line-score {
@@ -923,8 +931,8 @@
 }
 
 .analitika-line-logo {
-  width: clamp(36px, 6vw, 56px);
-  height: clamp(36px, 6vw, 56px);
+  width: var(--line-logo-size);
+  height: var(--line-logo-size);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -945,8 +953,10 @@
 }
 
 .analitika-line-score {
-  position: static;
-  order: 2;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
   background: rgba(12, 12, 14, 0.95);
   color: var(--ink);
   font-size: 0.7rem;
@@ -957,18 +967,10 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
   flex-shrink: 0;
+  z-index: 4;
 }
 
-/* Позиціювання бейджів для різних позицій точки */
-.analitika-line-point[data-is-first="true"] .analitika-line-score[data-badge-side="right"] {
-  margin-left: 8px;
-}
-
-.analitika-line-point[data-is-last="true"] .analitika-line-score[data-badge-side="left"] {
-  margin-right: 8px;
-}
-
-/* Для крайніх точок - зміщення всередину */
+/* Для крайніх точок - зміщення всередину, щоб бейджі не обрізалися */
 .analitika-line-point[data-is-first="true"] {
   transform: translate(calc(-50% + 8px), -50%);
 }
