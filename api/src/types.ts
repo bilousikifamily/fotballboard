@@ -397,6 +397,7 @@ export type AnalitikaStaticRow = {
 
 export interface CreateMatchPayload {
   initData?: string;
+  admin_token?: string;
   home_team?: string;
   away_team?: string;
   league_id?: string;
@@ -414,6 +415,7 @@ export interface PredictionPayload {
 
 export interface MatchResultPayload {
   initData?: string;
+  admin_token?: string;
   match_id: number | string;
   home_score: number | string;
   away_score: number | string;
@@ -423,11 +425,13 @@ export interface MatchResultPayload {
 
 export interface MatchConfirmPayload {
   initData?: string;
+  admin_token?: string;
   match_id: number | string;
 }
 
 export interface AnnouncementPayload {
   initData?: string;
+  admin_token?: string;
 }
 
 export interface DbMatch {

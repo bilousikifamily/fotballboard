@@ -152,6 +152,39 @@ a {
   gap: 4px;
 }
 
+.admin-panel__card {
+  width: 100%;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: clamp(20px, 3vw, 40px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 30px);
+  background: rgba(9, 10, 20, 0.85);
+}
+
+.admin-header__title {
+  flex: 1;
+  text-align: center;
+}
+
+.admin-header__title h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+
+.admin-action-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.score-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .presentation-header h1,
 .admin-header h1 {
   margin: 0;

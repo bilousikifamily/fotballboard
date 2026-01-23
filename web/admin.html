@@ -33,16 +33,82 @@
       </section>
 
       <section class="admin-panel is-hidden" data-admin-panel>
-        <header class="admin-header">
-          <div>
-            <h1>Керування презентаційним екраном</h1>
-            <p class="admin-subtitle">Панель більше не має доступу до синхронізацій чи прогнозів.</p>
+        <div class="admin-panel__card">
+          <header class="admin-header">
+            <div class="admin-header__title">
+              <h1>АДМІНКА</h1>
+            </div>
+            <div class="admin-header__controls">
+              <span class="pill admin-build" data-admin-build></span>
+              <button class="button secondary" type="button" data-logout>Вийти</button>
+            </div>
+          </header>
+
+          <div class="admin-controls" data-admin-action-buttons>
+            <button class="button secondary" type="button" data-admin-action="add-match">ДОДАТИ МАТЧ</button>
+            <button class="button secondary" type="button" data-admin-action="result">ВВЕСТИ РЕЗУЛЬТАТИ</button>
+            <button class="button secondary" type="button" data-admin-action="announce">ПОВІДОМИТИ В БОТІ</button>
+            <button class="button secondary" type="button" data-admin-action="users">КОРИСТУВАЧІ</button>
           </div>
-          <div class="admin-header__controls">
-            <span class="pill admin-build" data-admin-build></span>
-            <button class="button secondary" type="button" data-logout>Вийти</button>
+
+          <div class="admin-action-panels">
+            <form class="admin-form" data-admin-panel-content="add-match" data-admin-add-form>
+              <label class="field">
+                <span>Ліга</span>
+                <select data-admin-league required></select>
+              </label>
+              <label class="field">
+                <span>Команда 1</span>
+                <select data-admin-home required></select>
+              </label>
+              <label class="field">
+                <span>Команда 2</span>
+                <select data-admin-away required></select>
+              </label>
+              <label class="field">
+                <span>Початок (Київ)</span>
+                <input type="datetime-local" name="kickoff_at" required />
+              </label>
+              <button class="button primary" type="submit">ДОДАТИ МАТЧ</button>
+              <p class="muted small" data-admin-add-status></p>
+            </form>
+
+            <form class="admin-form is-hidden" data-admin-panel-content="result" data-admin-result-form>
+              <label class="field">
+                <span>Матч</span>
+                <select data-admin-result-match name="match_id" required></select>
+              </label>
+              <div class="score-inputs">
+                <input type="number" min="0" name="home_score" placeholder="0" />
+                <span>:</span>
+                <input type="number" min="0" name="away_score" placeholder="0" />
+              </div>
+              <div class="score-inputs">
+                <input type="number" min="0" max="10" step="0.1" name="home_avg_rating" placeholder="7.0" />
+                <span>:</span>
+                <input type="number" min="0" max="10" step="0.1" name="away_avg_rating" placeholder="7.0" />
+              </div>
+              <button class="button primary" type="submit">Зберегти результат</button>
+              <p class="muted small" data-admin-result-status></p>
+            </form>
+
+            <div class="admin-form is-hidden" data-admin-panel-content="announce">
+              <button class="button primary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
+              <p class="muted small" data-admin-announce-status></p>
+            </div>
+
+            <div class="admin-users is-hidden" data-admin-panel-content="users">
+              <div data-admin-users-list></div>
+              <p class="muted small" data-admin-users-status></p>
+            </div>
           </div>
-        </header>
+
+          <section class="admin-pending" data-admin-pending>
+            <p class="muted small">Матчі на підтвердження</p>
+            <div class="admin-pending-list" data-admin-pending-list></div>
+            <p class="muted small" data-admin-pending-status></p>
+          </section>
+        </div>
       </section>
     </main>
     <script type="module" src="/src/admin-panel.ts"></script>

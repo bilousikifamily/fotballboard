@@ -125,6 +125,36 @@ const KNOWN_API_TEAM_IDS: Record<string, number> = {
   "as-monaco": 200
 };
 
+const ADMIN_TOKEN_HEADER = "x-presentation-admin-token";
+
+async function authorizePresentationAdminAccess(
+  supabase: SupabaseClient,
+  env: Env,
+  initData?: string,
+  adminToken?: string
+): Promise<{ ok: true; user?: TelegramUser } | { ok: false; error: "bad_initData" | "forbidden" }> {
+  const trimmedInitData = initData?.trim() ?? "";
+  if (trimmedInitData) {
+    const auth = await authenticateInitData(trimmedInitData, env.BOT_TOKEN);
+    if (!auth.ok || !auth.user) {
+      return { ok: false, error: "bad_initData" };
+    }
+    await storeUser(supabase, auth.user);
+    const isAdmin = await checkAdmin(supabase, auth.user.id);
+    if (!isAdmin) {
+      return { ok: false, error: "forbidden" };
+    }
+    return { ok: true, user: auth.user };
+  }
+
+  const expected = env.PRESENTATION_ADMIN_TOKEN?.trim();
+  if (expected && adminToken?.trim() === expected) {
+    return { ok: true };
+  }
+
+  return { ok: false, error: "forbidden" };
+}
+
 type ClassicoFaction = "real_madrid" | "barcelona";
 const CLASSICO_FACTIONS: ClassicoFaction[] = ["real_madrid", "barcelona"];
 const ALL_FACTION_BRANCHES: FactionBranchSlug[] = [
@@ -591,13 +621,16 @@ export default {
       }
 
       const initData = getInitDataFromHeaders(request);
-      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-      if (!auth.ok) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      if (auth.user) {
-        await storeUser(supabase, auth.user);
+      const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        initData,
+        adminToken
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
       const limit = parseLimit(url.searchParams.get("limit"), 10, 200);
@@ -914,18 +947,18 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        body.initData,
+        body.admin_token
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
-      }
-
-      const match = await createMatch(supabase, auth.user.id, body);
+      const match = await createMatch(supabase, authResult.user?.id ?? null, body);
       if (!match) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -951,15 +984,16 @@ export default {
       }
 
       const initData = getInitDataFromHeaders(request);
-      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        initData,
+        adminToken
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
       const matches = await listPendingMatches(supabase);
@@ -988,15 +1022,15 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        body.initData,
+        body.admin_token
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
       const matchId = parseInteger(body.match_id);
@@ -1046,20 +1080,25 @@ export default {
         return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
       }
 
-      const body = await readJson<{ initData?: string; match_id?: number | string; debug?: boolean }>(request);
+      const body = await readJson<{
+        initData?: string;
+        admin_token?: string;
+        match_id?: number | string;
+        debug?: boolean;
+      }>(request);
       if (!body) {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        body.initData,
+        body.admin_token
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
       if (!env.API_FOOTBALL_KEY) {
@@ -1354,15 +1393,15 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        body.initData,
+        body.admin_token
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
       const matchId = parseInteger(body.match_id);
@@ -1407,15 +1446,15 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
-        return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-      }
-
-      await storeUser(supabase, auth.user);
-      const isAdmin = await checkAdmin(supabase, auth.user.id);
-      if (!isAdmin) {
-        return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        body.initData,
+        body.admin_token
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
       const scheduledMatches = await listScheduledMatches(supabase);
@@ -2694,7 +2733,7 @@ async function checkAdmin(supabase: SupabaseClient, userId: number): Promise<boo
 
 async function createMatch(
   supabase: SupabaseClient,
-  userId: number,
+  userId: number | null,
   payload: CreateMatchPayload
 ): Promise<DbMatch | null> {
   const kickoffAt = payload.kickoff_at?.trim();
@@ -2739,7 +2778,7 @@ async function createMatch(
         away_club_id: awayClubId ?? null,
         kickoff_at: kickoffAt,
         status: "pending",
-        created_by: userId
+        created_by: userId ?? null
       })
       .select(
         "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone"

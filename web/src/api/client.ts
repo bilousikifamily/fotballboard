@@ -7,15 +7,20 @@ export async function requestJson<T>(input: RequestInfo | URL, init?: RequestIni
   return { response, data };
 }
 
-export function authHeaders(initData: string): HeadersInit {
-  return {
-    "X-Telegram-InitData": initData
-  };
+export function authHeaders(initData?: string, adminToken?: string): HeadersInit {
+  const headers: HeadersInit = {};
+  if (initData) {
+    headers["X-Telegram-InitData"] = initData;
+  }
+  if (adminToken) {
+    headers["X-Presentation-Admin-Token"] = adminToken;
+  }
+  return headers;
 }
 
-export function authJsonHeaders(initData: string): HeadersInit {
+export function authJsonHeaders(initData?: string, adminToken?: string): HeadersInit {
   return {
     "Content-Type": "application/json",
-    "X-Telegram-InitData": initData
+    ...authHeaders(initData, adminToken)
   };
 }
