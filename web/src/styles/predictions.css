@@ -767,7 +767,7 @@
   --line-score-gap: 4px;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: visible;
 }
 
 .analitika-line--image {
@@ -787,22 +787,26 @@
 
 .analitika-line-canvas {
   position: relative;
-  height: 320px;
+  width: min(980px, 100%);
+  max-width: 100%;
+  height: min(520px, 58vh);
+  min-height: 360px;
   overflow: visible;
-  width: 100%;
-  padding: 0 24px;
+  padding: 44px 44px 64px;
+  box-sizing: border-box;
 }
 
 .analitika-line-plot {
-  position: absolute;
-  inset: 16px 0 120px;
-  overflow: visible;
+  position: relative;
   width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .analitika-line-grid {
   position: absolute;
   inset: 0;
+  pointer-events: none;
 }
 
 .analitika-line-gridline {
@@ -852,31 +856,30 @@
   left: var(--x);
   top: var(--y);
   transform: translate(-50%, -50%);
-  width: 0;
-  height: 0;
-  z-index: 2;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  gap: 8px;
 }
 
 .analitika-line-logo {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-50%, -50%);
+  width: clamp(40px, 7vw, 56px);
+  height: clamp(40px, 7vw, 56px);
   display: grid;
-  justify-items: center;
+  place-items: center;
 }
 
 .analitika-line-logo .match-logo,
 .analitika-line-logo .match-logo-fallback {
-  width: var(--line-logo-size);
-  height: var(--line-logo-size);
-  min-width: var(--line-logo-size);
-  min-height: var(--line-logo-size);
-  max-width: var(--line-logo-size);
-  max-height: var(--line-logo-size);
-  border-radius: 10px;
+  position: static;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  transform: none;
   object-fit: contain;
   display: block;
+  border-radius: 10px;
 }
 
 .analitika-line-score {
@@ -952,17 +955,19 @@
   box-shadow: none;
   padding: 0;
   border-radius: 0;
+  overflow: visible;
 }
 
 .analitika-card.is-graph .analitika-card-body {
   padding: 0;
+  overflow: visible;
 }
 
 .analitika-card.is-graph .analitika-line {
   width: 100%;
   max-width: 100%;
   margin: 0;
-  overflow-x: hidden;
+  overflow: visible;
 }
 
 .analitika-line--image .analitika-line-axis {

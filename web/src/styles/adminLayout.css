@@ -391,39 +391,16 @@ body.admin-layout-active #app {
 
 .admin-layout__team-graph-body {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 20px;
-  padding-bottom: env(safe-area-inset-bottom, 20px);
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling: touch;
 }
 
 .admin-layout__team-graph-body .analitika-card {
-  margin: 0;
-}
-
-/* Покращення читабельності графіка в попапі */
-.admin-layout__team-graph-body .analitika-line {
-  --line-logo-size: 44px;
-  --line-score-gap: 6px;
-}
-
-.admin-layout__team-graph-body .analitika-line-canvas {
-  height: min(400px, 50vh);
-  min-height: 320px;
-}
-
-.admin-layout__team-graph-body .analitika-line-score {
-  font-size: 0.75rem;
-  padding: 5px 10px;
-}
-
-.admin-layout__team-graph-body .analitika-line-date {
-  font-size: 0.75rem;
-}
-
-.admin-layout__team-graph-body .analitika-line-homeaway {
-  font-size: 0.7rem;
+  width: min(980px, 100%);
+  margin: 0 auto;
 }
 
 @media (max-width: 480px) {
