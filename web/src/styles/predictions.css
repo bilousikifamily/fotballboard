@@ -760,7 +760,7 @@
 }
 
 .analitika-line {
-  display: flex;
+  display: inline-flex;
   align-items: stretch;
   justify-content: center;
   --line-logo-size: clamp(40px, 7vw, 56px);
@@ -769,7 +769,6 @@
   max-width: 100%;
   overflow: visible;
   gap: 4px;
-  margin: 0 auto;
 }
 
 .analitika-line--image {
@@ -803,8 +802,9 @@
   position: relative;
   width: min(980px, 100%);
   max-width: 100%;
-  height: min(520px, 58vh);
-  min-height: 360px;
+  height: 50vh;
+  max-height: 500px;
+  min-height: 300px;
   overflow: visible;
   padding: 0;
   box-sizing: border-box;
@@ -816,7 +816,8 @@
 /* Адаптивність для малих екранів */
 @media (max-width: 480px) {
   .analitika-line-canvas {
-    height: min(360px, 50vh);
+    height: 50vh;
+    max-height: 400px;
     min-height: 300px;
   }
   
@@ -840,7 +841,8 @@
 
 @media (max-width: 360px) {
   .analitika-line-canvas {
-    height: min(320px, 45vh);
+    height: 45vh;
+    max-height: 350px;
     min-height: 280px;
   }
   

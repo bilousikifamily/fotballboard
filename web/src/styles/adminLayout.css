@@ -403,21 +403,20 @@ body.admin-layout-active #app {
 
 .admin-layout__team-graph-body {
   flex: 1;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 18px;
-  padding-right: 20px;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  padding-left: 20px;
+  padding: 20px;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
 .admin-layout__team-graph-body .analitika-card {
-  width: min(980px, 100%);
-  margin: 0 auto;
+  width: 100%;
+  max-width: 980px;
+  margin: 0;
 }
 
 .admin-layout__team-graph-body .analitika-line {
@@ -437,7 +436,8 @@ body.admin-layout-active #app {
   }
 
   .admin-layout__team-graph-body .analitika-line-canvas {
-    height: min(360px, 50vh);
+    height: 50vh;
+    max-height: 400px;
     min-height: 300px;
   }
 
@@ -457,7 +457,8 @@ body.admin-layout-active #app {
 
 @media (max-width: 360px) {
   .admin-layout__team-graph-body .analitika-line-canvas {
-    height: min(320px, 45vh);
+    height: 45vh;
+    max-height: 350px;
     min-height: 280px;
   }
 
