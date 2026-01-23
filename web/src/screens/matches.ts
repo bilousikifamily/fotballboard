@@ -156,19 +156,26 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
   const localTimeMarkup = localTime
     ? `<span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(localTime)})</span>`
     : "";
-  const rainPercent = normalizeRainProbability(match.rain_probability ?? null);
-  const rainValue = formatRainProbability(rainPercent);
+  const hasWeatherData = Boolean(match.weather_fetched_at);
+  const rainPercent = hasWeatherData ? normalizeRainProbability(match.rain_probability ?? null) : null;
+  const rainValue = hasWeatherData ? formatRainProbability(rainPercent) : " ";
   const rainIcon = getWeatherIcon(match.weather_condition ?? null);
-  const rainBarWidth = rainPercent ?? 0;
-  const rainMarkup = `
-    <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
-      <span class="match-weather-icon" data-match-rain-icon aria-hidden="true">${rainIcon}</span>
-      <span class="match-weather-bar" aria-hidden="true">
-        <span class="match-weather-bar-fill" data-match-rain-fill style="width: ${rainBarWidth}%"></span>
-      </span>
-      <span class="match-weather-value" data-match-rain-value>${rainValue}</span>
-    </div>
-  `;
+  const rainBarWidth = hasWeatherData ? rainPercent ?? 0 : 0;
+  const rainMarkup = hasWeatherData
+    ? `
+      <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
+        <span class="match-weather-icon" data-match-rain-icon aria-hidden="true">${rainIcon}</span>
+        <span class="match-weather-bar" aria-hidden="true">
+          <span class="match-weather-bar-fill" data-match-rain-fill style="width: ${rainBarWidth}%"></span>
+        </span>
+        <span class="match-weather-value" data-match-rain-value>${rainValue}</span>
+      </div>
+    `
+    : `
+      <div class="match-weather-row match-weather-row--placeholder" aria-hidden="true">
+        <span class="match-weather-placeholder"></span>
+      </div>
+    `;
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStage(match.tournament_stage) : "";
   const oddsMarkup = renderMatchOdds(match, homeName, awayName);
