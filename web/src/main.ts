@@ -3793,20 +3793,22 @@ async function openTeamGraphPopup(teamSlug: string | null, teamName: string): Pr
     return;
   }
   const slug = teamSlug ?? normalizeTeamSlugValue(teamName) ?? teamName.toLowerCase();
-  teamGraphTitleEl.textContent = `ІСТОРІЯ ${teamName.toUpperCase()}`;
-  teamGraphBodyEl.innerHTML = `<p class="muted">Завантаження...</p>`;
-  teamGraphPopup.classList.remove("is-hidden");
-  document.body.classList.add("admin-layout-popup-open");
-  teamGraphPopup.focus();
+  
   try {
     const stats = await loadTeamGraphStats(slug);
-    if (stats && stats.length) {
-      teamGraphBodyEl.innerHTML = renderTeamMatchStatsList(stats, slug);
-    } else {
-      teamGraphBodyEl.innerHTML = `<p class="muted">Немає графіка для ${escapeHtml(teamName)}.</p>`;
+    // Перевіряємо, чи є хоча б 5 матчів перед відкриттям попапу
+    if (!stats || stats.length < 5) {
+      return;
     }
+    
+    teamGraphTitleEl.textContent = `ІСТОРІЯ ${teamName.toUpperCase()}`;
+    teamGraphBodyEl.innerHTML = renderTeamMatchStatsList(stats, slug);
+    teamGraphPopup.classList.remove("is-hidden");
+    document.body.classList.add("admin-layout-popup-open");
+    teamGraphPopup.focus();
   } catch {
-    teamGraphBodyEl.innerHTML = `<p class="muted">Не вдалося завантажити дані.</p>`;
+    // У разі помилки не відкриваємо попап
+    return;
   }
 }
 
