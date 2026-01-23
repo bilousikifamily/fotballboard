@@ -778,17 +778,29 @@
 }
 
 .analitika-line-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  position: relative;
   font-size: 0.75rem;
   color: var(--muted);
   padding: 44px 8px calc(64px + 60px);
-  align-items: flex-start;
   width: 56px;
   flex-shrink: 0;
   min-height: 0;
   align-self: stretch;
+  --axis-padding-top: 44px;
+  --plot-padding-top: 44px;
+  --plot-padding-bottom: 64px;
+}
+
+.analitika-line-axis > span {
+  position: absolute;
+  left: 8px;
+  transform: translateY(-50%);
+  /* Позиціонуємо мітки відповідно до координат y графіку */
+  /* Графік має padding зверху та знизу */
+  /* y=0 відповідає верхній частині графіку */
+  /* y=100 відповідає нижній частині графіку */
+  /* Позиція = верхній padding графіку + (y/100 від висоти області графіку) */
+  top: calc(var(--plot-padding-top, 44px) + (var(--y, 0) / 100) * (100% - var(--plot-padding-top, 44px) - var(--plot-padding-bottom, 64px)));
 }
 
 .analitika-line-canvas {
@@ -818,6 +830,9 @@
   
   .analitika-line-axis {
     padding: 20px 8px calc(60px + 60px);
+    --axis-padding-top: 20px;
+    --plot-padding-top: 20px;
+    --plot-padding-bottom: 60px;
   }
   
   .analitika-line {
@@ -842,6 +857,9 @@
   
   .analitika-line-axis {
     padding: 16px 8px calc(56px + 60px);
+    --axis-padding-top: 16px;
+    --plot-padding-top: 16px;
+    --plot-padding-bottom: 56px;
   }
   
   .analitika-line {

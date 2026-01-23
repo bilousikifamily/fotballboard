@@ -193,8 +193,18 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
     })
     .join("");
   const midRating = (maxRating + minRating) / 2;
-  const axisLabels = [maxRating, midRating, minRating]
-    .map((value) => `<span>${value.toFixed(1)}</span>`)
+  // Обчислюємо позиції y для міток осі відповідно до формули точок
+  // Ці значення відповідають координатам y точок на графіку (0-100%)
+  const maxY = hasSpan ? ((maxRating - maxRating) / ratingSpan) * 100 : 50;
+  const midY = hasSpan ? ((maxRating - midRating) / ratingSpan) * 100 : 50;
+  const minY = hasSpan ? ((maxRating - minRating) / ratingSpan) * 100 : 50;
+  
+  const axisLabels = [
+    { value: maxRating, y: maxY },
+    { value: midRating, y: midY },
+    { value: minRating, y: minY }
+  ]
+    .map((item) => `<span style="--y:${item.y}">${item.value.toFixed(1)}</span>`)
     .join("");
 
   return `
