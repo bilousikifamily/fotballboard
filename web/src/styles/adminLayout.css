@@ -133,6 +133,7 @@ body.admin-layout-active #app {
   border-radius: 28px;
   padding: 16px 12px 12px;
   z-index: 2;
+  perspective: 1000px; /* Створює 3D-простір */
 }
 
 .admin-layout__logo-frame .match-logo {
@@ -700,6 +701,18 @@ body.admin-layout-active #app {
   cursor: default;
 }
 
+@keyframes swing-3d {
+  0% {
+    transform: translate(-50%, -50%) rotateY(-15deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotateY(15deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotateY(-15deg);
+  }
+}
+
 /* Великий логотип в адмін-лейауті (окремий клас, щоб не конфліктувати з малими) */
 .admin-layout__big-logo,
 .admin-layout__logo-frame .admin-layout__big-logo {
@@ -712,6 +725,11 @@ body.admin-layout-active #app {
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
+  /* Застосовуємо 3D анімацію */
+  animation: swing-3d 5s ease-in-out infinite;
+  /* Важливо для збереження якості при обертанні */
+  transform-style: preserve-3d;
+  will-change: transform;
 }
 
 /* Застарілий селектор - залишаємо для сумісності, але ізольований */
@@ -725,6 +743,17 @@ body.admin-layout-active #app {
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
+  /* Застосовуємо 3D анімацію */
+  animation: swing-3d 5s ease-in-out infinite;
+  /* Важливо для збереження якості при обертанні */
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Додамо асинхронність для правого логотипа */
+.admin-layout__center--right .admin-layout__big-logo,
+.admin-layout__center--right .match-logo {
+  animation-delay: -2.5s;
 }
 
 .admin-layout__logo-placeholder {
