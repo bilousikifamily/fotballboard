@@ -291,7 +291,10 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "benfica": "benfica",
   "slavia praga": "slavia-praga",
   "bodo glimt": "bodo-glimt",
-  "bodø glimt": "bodo-glimt"
+  "bodø glimt": "bodo-glimt",
+  "bodo/glimt": "bodo-glimt",
+  "bodø/glimt": "bodo-glimt",
+  "bodo": "bodo-glimt"
 };
 
 type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
@@ -305,14 +308,27 @@ export function resolveClubLogoByName(name: string): string | null {
   }
   const aliasSlug = CLUB_NAME_ALIASES[normalized];
   const candidateSlug = aliasSlug ?? normalized.replace(/\s+/g, "-");
+  
+  // Спочатку перевіряємо Champions League логотип
   const championsLogo = getChampionsClubLogo(candidateSlug);
   if (championsLogo) {
     return championsLogo;
   }
+  
+  // Якщо є aliasSlug, спробуємо знайти його в Champions League (fallback)
   if (aliasSlug) {
+    const aliasChampionsLogo = getChampionsClubLogo(aliasSlug);
+    if (aliasChampionsLogo) {
+      return aliasChampionsLogo;
+    }
+    // Перевіряємо в CLUB_REGISTRY
     const entry = CLUB_REGISTRY[aliasSlug];
-    return entry ? getClubLogoPath(entry.logoLeagueId, aliasSlug) : null;
+    if (entry) {
+      return getClubLogoPath(entry.logoLeagueId, aliasSlug);
+    }
   }
+  
+  // Останній fallback - пошук через lookup
   const lookup = getClubNameLookup();
   const entry = lookup.get(normalized);
   return entry ? getClubLogoPath(entry.logoLeagueId, entry.slug) : null;
@@ -357,6 +373,8 @@ function getClubNameLookup(): Map<string, ClubLogoEntry> {
 function normalizeClubName(value: string): string {
   return value
     .toLowerCase()
+    .normalize("NFD") // Розкладає символи з діакритиками (ø -> o + ̊)
+    .replace(/[\u0300-\u036f]/g, "") // Видаляє діакритики
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
