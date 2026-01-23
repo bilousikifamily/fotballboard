@@ -445,7 +445,7 @@ body.admin-layout-active #app {
   }
 
   .admin-layout__team-graph-body .analitika-line-plot {
-    padding: 20px 20px 60px;
+    padding: 20px 16px 60px;
   }
 
   .admin-layout__team-graph-body .analitika-line {
@@ -466,7 +466,7 @@ body.admin-layout-active #app {
   }
 
   .admin-layout__team-graph-body .analitika-line-plot {
-    padding: 16px 16px 56px;
+    padding: 16px 12px 56px;
   }
 
   .admin-layout__team-graph-body .analitika-line {

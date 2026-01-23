@@ -771,7 +771,7 @@
   width: 100%;
   max-width: 100%;
   overflow: visible;
-  gap: 4px;
+  gap: 12px;
 }
 
 .analitika-line--image {
@@ -785,21 +785,21 @@
   color: var(--muted);
   /* ПАДДИНГИ ПОВИННІ БУТИ ТАКИМИ Ж, ЯК У .analitika-line-plot */
   padding: 44px 8px 64px;
-  width: 56px;
+  width: 32px;
   flex-shrink: 0;
   min-height: 0;
   align-self: stretch;
-  margin-right: 8px; /* Відступ від осі Y до графіка */
 }
 
 .analitika-line-axis > span {
   position: absolute;
-  left: 8px;
+  right: 0;
   transform: translateY(-50%);
   /* Використовуємо просте відсоткове значення y,
      оскільки ми синхронізуємо висоту axis з висотою plot */
   top: var(--y, 0);
   transition: top 0.2s ease;
+  text-align: right;
 }
 
 .analitika-line-canvas {
@@ -831,11 +831,12 @@
   
   .analitika-line-axis {
     padding: 20px 8px 60px;
-    margin-right: 6px; /* Менший відступ на малих екранах */
+    width: 28px;
   }
   
   .analitika-line {
     --line-logo-size: clamp(36px, 8vw, 44px);
+    gap: 8px;
   }
   
   .analitika-line-score {
@@ -857,11 +858,12 @@
   
   .analitika-line-axis {
     padding: 16px 8px 56px;
-    margin-right: 4px; /* Менший відступ на дуже малих екранах */
+    width: 24px;
   }
   
   .analitika-line {
     --line-logo-size: 36px;
+    gap: 6px;
   }
   
   .analitika-line-score {
@@ -896,7 +898,7 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  padding: 44px 30px 64px; /* Зменшено лівий padding (було 44px) для зменшення відступу від осі Y */
+  padding: 44px 20px 64px;
   box-sizing: border-box;
 }
 
@@ -1106,8 +1108,7 @@
   padding: 0;
   border-radius: 0;
   overflow: visible;
-  margin-top: 12px;
-  margin-bottom: 12px;
+  margin: 0 auto;
 }
 
 .analitika-card.is-graph .analitika-card-body {
