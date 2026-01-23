@@ -228,7 +228,7 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
     { value: actualMidRating, y: midY },
     { value: actualMinRating, y: minY }
   ]
-    .map((item) => `<span style="--y:${item.y}">${item.value.toFixed(1)}</span>`)
+    .map((item) => `<span style="--y:${item.y}%">${item.value.toFixed(1)}</span>`)
     .join("");
 
   return `
