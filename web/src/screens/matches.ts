@@ -161,9 +161,7 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
   const rainValue = hasWeatherData ? formatRainProbability(rainPercent) : " ";
   const rainIcon = getWeatherIcon(match.weather_condition ?? null);
   const rainBarWidth = hasWeatherData ? rainPercent ?? 0 : 0;
-  const hasLocationInfo = Boolean(city);
-  const hasTimeInfo = Boolean(match.kickoff_at);
-  const shouldHideTimeBlock = !hasWeatherData && !hasLocationInfo && !hasTimeInfo;
+  const shouldHideTimeBlock = !hasWeatherData;
   const matchTimeClass = ["match-time"];
   if (shouldHideTimeBlock) {
     matchTimeClass.push("match-time--hidden");
