@@ -704,15 +704,29 @@ body.admin-layout-active #app {
 
 @keyframes swing-3d {
   0% {
-    transform: translate(-50%, -50%) rotateY(-15deg);
+    transform: translate(-50%, -50%) rotateY(-25deg);
   }
 
   50% {
-    transform: translate(-50%, -50%) rotateY(15deg);
+    transform: translate(-50%, -50%) rotateY(25deg);
   }
 
   100% {
-    transform: translate(-50%, -50%) rotateY(-15deg);
+    transform: translate(-50%, -50%) rotateY(-25deg);
+  }
+}
+
+@keyframes swing-3d-reverse {
+  0% {
+    transform: translate(-50%, -50%) rotateY(25deg);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) rotateY(-25deg);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotateY(25deg);
   }
 }
 
@@ -733,6 +747,8 @@ body.admin-layout-active #app {
   /* Важливо для збереження якості при обертанні */
   transform-style: preserve-3d;
   will-change: transform;
+  /* Померанчевий глоу */
+  filter: drop-shadow(0 0 20px rgba(255, 154, 31, 0.6)) drop-shadow(0 0 40px rgba(255, 154, 31, 0.4)) drop-shadow(0 0 60px rgba(255, 154, 31, 0.2));
 }
 
 /* Застарілий селектор - залишаємо для сумісності, але ізольований */
@@ -751,12 +767,14 @@ body.admin-layout-active #app {
   /* Важливо для збереження якості при обертанні */
   transform-style: preserve-3d;
   will-change: transform;
+  /* Померанчевий глоу */
+  filter: drop-shadow(0 0 20px rgba(255, 154, 31, 0.6)) drop-shadow(0 0 40px rgba(255, 154, 31, 0.4)) drop-shadow(0 0 60px rgba(255, 154, 31, 0.2));
 }
 
-/* Додамо асинхронність для правого логотипа */
+/* Дзеркальний рух для правого логотипа */
 .admin-layout__center--right .admin-layout__big-logo,
 .admin-layout__center--right .match-logo {
-  animation-delay: -2.5s;
+  animation: swing-3d-reverse 5s ease-in-out infinite;
 }
 
 .admin-layout__logo-placeholder {
