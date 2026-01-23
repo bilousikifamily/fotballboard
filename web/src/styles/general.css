@@ -199,8 +199,9 @@ body.intro-active {
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
-  display: grid;
-  justify-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 0;
   padding: 8px 6px;
   border-radius: 14px;
