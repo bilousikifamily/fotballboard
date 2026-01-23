@@ -185,6 +185,43 @@ a {
   gap: 8px;
 }
 
+.admin-form {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-form .button {
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.field span,
+.field label {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+}
+
+.field select {
+  appearance: none;
+}
+
 .admin-users {
   display: grid;
   gap: 12px;
