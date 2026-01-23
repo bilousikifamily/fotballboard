@@ -69,50 +69,37 @@
   gap: 10px;
 }
 
-.admin-pending-list {
-  max-width: min(480px, 90vw) !important;
-  margin: 0 auto !important;
-}
-
 .admin-pending-card {
-  --match-card-width: clamp(260px, 70vw, 320px);
-  display: grid !important;
-  gap: 8px !important;
-  padding: 10px 12px !important;
-  border-radius: 12px !important;
-  background: var(--surface-strong) !important;
-  box-shadow: 0 0 0 1px var(--outline-dark) inset !important;
-  width: 100% !important;
-  justify-self: center !important;
-  align-self: center !important;
+  --match-card-width: clamp(280px, 86%, 360px);
+  width: 100%;
+  padding: 0;
+  flex: 0 0 var(--match-card-width);
+  max-width: var(--match-card-width);
+  scroll-snap-align: center;
+  margin: 0 auto;
 }
 
-.admin-pending-card .match-item {
-  width: 100% !important;
-  max-width: var(--match-card-width) !important;
-  margin: 0 auto !important;
-  justify-self: center !important;
+.admin-pending-list.matches-list {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 18px 0;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: max(0px, calc((100% - var(--match-card-width)) / 2));
+  scroll-padding-right: max(0px, calc((100% - var(--match-card-width)) / 2));
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  scrollbar-width: none;
 }
 
-.admin-pending-card .match {
-  width: 100% !important;
-  max-width: var(--match-card-width) !important;
-  padding: 12px 14px !important;
-  gap: 6px !important;
-  align-self: stretch !important;
-  margin: 0 auto !important;
+.admin-pending-list.matches-list::-webkit-scrollbar {
+  display: none;
 }
 
-.admin-pending-card .match-weather-row {
-  gap: 6px !important;
-}
-
-.admin-pending-card .match-odds {
-  padding: 6px 8px !important;
-}
-
-.admin-pending-card .score-row {
-  gap: 12px !important;
+.admin-pending-list.matches-list::before,
+.admin-pending-list.matches-list::after {
+  content: "";
+  flex: 0 0 max(0px, calc((100% - var(--match-card-width)) / 2));
 }
 
 .admin-pending-card .prediction-form,
@@ -125,27 +112,10 @@
   display: none !important;
 }
 
-.admin-pending-card .match-header {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  align-items: center !important;
-}
-
-.admin-pending-card .match-scoreline {
-  width: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 12px !important;
-}
-
 .admin-pending-card .match-logo,
 .admin-pending-card .match-logo-fallback {
-  width: clamp(80px, 18vw, 100px) !important;
-  height: clamp(80px, 18vw, 100px) !important;
-  max-width: 100px !important;
-  max-height: 100px !important;
+  width: 100px !important;
+  height: 100px !important;
 }
 
 .admin-pending-card .match-time-row {
@@ -168,42 +138,6 @@
 .admin-pending-card .score-btn,
 .admin-pending-card .prediction-submit {
   display: none !important;
-}
-
-.admin-match-logos {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  width: 100%;
-  padding: 0 4px 4px;
-}
-
-.admin-match-logo-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.admin-match-logo-item .match-logo,
-.admin-match-logo-item .match-logo-fallback {
-  width: 100px;
-  height: 100px;
-}
-
-.admin-match-vs {
-  color: var(--muted);
-  font-size: 0.95rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.admin-match-team {
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
 }
 
 .admin-action-panels {

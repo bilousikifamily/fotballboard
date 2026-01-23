@@ -255,22 +255,6 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         predicted ? "data-auto-open='true'" : ""
       }></div>`;
 
-  const adminLogoRow = options.admin
-    ? `
-      <div class="admin-match-logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
-        <div class="admin-match-logo-item">
-          ${homeLogoMarkup}
-          <span class="admin-match-team">${escapeHtml(homeName)}</span>
-        </div>
-        <div class="admin-match-vs">∙</div>
-        <div class="admin-match-logo-item">
-          ${awayLogoMarkup}
-          <span class="admin-match-team">${escapeHtml(awayName)}</span>
-        </div>
-      </div>
-    `
-    : "";
-
   return `
     <div class="match-item ${predicted ? "has-prediction" : ""}${isPreview ? " is-preview" : ""}">
       <div class="match-time">
@@ -288,7 +272,6 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         <div class="match-header">
           ${result}
         </div>
-        ${adminLogoRow}
         <div class="match-average" data-match-average data-match-id="${match.id}"></div>
         ${closed ? "" : statusLine}
         ${form}
