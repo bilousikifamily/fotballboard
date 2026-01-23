@@ -1528,9 +1528,6 @@ function renderUser(
             </section>
           </div>
         </section>
-
-        ${adminScreen}
-        ${matchesScreen}
       </main>
 
       <nav class="${tabbarClass}" role="tablist" aria-label="Навігація">
@@ -1553,14 +1550,8 @@ function renderUser(
           aria-selected="false"
           aria-label="Таблиця"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 18V9"></path>
-            <path d="M12 18V6"></path>
-            <path d="M19 18v-4"></path>
-          </svg>
+          <span class="tabbar-icon tabbar-icon--leaderboard" aria-hidden="true"></span>
         </button>
-        ${adminTabButton}
-        ${matchesTabButton}
       </nav>
     </div>
   `;

@@ -192,7 +192,7 @@ body.intro-active {
 }
 
 .tabbar.is-admin {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .tabbar-button {
@@ -228,6 +228,11 @@ body.intro-active {
 .tabbar-icon--matches {
   mask-image: url("/icons/ball.svg");
   -webkit-mask-image: url("/icons/ball.svg");
+}
+
+.tabbar-icon--leaderboard {
+  mask-image: url("/icons/top.svg");
+  -webkit-mask-image: url("/icons/top.svg");
 }
 
 .tabbar-button svg {
