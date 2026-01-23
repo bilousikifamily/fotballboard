@@ -7570,31 +7570,45 @@ async function sendFactionPredictionsStats(
     return { ok: true };
   }
 
-  const totalPredictions = predictions.length;
-  const hits = predictions.filter((p) => p.points > 0).length;
-  const accuracy = totalPredictions > 0 ? Math.round((hits / totalPredictions) * 100) : 0;
-  const emoji = getEmojiForAccuracy(accuracy);
-
-  const message = `УСПІШНІСТЬ ДЕПУТАТІВ ЗА ВЧОРА:\n\n${accuracy}% — ${emoji}`;
-
-  const factionsWithPredictions = new Set<FactionBranchSlug>();
+  // Групуємо прогнози за фракціями
+  const predictionsByFaction = new Map<FactionBranchSlug, Array<{ points: number }>>();
+  
   for (const prediction of predictions) {
-    if (prediction.faction_club_id) {
-      const factionSlug = normalizeFactionChoice(prediction.faction_club_id);
-      if (factionSlug) {
-        factionsWithPredictions.add(factionSlug);
-      }
+    if (!prediction.faction_club_id) {
+      continue;
     }
+    
+    const factionSlug = normalizeFactionChoice(prediction.faction_club_id);
+    if (!factionSlug) {
+      continue;
+    }
+
+    if (!predictionsByFaction.has(factionSlug)) {
+      predictionsByFaction.set(factionSlug, []);
+    }
+    predictionsByFaction.get(factionSlug)!.push({ points: prediction.points });
   }
 
+  if (predictionsByFaction.size === 0) {
+    return { ok: true };
+  }
+
+  // Рахуємо успішність для кожної фракції окремо
   const refs = getFactionChatRefs(env);
   const sendPromises: Promise<void>[] = [];
 
-  for (const factionSlug of factionsWithPredictions) {
+  for (const [factionSlug, factionPredictions] of predictionsByFaction.entries()) {
     const ref = refs.bySlug[factionSlug];
     if (!ref) {
       continue;
     }
+
+    const totalPredictions = factionPredictions.length;
+    const hits = factionPredictions.filter((p) => p.points > 0).length;
+    const accuracy = totalPredictions > 0 ? Math.round((hits / totalPredictions) * 100) : 0;
+    const emoji = getEmojiForAccuracy(accuracy);
+
+    const message = `УСПІШНІСТЬ ДЕПУТАТІВ ЗА ВЧОРА:\n\n${accuracy}% — ${emoji}`;
 
     const chatTarget = ref.chatId ?? (ref.chatUsername ? `@${ref.chatUsername}` : null);
     if (chatTarget) {
