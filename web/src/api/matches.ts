@@ -119,7 +119,7 @@ export function postMatchesAnnouncement(
   return requestJson<AnnouncementResponse>(`${apiBase}/api/matches/announcement`, {
     method: "POST",
     headers: authJsonHeaders(initData, adminToken),
-    body: JSON.stringify({ initData })
+    body: JSON.stringify({ initData, admin_token: adminToken })
   });
 }
 
@@ -131,7 +131,7 @@ export function postFactionPredictionsStats(
   return requestJson<FactionPredictionsStatsResponse>(`${apiBase}/api/faction-predictions-stats`, {
     method: "POST",
     headers: authJsonHeaders(initData, adminToken),
-    body: JSON.stringify({ initData })
+    body: JSON.stringify({ initData, admin_token: adminToken })
   });
 }
 
