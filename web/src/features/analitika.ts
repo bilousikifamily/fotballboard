@@ -255,7 +255,9 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "portsmouth": "portsmouth",
   "pafos": "pafos",
   "benfica": "benfica",
-  "slavia praga": "slavia-praga"
+  "slavia praga": "slavia-praga",
+  "bodo glimt": "bodo-glimt",
+  "bodø glimt": "bodo-glimt"
 };
 
 type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
