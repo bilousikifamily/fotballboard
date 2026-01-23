@@ -39,5 +39,6 @@ export interface Env {
   FACTION_CHAT_CHELSEA?: string;
   FACTION_CHAT_MILAN?: string;
   FACTION_CHAT_MANCHESTER_UNITED?: string;
+  FACTION_CHAT_EXCLUDED_THREADS?: string;
   PRESENTATION_ADMIN_TOKEN?: string;
 }

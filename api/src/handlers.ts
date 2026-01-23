@@ -1956,6 +1956,17 @@ function matchChatRef(ref: FactionChatRef | undefined | null, message: TelegramM
   return threadId === null;
 }
 
+function getExcludedThreadRefs(env: Env): FactionChatRef[] {
+  const excludedThreads = env.FACTION_CHAT_EXCLUDED_THREADS?.trim();
+  if (!excludedThreads) {
+    return [];
+  }
+  return excludedThreads
+    .split(",")
+    .map((ref) => parseChatRef(ref.trim(), "excluded"))
+    .filter((ref): ref is FactionChatRef => ref !== null);
+}
+
 async function enforceFactionChatPermissions(
   env: Env,
   supabase: SupabaseClient | null,
@@ -1969,6 +1980,13 @@ async function enforceFactionChatPermissions(
     typeof message.message_id !== "number"
   ) {
     return;
+  }
+
+  const excludedRefs = getExcludedThreadRefs(env);
+  for (const excludedRef of excludedRefs) {
+    if (matchChatRef(excludedRef, message)) {
+      return;
+    }
   }
 
   const refs = getFactionChatRefs(env);
