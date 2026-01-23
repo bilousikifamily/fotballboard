@@ -194,11 +194,11 @@ body.admin-layout-active #app {
   text-align: center;
 }
 
-.admin-layout__logo-frame .score-control > button:first-child {
+.admin-layout__logo-frame .score-control>button:first-child {
   justify-self: start;
 }
 
-.admin-layout__logo-frame .score-control > button:last-child {
+.admin-layout__logo-frame .score-control>button:last-child {
   justify-self: end;
 }
 
@@ -233,7 +233,7 @@ body.admin-layout-active #app {
   content: none !important;
 }
 
-.admin-layout__score-controls > * {
+.admin-layout__score-controls>* {
   border: 0 !important;
 }
 
@@ -360,7 +360,7 @@ body.admin-layout-active #app {
   text-transform: uppercase;
 }
 
-.admin-layout__team-graph-header > span {
+.admin-layout__team-graph-header>span {
   flex: 1;
   text-align: center;
 }
@@ -430,11 +430,11 @@ body.admin-layout-active #app {
   .admin-layout__team-graph-body {
     padding: 16px;
   }
-  
+
   .admin-layout__team-graph-body .analitika-line-canvas {
     padding: 0 20px;
   }
-  
+
   .admin-layout__team-graph-body .analitika-line {
     --line-logo-size: 40px;
   }
@@ -506,7 +506,7 @@ body.admin-layout-active #app {
   border: 1px solid rgba(255, 154, 31, 0.35);
   color: #000000;
   font-weight: 300;
- font-size: 1rem;
+  font-size: 1rem;
 }
 
 .admin-layout__info-card {
@@ -657,14 +657,14 @@ body.admin-layout-active #app {
   z-index: 2;
 }
 
- .admin-layout__logo-placeholder {
-   width: 40vw;
-   height: 40vw;
-   border-radius: 38px;
-   border: 2px dashed rgba(255, 255, 255, 0.4);
-   background: rgba(255, 255, 255, 0.08);
-   position: absolute;
-   left: 50%;
-   top: 50%;
-   transform: translate(-50%, -50%);
+.admin-layout__logo-placeholder {
+  width: 40vw;
+  height: 40vw;
+  border-radius: 38px;
+  border: 2px dashed rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
