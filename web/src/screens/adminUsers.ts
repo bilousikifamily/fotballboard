@@ -4,12 +4,22 @@ import { formatUserName } from "../formatters/names";
 import { getAvatarLogoPath } from "../features/clubs";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
 
+function parseUserTimestamp(user: LeaderboardUser): number {
+  if (!user.last_seen_at) {
+    return 0;
+  }
+  const parsed = Date.parse(user.last_seen_at);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function renderAdminUserSessions(users: LeaderboardUser[]): string {
   if (!users.length) {
     return `<p class="muted small">Поки що немає користувачів.</p>`;
   }
 
   const rows = users
+    .slice()
+    .sort((a, b) => parseUserTimestamp(b) - parseUserTimestamp(a))
     .map((user) => {
       const name = formatUserName(user);
       const lastSeen = user.last_seen_at
