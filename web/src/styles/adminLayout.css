@@ -743,7 +743,7 @@ body.admin-layout-active #app {
   transform: translate(-50%, -50%);
   z-index: 2;
   /* Застосовуємо 3D анімацію */
-  animation: swing-3d 5s ease-in-out infinite;
+  animation: swing-3d 8s ease-in-out infinite;
   /* Важливо для збереження якості при обертанні */
   transform-style: preserve-3d;
   will-change: transform;
@@ -763,7 +763,7 @@ body.admin-layout-active #app {
   transform: translate(-50%, -50%);
   z-index: 2;
   /* Застосовуємо 3D анімацію */
-  animation: swing-3d 5s ease-in-out infinite;
+  animation: swing-3d 8s ease-in-out infinite;
   /* Важливо для збереження якості при обертанні */
   transform-style: preserve-3d;
   will-change: transform;
@@ -776,7 +776,7 @@ body.admin-layout-active #app {
 .admin-layout__center--right .admin-layout__logo-frame .admin-layout__big-logo,
 .admin-layout__center--right .admin-layout__logo-frame .match-logo:not(.analitika-line-logo .match-logo),
 .admin-layout__center--right .match-logo {
-  animation: swing-3d-reverse 5s ease-in-out infinite !important;
+  animation: swing-3d-reverse 8s ease-in-out infinite !important;
 }
 
 .admin-layout__logo-placeholder {
