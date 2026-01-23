@@ -70,6 +70,11 @@
   gap: 10px;
 }
 
+.admin-pending-list {
+  max-width: min(480px, 90vw);
+  margin: 0 auto;
+}
+
 .admin-pending-card {
   --match-card-width: clamp(260px, 70vw, 320px);
   display: grid;
@@ -124,8 +129,45 @@
 .admin-pending-card .predictions,
 .admin-pending-card .prediction-countdown,
 .admin-pending-card .match-average,
-.admin-pending-card .match-odds-score {
+.admin-pending-card .match-odds-score,
+.admin-pending-card .match-analitika,
+.admin-pending-card .match-odds {
   display: none;
+}
+
+.admin-pending-card .match-header {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.admin-pending-card .match-scoreline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 60px));
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+}
+
+.admin-pending-card .match-logo,
+.admin-pending-card .match-logo-fallback {
+  width: clamp(34px, 12vw, 48px);
+  height: clamp(34px, 12vw, 48px);
+}
+
+.admin-pending-card .match-time-row {
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.admin-pending-card .match {
+  padding: 10px 12px;
+}
+
+.admin-pending-card .match-time,
+.admin-pending-card .match-weather-row {
+  font-size: 0.7rem;
+  gap: 4px;
 }
 
 .admin-pending-actions {
