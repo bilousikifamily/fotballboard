@@ -961,10 +961,16 @@
   transform: translate(-50%, -50%);
   z-index: 3;
   display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.analitika-line-content {
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .analitika-line-logo {
@@ -999,10 +1005,7 @@
 }
 
 .analitika-line-score {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+  position: relative;
   background: rgba(12, 12, 14, 0.95);
   color: var(--ink);
   font-size: 0.7rem;
@@ -1017,24 +1020,24 @@
 }
 
 .analitika-line-score[data-badge-side="left"] {
-  transform: translate(calc(-100% + 8px), calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+  align-self: flex-start;
 }
 
 .analitika-line-score[data-badge-side="right"] {
-  transform: translate(8px, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+  align-self: flex-end;
 }
 
 .analitika-line-score[data-badge-side="center"] {
-  transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+  align-self: center;
 }
 
 /* Для крайніх точок - зміщення всередину, щоб бейджі не обрізалися */
-.analitika-line-point[data-is-first="true"] .analitika-line-score {
-  transform: translate(8px, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+.analitika-line-point[data-is-first="true"] .analitika-line-content {
+  align-items: flex-start;
 }
 
-.analitika-line-point[data-is-last="true"] .analitika-line-score {
-  transform: translate(calc(-100% - 8px), calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+.analitika-line-point[data-is-last="true"] .analitika-line-content {
+  align-items: flex-end;
 }
 
 .analitika-line-score.is-win {

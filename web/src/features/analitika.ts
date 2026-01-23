@@ -184,10 +184,12 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
           role="img"
           aria-label="${escapeAttribute(ariaLabel)}"
         >
-          <div class="analitika-line-logo">
-            ${renderTeamLogo(point.opponent, point.opponentLogo)}
+          <div class="analitika-line-content">
+            <div class="analitika-line-logo">
+              ${renderTeamLogo(point.opponent, point.opponentLogo)}
+            </div>
+            ${score}
           </div>
-          ${score}
         </div>
       `;
     })
