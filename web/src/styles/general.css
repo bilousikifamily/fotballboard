@@ -221,6 +221,8 @@ body.intro-active {
 }
 
 .tabbar-icon--profile {
+  width: 31.2px;
+  height: 31.2px;
   mask-image: url("/icons/shirt.svg");
   -webkit-mask-image: url("/icons/shirt.svg");
 }
@@ -231,6 +233,8 @@ body.intro-active {
 }
 
 .tabbar-icon--leaderboard {
+  width: 40.8px;
+  height: 40.8px;
   mask-image: url("/icons/top.svg");
   -webkit-mask-image: url("/icons/top.svg");
 }
