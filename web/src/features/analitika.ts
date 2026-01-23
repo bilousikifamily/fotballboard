@@ -296,7 +296,9 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "bodø glimt": "bodo-glimt",
   "bodo/glimt": "bodo-glimt",
   "bodø/glimt": "bodo-glimt",
-  "bodo": "bodo-glimt"
+  "bodo": "bodo-glimt",
+  "psv": "psv",
+  "psv eindhoven": "psv"
 };
 
 type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
