@@ -1,4 +1,3 @@
-
 .admin-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -71,58 +70,58 @@
 }
 
 .admin-pending-list {
-  max-width: min(480px, 90vw);
-  margin: 0 auto;
+  max-width: min(480px, 90vw) !important;
+  margin: 0 auto !important;
 }
 
 .admin-pending-card {
   --match-card-width: clamp(260px, 70vw, 320px);
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--surface-strong);
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
-  width: 100%;
-  justify-self: center;
-  align-self: center;
+  display: grid !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  background: var(--surface-strong) !important;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset !important;
+  width: 100% !important;
+  justify-self: center !important;
+  align-self: center !important;
 }
 
 .admin-pending-card .match-item {
-  width: 100%;
-  max-width: var(--match-card-width);
-  margin: 0 auto;
-  justify-self: center;
+  width: 100% !important;
+  max-width: var(--match-card-width) !important;
+  margin: 0 auto !important;
+  justify-self: center !important;
 }
 
 .admin-pending-card .match {
-  width: 100%;
-  max-width: var(--match-card-width);
-  padding: 12px 14px;
-  gap: 6px;
-  align-self: stretch;
-  margin: 0 auto;
+  width: 100% !important;
+  max-width: var(--match-card-width) !important;
+  padding: 12px 14px !important;
+  gap: 6px !important;
+  align-self: stretch !important;
+  margin: 0 auto !important;
 }
 
 .admin-pending-card .match-logo {
-  width: 40px;
-  height: 40px;
+  width: 40px !important;
+  height: 40px !important;
 }
 
 .admin-pending-card .match-time-row {
-  gap: 4px;
+  gap: 4px !important;
 }
 
 .admin-pending-card .match-weather-row {
-  gap: 6px;
+  gap: 6px !important;
 }
 
 .admin-pending-card .match-odds {
-  padding: 6px 8px;
+  padding: 6px 8px !important;
 }
 
 .admin-pending-card .score-row {
-  gap: 12px;
+  gap: 12px !important;
 }
 
 .admin-pending-card .prediction-form,
@@ -132,65 +131,45 @@
 .admin-pending-card .match-odds-score,
 .admin-pending-card .match-analitika,
 .admin-pending-card .match-odds {
-  display: none;
+  display: none !important;
 }
 
 .admin-pending-card .match-header {
-  display: grid;
-  gap: 6px;
-  justify-items: center;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  align-items: center !important;
 }
 
 .admin-pending-card .match-scoreline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 60px));
-  gap: 8px;
-  align-items: center;
-  justify-items: center;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
 }
 
 .admin-pending-card .match-logo,
 .admin-pending-card .match-logo-fallback {
-  width: clamp(80px, 18vw, 100px);
-  height: clamp(80px, 18vw, 100px);
-  max-width: 100px;
-  max-height: 100px;
+  width: clamp(80px, 18vw, 100px) !important;
+  height: clamp(80px, 18vw, 100px) !important;
+  max-width: 100px !important;
+  max-height: 100px !important;
 }
 
 .admin-pending-card .match-time-row {
-  gap: 6px;
-  font-size: 0.72rem;
+  gap: 6px !important;
+  font-size: 0.72rem !important;
 }
 
 .admin-pending-card .match {
-  padding: 10px 12px;
+  padding: 10px 12px !important;
 }
 
 .admin-pending-card .match-time,
 .admin-pending-card .match-weather-row {
-  font-size: 0.7rem;
-  gap: 4px;
-}
-
-.admin-pending-card .match-header {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-}
-
-.admin-pending-card .match-scoreline {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.admin-pending-card .match-scoreline .match-logo,
-.admin-pending-card .match-scoreline .match-logo-fallback {
-  width: 100px;
-  height: 100px;
+  font-size: 0.7rem !important;
+  gap: 4px !important;
 }
 
 .admin-pending-card .score-controls,
