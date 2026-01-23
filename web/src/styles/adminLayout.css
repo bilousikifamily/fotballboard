@@ -376,9 +376,15 @@ body.admin-layout-active #app {
   color: #fff;
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 4px 12px;
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   transition: opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .team-graph-close:hover {
@@ -622,7 +628,21 @@ body.admin-layout-active #app {
   cursor: default;
 }
 
-.admin-layout .match-logo {
+/* Великий логотип в адмін-лейауті (окремий клас, щоб не конфліктувати з малими) */
+.admin-layout__big-logo {
+  width: 45vw;
+  height: 45vw;
+  max-width: 45vw;
+  max-height: 45vw;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* Застарілий селектор - залишаємо для сумісності, але ізольований */
+.admin-layout__logo-frame .match-logo {
   width: 45vw;
   height: 45vw;
   max-width: 45vw;

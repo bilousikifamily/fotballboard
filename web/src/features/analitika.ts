@@ -131,14 +131,17 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
       scoreLabel,
       dateLabel,
       homeAway,
-      outcomeClass
+      outcomeClass,
+      ratingValue
     };
   });
   const polyline = points
     .map((point) => `${point.x},${point.y}`)
     .join(" ");
   const gridLines = points
-    .map((point) => {
+    .map((point, index) => {
+      const isFirst = index === 0;
+      const isLast = index === points.length - 1;
       const dateMeta = `
         <span class="analitika-line-date">
           ${point.dateLabel ? `<span>${escapeHtml(point.dateLabel)}</span>` : ""}
@@ -146,19 +149,40 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
         </span>
       `;
       return `
-        <span class="analitika-line-gridline" style="--x:${point.x}%">
+        <span class="analitika-line-gridline" style="--x:${point.x}%" data-is-first="${isFirst}" data-is-last="${isLast}">
           ${point.dateLabel || point.homeAway ? dateMeta : ""}
         </span>
       `;
     })
     .join("");
   const pointMarkup = points
-    .map((point) => {
-      const score = `<span class="analitika-line-score ${escapeAttribute(point.outcomeClass)}">${escapeHtml(
+    .map((point, index) => {
+      const isFirst = index === 0;
+      const isLast = index === points.length - 1;
+      const isTopThird = point.y < 33;
+      const isBottomThird = point.y > 67;
+      const badgePosition = isTopThird ? "below" : isBottomThird ? "above" : "below";
+      const badgeSide = isFirst ? "right" : isLast ? "left" : "center";
+      
+      const ariaLabel = [
+        point.dateLabel,
+        point.homeAway.toLowerCase(),
+        `vs ${point.opponent}`,
+        point.scoreLabel,
+        point.ratingValue !== null ? `рейтинг ${point.ratingValue.toFixed(1)}` : ""
+      ].filter(Boolean).join(", ");
+      
+      const score = `<span class="analitika-line-score ${escapeAttribute(point.outcomeClass)}" data-badge-position="${escapeAttribute(badgePosition)}" data-badge-side="${escapeAttribute(badgeSide)}">${escapeHtml(
         point.scoreLabel
       )}</span>`;
       return `
-        <div class="analitika-line-point" style="--x:${point.x}%; --y:${point.y}%;">
+        <div 
+          class="analitika-line-point" 
+          style="--x:${point.x}%; --y:${point.y}%;"
+          data-is-first="${isFirst}"
+          data-is-last="${isLast}"
+          aria-label="${escapeAttribute(ariaLabel)}"
+        >
           <div class="analitika-line-logo">
             ${renderTeamLogo(point.opponent, point.opponentLogo)}
           </div>

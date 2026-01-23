@@ -796,6 +796,64 @@
   box-sizing: border-box;
 }
 
+/* Адаптивність для малих екранів */
+@media (max-width: 480px) {
+  .analitika-line-canvas {
+    height: min(360px, 50vh);
+    min-height: 300px;
+    padding: 20px 20px 60px;
+  }
+  
+  .analitika-line-logo {
+    width: clamp(36px, 8vw, 44px);
+    height: clamp(36px, 8vw, 44px);
+  }
+  
+  .analitika-line-score {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .analitika-line-canvas {
+    height: min(320px, 45vh);
+    min-height: 280px;
+    padding: 16px 16px 56px;
+  }
+  
+  .analitika-line-logo {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .analitika-line-score {
+    font-size: 0.6rem;
+    padding: 2px 5px;
+  }
+  
+  /* Покращення читабельності дат на дуже малих екранах */
+  .analitika-line-date {
+    font-size: 0.65rem;
+  }
+  
+  .analitika-line-homeaway {
+    font-size: 0.6rem;
+  }
+  
+  /* Покращуємо читабельність дат на дуже малих екранах */
+  .analitika-line-gridline:not([data-is-first="true"]):not([data-is-last="true"]):nth-child(even) .analitika-line-date {
+    opacity: 0.7;
+  }
+  
+  /* Крайні дати завжди видимі */
+  .analitika-line-gridline[data-is-first="true"] .analitika-line-date,
+  .analitika-line-gridline[data-is-last="true"] .analitika-line-date {
+    opacity: 1;
+    font-weight: 500;
+  }
+}
+
 .analitika-line-plot {
   position: relative;
   width: 100%;
@@ -857,44 +915,66 @@
   top: var(--y);
   transform: translate(-50%, -50%);
   z-index: 3;
-  display: grid;
-  place-items: center;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .analitika-line-logo {
-  width: clamp(40px, 7vw, 56px);
-  height: clamp(40px, 7vw, 56px);
+  width: clamp(36px, 6vw, 56px);
+  height: clamp(36px, 6vw, 56px);
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
+/* Ізоляція малих логотипів від глобальних стилів */
 .analitika-line-logo .match-logo,
 .analitika-line-logo .match-logo-fallback {
-  position: static;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  max-height: none;
-  transform: none;
+  position: static !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
   object-fit: contain;
   display: block;
   border-radius: 10px;
 }
 
 .analitika-line-score {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
-  background: rgba(12, 12, 14, 0.85);
+  position: static;
+  order: 2;
+  background: rgba(12, 12, 14, 0.95);
   color: var(--ink);
   font-size: 0.7rem;
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 8px;
   border: 1px solid var(--outline-light);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Позиціювання бейджів для різних позицій точки */
+.analitika-line-point[data-is-first="true"] .analitika-line-score[data-badge-side="right"] {
+  margin-left: 8px;
+}
+
+.analitika-line-point[data-is-last="true"] .analitika-line-score[data-badge-side="left"] {
+  margin-right: 8px;
+}
+
+/* Для крайніх точок - зміщення всередину */
+.analitika-line-point[data-is-first="true"] {
+  transform: translate(calc(-50% + 8px), -50%);
+}
+
+.analitika-line-point[data-is-last="true"] {
+  transform: translate(calc(-50% - 8px), -50%);
 }
 
 .analitika-line-score.is-win {
