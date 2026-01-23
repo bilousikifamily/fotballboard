@@ -773,8 +773,10 @@ body.admin-layout-active #app {
 
 /* Дзеркальний рух для правого логотипа */
 .admin-layout__center--right .admin-layout__big-logo,
+.admin-layout__center--right .admin-layout__logo-frame .admin-layout__big-logo,
+.admin-layout__center--right .admin-layout__logo-frame .match-logo:not(.analitika-line-logo .match-logo),
 .admin-layout__center--right .match-logo {
-  animation: swing-3d-reverse 5s ease-in-out infinite;
+  animation: swing-3d-reverse 5s ease-in-out infinite !important;
 }
 
 .admin-layout__logo-placeholder {
