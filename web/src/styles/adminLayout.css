@@ -15,10 +15,14 @@ body {
 body.admin-layout-active {
   overflow: hidden;
   height: 100%;
-  touch-action: none;
+  height: 100dvh;
   padding: 0;
   display: flex;
   flex-direction: column;
+}
+
+body.admin-layout-active.admin-layout-popup-open {
+  touch-action: auto;
 }
 
 body.admin-layout-active #app {
@@ -305,12 +309,9 @@ body.admin-layout-active #app {
 
 .admin-layout__team-graph-popup {
   position: fixed;
-  top: env(safe-area-inset-top, 0);
-  right: env(safe-area-inset-right, 0);
-  bottom: env(safe-area-inset-bottom, 0);
-  left: env(safe-area-inset-left, 0);
+  inset: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   z-index: 5000;
@@ -337,6 +338,7 @@ body.admin-layout-active #app {
   flex-direction: column;
   width: 100%;
   height: 100%;
+  max-height: 100dvh;
   background: rgba(8, 10, 16, 0.98);
   overflow: hidden;
   pointer-events: auto;
@@ -349,15 +351,19 @@ body.admin-layout-active #app {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 56px;
+  max-height: 64px;
   padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 10px;
   background: rgba(8, 10, 16, 0.98);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .admin-layout__team-graph-header>span {
@@ -399,17 +405,30 @@ body.admin-layout-active #app {
   flex: 1;
   display: grid;
   place-items: center;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-top: 18px;
   padding-right: 20px;
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   padding-left: 20px;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .admin-layout__team-graph-body .analitika-card {
   width: min(980px, 100%);
   margin: 0 auto;
+}
+
+.admin-layout__team-graph-body .analitika-line {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .admin-layout__team-graph-body .analitika-line {
+    max-width: min(980px, calc(100% - 40px));
+  }
 }
 
 @media (max-width: 480px) {
@@ -418,11 +437,59 @@ body.admin-layout-active #app {
   }
 
   .admin-layout__team-graph-body .analitika-line-canvas {
-    padding: 0 20px;
+    height: min(360px, 50vh);
+    min-height: 300px;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-plot {
+    padding: 20px 20px 60px;
   }
 
   .admin-layout__team-graph-body .analitika-line {
-    --line-logo-size: 40px;
+    --line-logo-size: clamp(36px, 8vw, 44px);
+  }
+
+  .admin-layout__team-graph-body .analitika-line-score {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-layout__team-graph-body .analitika-line-canvas {
+    height: min(320px, 45vh);
+    min-height: 280px;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-plot {
+    padding: 16px 16px 56px;
+  }
+
+  .admin-layout__team-graph-body .analitika-line {
+    --line-logo-size: 36px;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-score {
+    font-size: 0.6rem;
+    padding: 2px 5px;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-date {
+    font-size: 0.65rem;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-homeaway {
+    font-size: 0.6rem;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-gridline:not([data-is-first="true"]):not([data-is-last="true"]):nth-child(even) .analitika-line-date {
+    opacity: 0.7;
+  }
+
+  .admin-layout__team-graph-body .analitika-line-gridline[data-is-first="true"] .analitika-line-date,
+  .admin-layout__team-graph-body .analitika-line-gridline[data-is-last="true"] .analitika-line-date {
+    opacity: 1;
+    font-weight: 500;
   }
 }
 
@@ -632,7 +699,8 @@ body.admin-layout-active #app {
 }
 
 /* Великий логотип в адмін-лейауті (окремий клас, щоб не конфліктувати з малими) */
-.admin-layout__big-logo {
+.admin-layout__big-logo,
+.admin-layout__logo-frame .admin-layout__big-logo {
   width: 45vw;
   height: 45vw;
   max-width: 45vw;
@@ -645,7 +713,7 @@ body.admin-layout-active #app {
 }
 
 /* Застарілий селектор - залишаємо для сумісності, але ізольований */
-.admin-layout__logo-frame .match-logo {
+.admin-layout__logo-frame .match-logo:not(.analitika-line-logo .match-logo) {
   width: 45vw;
   height: 45vw;
   max-width: 45vw;

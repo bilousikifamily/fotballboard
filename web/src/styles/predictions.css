@@ -760,15 +760,16 @@
 }
 
 .analitika-line {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 980px);
-  gap: 4px;
+  display: flex;
+  align-items: stretch;
   justify-content: center;
   --line-logo-size: clamp(40px, 7vw, 56px);
   --line-score-gap: 6px;
   width: 100%;
   max-width: 100%;
   overflow: visible;
+  gap: 4px;
+  margin: 0 auto;
 }
 
 .analitika-line--image {
@@ -784,6 +785,10 @@
   color: var(--muted);
   padding: 44px 8px calc(64px + 60px);
   align-items: flex-start;
+  width: 56px;
+  flex-shrink: 0;
+  min-height: 0;
+  align-self: stretch;
 }
 
 .analitika-line-canvas {
@@ -793,9 +798,11 @@
   height: min(520px, 58vh);
   min-height: 360px;
   overflow: visible;
-  padding: 44px 44px 64px;
+  padding: 0;
   box-sizing: border-box;
   margin-inline: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Адаптивність для малих екранів */
@@ -803,6 +810,9 @@
   .analitika-line-canvas {
     height: min(360px, 50vh);
     min-height: 300px;
+  }
+  
+  .analitika-line-plot {
     padding: 20px 20px 60px;
   }
   
@@ -824,6 +834,9 @@
   .analitika-line-canvas {
     height: min(320px, 45vh);
     min-height: 280px;
+  }
+  
+  .analitika-line-plot {
     padding: 16px 16px 56px;
   }
   
@@ -867,6 +880,8 @@
   width: 100%;
   height: 100%;
   overflow: visible;
+  padding: 44px 44px 64px;
+  box-sizing: border-box;
 }
 
 .analitika-line-grid {
@@ -881,7 +896,8 @@
   bottom: 0;
   left: var(--x);
   width: 1px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
 }
 
 .analitika-line-date {
@@ -895,6 +911,11 @@
   display: grid;
   justify-items: center;
   gap: 2px;
+  text-align: center;
+  min-width: 0;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .analitika-line-homeaway {
@@ -912,9 +933,15 @@
 .analitika-line-path polyline {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 1.4;
+  stroke-width: 1.2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+@media (max-width: 480px) {
+  .analitika-line-path polyline {
+    stroke-width: 1.1;
+  }
 }
 
 .analitika-line-point {
@@ -947,9 +974,18 @@
   max-width: none !important;
   max-height: none !important;
   transform: none !important;
+  left: auto !important;
+  top: auto !important;
   object-fit: contain;
   display: block;
   border-radius: 10px;
+}
+
+/* Додаткова ізоляція від адмін-стилів */
+.analitika-line-logo .match-logo:not(.admin-layout__big-logo),
+.analitika-line-logo .match-logo-fallback:not(.admin-layout__big-logo) {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .analitika-line-score {
@@ -970,13 +1006,25 @@
   z-index: 4;
 }
 
-/* Для крайніх точок - зміщення всередину, щоб бейджі не обрізалися */
-.analitika-line-point[data-is-first="true"] {
-  transform: translate(calc(-50% + 8px), -50%);
+.analitika-line-score[data-badge-side="left"] {
+  transform: translate(calc(-100% + 8px), calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
 }
 
-.analitika-line-point[data-is-last="true"] {
-  transform: translate(calc(-50% - 8px), -50%);
+.analitika-line-score[data-badge-side="right"] {
+  transform: translate(8px, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+}
+
+.analitika-line-score[data-badge-side="center"] {
+  transform: translate(-50%, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+}
+
+/* Для крайніх точок - зміщення всередину, щоб бейджі не обрізалися */
+.analitika-line-point[data-is-first="true"] .analitika-line-score {
+  transform: translate(8px, calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
+}
+
+.analitika-line-point[data-is-last="true"] .analitika-line-score {
+  transform: translate(calc(-100% - 8px), calc(var(--line-logo-size) / 2 + var(--line-score-gap)));
 }
 
 .analitika-line-score.is-win {
@@ -1038,6 +1086,8 @@
   padding: 0;
   border-radius: 0;
   overflow: visible;
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .analitika-card.is-graph .analitika-card-body {

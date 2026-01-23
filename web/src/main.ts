@@ -3793,9 +3793,10 @@ async function openTeamGraphPopup(teamSlug: string | null, teamName: string): Pr
     return;
   }
   const slug = teamSlug ?? normalizeTeamSlugValue(teamName) ?? teamName.toLowerCase();
-  teamGraphTitleEl.textContent = `Історія ${teamName}`;
+  teamGraphTitleEl.textContent = `ІСТОРІЯ ${teamName.toUpperCase()}`;
   teamGraphBodyEl.innerHTML = `<p class="muted">Завантаження...</p>`;
   teamGraphPopup.classList.remove("is-hidden");
+  document.body.classList.add("admin-layout-popup-open");
   teamGraphPopup.focus();
   try {
     const stats = await loadTeamGraphStats(slug);
@@ -3814,6 +3815,7 @@ function closeTeamGraphPopup(): void {
     return;
   }
   teamGraphPopup.classList.add("is-hidden");
+  document.body.classList.remove("admin-layout-popup-open");
 }
 
 function ensureTeamGraphPopup(): void {

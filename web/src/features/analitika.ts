@@ -181,6 +181,7 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
           style="--x:${point.x}%; --y:${point.y}%;"
           data-is-first="${isFirst}"
           data-is-last="${isLast}"
+          role="img"
           aria-label="${escapeAttribute(ariaLabel)}"
         >
           <div class="analitika-line-logo">
