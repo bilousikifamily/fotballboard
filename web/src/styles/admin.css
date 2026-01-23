@@ -151,8 +151,10 @@
 
 .admin-pending-card .match-logo,
 .admin-pending-card .match-logo-fallback {
-  width: clamp(34px, 12vw, 48px);
-  height: clamp(34px, 12vw, 48px);
+  width: clamp(80px, 18vw, 100px);
+  height: clamp(80px, 18vw, 100px);
+  max-width: 100px;
+  max-height: 100px;
 }
 
 .admin-pending-card .match-time-row {
@@ -168,6 +170,34 @@
 .admin-pending-card .match-weather-row {
   font-size: 0.7rem;
   gap: 4px;
+}
+
+.admin-pending-card .match-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-pending-card .match-scoreline {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.admin-pending-card .match-scoreline .match-logo,
+.admin-pending-card .match-scoreline .match-logo-fallback {
+  width: 100px;
+  height: 100px;
+}
+
+.admin-pending-card .score-controls,
+.admin-pending-card .score-control,
+.admin-pending-card .score-btn,
+.admin-pending-card .prediction-submit {
+  display: none !important;
 }
 
 .admin-pending-actions {
