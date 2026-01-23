@@ -786,9 +786,6 @@
   flex-shrink: 0;
   min-height: 0;
   align-self: stretch;
-  --axis-padding-top: 44px;
-  --plot-padding-top: 44px;
-  --plot-padding-bottom: 64px;
 }
 
 .analitika-line-axis > span {
@@ -796,11 +793,16 @@
   left: 8px;
   transform: translateY(-50%);
   /* Позиціонуємо мітки відповідно до координат y графіку */
-  /* Графік має padding зверху та знизу */
-  /* y=0 відповідає верхній частині графіку */
-  /* y=100 відповідає нижній частині графіку */
-  /* Позиція = верхній padding графіку + (y/100 від висоти області графіку) */
-  top: calc(var(--plot-padding-top, 44px) + (var(--y, 0) / 100) * (100% - var(--plot-padding-top, 44px) - var(--plot-padding-bottom, 64px)));
+  /* Точки позиціонуються через top: var(--y) відносно .analitika-line-plot */
+  /* .analitika-line-plot має padding: 44px 44px 64px з box-sizing: border-box */
+  /* Висота області контенту в .analitika-line-plot = 100% - 44px - 64px */
+  /* .analitika-line-axis має padding: 44px 8px calc(64px + 60px) = 44px 8px 124px */
+  /* Висота області контенту в .analitika-line-axis = 100% - 44px - 124px */
+  /* Оскільки обидва контейнери мають однакову висоту H через flexbox */
+  /* var(--y) - це відсоток від (H - 44px - 64px) для точок */
+  /* Для міток: позиція = 44px + var(--y) * (H - 44px - 64px) / 100 */
+  /* Але оскільки ми в .analitika-line-axis, то: */
+  top: calc(44px + (var(--y, 0) / 100) * (100% - 44px - 64px));
 }
 
 .analitika-line-canvas {
@@ -830,9 +832,10 @@
   
   .analitika-line-axis {
     padding: 20px 8px calc(60px + 60px);
-    --axis-padding-top: 20px;
-    --plot-padding-top: 20px;
-    --plot-padding-bottom: 60px;
+  }
+  
+  .analitika-line-axis > span {
+    top: calc(20px + (var(--y, 0) / 100) * (100% - 20px - 60px));
   }
   
   .analitika-line {
@@ -857,9 +860,10 @@
   
   .analitika-line-axis {
     padding: 16px 8px calc(56px + 60px);
-    --axis-padding-top: 16px;
-    --plot-padding-top: 16px;
-    --plot-padding-bottom: 56px;
+  }
+  
+  .analitika-line-axis > span {
+    top: calc(16px + (var(--y, 0) / 100) * (100% - 16px - 56px));
   }
   
   .analitika-line {

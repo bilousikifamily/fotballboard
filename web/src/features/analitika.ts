@@ -192,17 +192,41 @@ export function renderTeamMatchStatsList(items: TeamMatchStat[], teamSlug: strin
       `;
     })
     .join("");
-  const midRating = (maxRating + minRating) / 2;
-  // Обчислюємо позиції y для міток осі відповідно до формули точок
-  // Ці значення відповідають координатам y точок на графіку (0-100%)
-  const maxY = hasSpan ? ((maxRating - maxRating) / ratingSpan) * 100 : 50;
-  const midY = hasSpan ? ((maxRating - midRating) / ratingSpan) * 100 : 50;
-  const minY = hasSpan ? ((maxRating - minRating) / ratingSpan) * 100 : 50;
+  
+  // Знаходимо фактичні екстремуми серед точок (найвища та найнижча точки за координатою y)
+  const pointsWithRating = points.filter((p) => p.ratingValue !== null);
+  let maxPoint: typeof points[0] | null = null;
+  let minPoint: typeof points[0] | null = null;
+  
+  if (pointsWithRating.length > 0) {
+    maxPoint = pointsWithRating[0];
+    minPoint = pointsWithRating[0];
+    
+    for (const point of pointsWithRating) {
+      if (point.y < maxPoint.y) {
+        maxPoint = point;
+      }
+      if (point.y > minPoint.y) {
+        minPoint = point;
+      }
+    }
+  }
+  
+  // Використовуємо фактичні екстремуми для міток осі Y
+  const actualMaxRating = maxPoint?.ratingValue ?? maxRating;
+  const actualMinRating = minPoint?.ratingValue ?? minRating;
+  const actualMidRating = (actualMaxRating + actualMinRating) / 2;
+  
+  // Використовуємо фактичні позиції y екстремумів
+  const maxY = maxPoint?.y ?? (hasSpan ? ((maxRating - maxRating) / ratingSpan) * 100 : 50);
+  const minY = minPoint?.y ?? (hasSpan ? ((maxRating - minRating) / ratingSpan) * 100 : 50);
+  // Середнє значення обчислюємо як середнє між фактичними екстремумами
+  const midY = (maxY + minY) / 2;
   
   const axisLabels = [
-    { value: maxRating, y: maxY },
-    { value: midRating, y: midY },
-    { value: minRating, y: minY }
+    { value: actualMaxRating, y: maxY },
+    { value: actualMidRating, y: midY },
+    { value: actualMinRating, y: minY }
   ]
     .map((item) => `<span style="--y:${item.y}">${item.value.toFixed(1)}</span>`)
     .join("");
