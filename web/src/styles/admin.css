@@ -71,19 +71,61 @@
 }
 
 .admin-pending-card {
-  --match-card-width: 100%;
+  --match-card-width: clamp(260px, 70vw, 320px);
   display: grid;
   gap: 8px;
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--surface-strong);
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
+  width: 100%;
+  justify-self: center;
+  align-self: center;
 }
 
 .admin-pending-card .match-item {
   width: 100%;
-  max-width: 100%;
-  flex: 1 1 auto;
+  max-width: var(--match-card-width);
+  margin: 0 auto;
+  justify-self: center;
+}
+
+.admin-pending-card .match {
+  width: 100%;
+  max-width: var(--match-card-width);
+  padding: 12px 14px;
+  gap: 6px;
+  align-self: stretch;
+  margin: 0 auto;
+}
+
+.admin-pending-card .match-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.admin-pending-card .match-time-row {
+  gap: 4px;
+}
+
+.admin-pending-card .match-weather-row {
+  gap: 6px;
+}
+
+.admin-pending-card .match-odds {
+  padding: 6px 8px;
+}
+
+.admin-pending-card .score-row {
+  gap: 12px;
+}
+
+.admin-pending-card .prediction-form,
+.admin-pending-card .predictions,
+.admin-pending-card .prediction-countdown,
+.admin-pending-card .match-average,
+.admin-pending-card .match-odds-score {
+  display: none;
 }
 
 .admin-pending-actions {
