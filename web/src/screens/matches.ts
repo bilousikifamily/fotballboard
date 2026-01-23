@@ -161,6 +161,13 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
   const rainValue = hasWeatherData ? formatRainProbability(rainPercent) : " ";
   const rainIcon = getWeatherIcon(match.weather_condition ?? null);
   const rainBarWidth = hasWeatherData ? rainPercent ?? 0 : 0;
+  const hasLocationInfo = Boolean(city);
+  const hasTimeInfo = Boolean(match.kickoff_at);
+  const shouldHideTimeBlock = !hasWeatherData && !hasLocationInfo && !hasTimeInfo;
+  const matchTimeClass = ["match-time"];
+  if (shouldHideTimeBlock) {
+    matchTimeClass.push("match-time--hidden");
+  }
   const rainMarkup = hasWeatherData
     ? `
       <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
@@ -280,7 +287,7 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
 
   return `
     <div class="match-item ${predicted ? "has-prediction" : ""}${isPreview ? " is-preview" : ""}">
-      <div class="match-time">
+      <div class="${matchTimeClass.join(" ")}">
         <div class="match-time-row">
           <span class="match-time-value" data-match-kyiv-time data-match-id="${match.id}">${escapeHtml(kyivTime)}</span>
           ${cityMarkup}

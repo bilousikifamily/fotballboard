@@ -210,6 +210,7 @@
   display: grid;
   justify-items: center;
   overflow: hidden;
+  transition: opacity 120ms ease;
 }
 
 .match-meta-sep {
@@ -223,6 +224,10 @@
   line-height: 1;
   min-height: 20px;
   white-space: nowrap;
+}
+
+.match-time.match-time--hidden {
+  opacity: 0;
 }
 
 .match-weather-row {
