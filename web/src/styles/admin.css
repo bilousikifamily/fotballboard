@@ -116,6 +116,7 @@
 .admin-pending-card .match-logo-fallback {
   width: 100px !important;
   height: 100px !important;
+  object-fit: contain;
 }
 
 .admin-pending-card .match-time-row {
