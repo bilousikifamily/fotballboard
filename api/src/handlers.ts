@@ -21,6 +21,7 @@ import type {
   MatchResultExactGuessUser,
   FactionStat,
   FactionBranchSlug,
+  FactionPredictionsStatsPayload,
   FixturePayload,
   FixturesResult,
   TeamFixturesResult,
@@ -1496,6 +1497,43 @@ export default {
             inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
           }
         );
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/faction-predictions-stats") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<FactionPredictionsStatsPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const authResult = await authorizePresentationAdminAccess(
+        supabase,
+        env,
+        body.initData,
+        body.admin_token
+      );
+      if (!authResult.ok) {
+        const status = authResult.error === "bad_initData" ? 401 : 403;
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const result = await sendFactionPredictionsStats(supabase, env);
+      if (!result.ok) {
+        return jsonResponse({ ok: false, error: result.error }, 500, corsHeaders());
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -7444,6 +7482,135 @@ function formatAnnouncementMatchLine(match: DbMatch): string {
 
 function buildMatchesAnnouncementCaption(matches: DbMatch[]): string {
   return matches.map(formatAnnouncementMatchLine).join("\n");
+}
+
+async function getMatchesLast24Hours(supabase: SupabaseClient): Promise<DbMatch[] | null> {
+  try {
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, kickoff_at, status")
+      .eq("status", "finished")
+      .gte("kickoff_at", twentyFourHoursAgo.toISOString())
+      .lte("kickoff_at", now.toISOString())
+      .order("kickoff_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to fetch matches from last 24 hours", error);
+      return null;
+    }
+
+    return (data as DbMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to fetch matches from last 24 hours", error);
+    return null;
+  }
+}
+
+async function getPredictionsWithFactions(
+  supabase: SupabaseClient,
+  matchIds: number[]
+): Promise<Array<{ points: number; faction_club_id: string | null }> | null> {
+  if (!matchIds.length) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("predictions")
+      .select("points, users(faction_club_id)")
+      .in("match_id", matchIds);
+
+    if (error) {
+      console.error("Failed to fetch predictions with factions", error);
+      return null;
+    }
+
+    return (data as Array<{ points: number; users: { faction_club_id: string | null } | null }> | null)?.map(
+      (row) => ({
+        points: row.points ?? 0,
+        faction_club_id: row.users?.faction_club_id ?? null
+      })
+    ) ?? [];
+  } catch (error) {
+    console.error("Failed to fetch predictions with factions", error);
+    return null;
+  }
+}
+
+function getEmojiForAccuracy(accuracy: number): string {
+  if (accuracy >= 80) return "🔥🔥🔥";
+  if (accuracy >= 50) return "👏🏻👏🏻👏🏻";
+  if (accuracy >= 30) return "👍🏻👍🏻👍🏻";
+  return "😅😅😅";
+}
+
+async function sendFactionPredictionsStats(
+  supabase: SupabaseClient,
+  env: Env
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const matches = await getMatchesLast24Hours(supabase);
+  if (matches === null) {
+    return { ok: false, error: "db_error" };
+  }
+
+  if (matches.length === 0) {
+    return { ok: true };
+  }
+
+  const matchIds = matches.map((match) => match.id);
+  const predictions = await getPredictionsWithFactions(supabase, matchIds);
+  if (predictions === null) {
+    return { ok: false, error: "db_error" };
+  }
+
+  if (predictions.length === 0) {
+    return { ok: true };
+  }
+
+  const totalPredictions = predictions.length;
+  const hits = predictions.filter((p) => p.points > 0).length;
+  const accuracy = totalPredictions > 0 ? Math.round((hits / totalPredictions) * 100) : 0;
+  const emoji = getEmojiForAccuracy(accuracy);
+
+  const message = `УСПІШНІСТЬ ДЕПУТАТІВ ЗА ВЧОРА:\n\n${accuracy}% — ${emoji}`;
+
+  const factionsWithPredictions = new Set<FactionBranchSlug>();
+  for (const prediction of predictions) {
+    if (prediction.faction_club_id) {
+      const factionSlug = normalizeFactionChoice(prediction.faction_club_id);
+      if (factionSlug) {
+        factionsWithPredictions.add(factionSlug);
+      }
+    }
+  }
+
+  const refs = getFactionChatRefs(env);
+  const sendPromises: Promise<void>[] = [];
+
+  for (const factionSlug of factionsWithPredictions) {
+    const ref = refs.bySlug[factionSlug];
+    if (!ref) {
+      continue;
+    }
+
+    const chatTarget = ref.chatId ?? (ref.chatUsername ? `@${ref.chatUsername}` : null);
+    if (chatTarget) {
+      sendPromises.push(
+        sendMessage(env, chatTarget, message, undefined, undefined, ref.threadId ?? undefined).catch(
+          (error) => {
+            console.error(`Failed to send message to faction ${factionSlug}`, error);
+          }
+        )
+      );
+    }
+  }
+
+  await Promise.all(sendPromises);
+
+  return { ok: true };
 }
 
 function buildWebappImageUrl(env: Env, fileName: string): string {

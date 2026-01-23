@@ -434,6 +434,11 @@ export interface AnnouncementPayload {
   admin_token?: string;
 }
 
+export interface FactionPredictionsStatsPayload {
+  initData?: string;
+  admin_token?: string;
+}
+
 export interface DbMatch {
   id: number;
   home_team: string;
