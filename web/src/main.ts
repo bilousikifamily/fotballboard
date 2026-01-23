@@ -3746,12 +3746,14 @@ function setupAdminLayoutScoreControls(matchId: number): void {
       updateAdminLayoutOddsHighlight(matchId);
     };
 
-    inc.addEventListener("click", () => {
+    inc.addEventListener("click", (e) => {
+      e.stopPropagation();
       const current = parseScore(input.value) ?? 0;
       update(current + 1);
     });
 
-    dec.addEventListener("click", () => {
+    dec.addEventListener("click", (e) => {
+      e.stopPropagation();
       const current = parseScore(input.value) ?? 0;
       update(current - 1);
     });
@@ -3767,9 +3769,22 @@ function attachTeamGraphTrigger(slot: HTMLElement, teamSlug: string | null, team
   }
   frame.dataset.teamSlug = teamSlug ?? "";
   frame.dataset.teamName = teamName;
-  frame.addEventListener("click", () => {
-    void openTeamGraphPopup(teamSlug, teamName);
-  });
+  
+  // Обробник кліку тільки на логотипі команди
+  const logo = frame.querySelector<HTMLElement>(".match-logo, .match-logo-fallback");
+  if (logo) {
+    logo.addEventListener("click", () => {
+      void openTeamGraphPopup(teamSlug, teamName);
+    });
+  }
+  
+  // Зупиняємо спливання подій від контролерів рахунку
+  const scoreControls = frame.querySelector<HTMLElement>(".admin-layout__score-controls");
+  if (scoreControls) {
+    scoreControls.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+  }
 }
 
 async function openTeamGraphPopup(teamSlug: string | null, teamName: string): Promise<void> {
