@@ -4,6 +4,7 @@ import type { LeaderboardUser, Match } from "./types";
 import {
   fetchMatches,
   fetchPendingMatches,
+  postFactionPredictionsStats,
   postMatch,
   postMatchesAnnouncement,
   postOddsRefresh,
@@ -52,9 +53,11 @@ const panelContents = Array.from(document.querySelectorAll<HTMLElement>("[data-a
 const addForm = document.querySelector<HTMLFormElement>("[data-admin-add-form]");
 const resultForm = document.querySelector<HTMLFormElement>("[data-admin-result-form]");
 const announceButton = document.querySelector<HTMLButtonElement>("[data-admin-announce]");
+const predictionsStatsButton = document.querySelector<HTMLButtonElement>("[data-admin-predictions-stats]");
 const addStatus = document.querySelector<HTMLElement>("[data-admin-add-status]");
 const resultStatus = document.querySelector<HTMLElement>("[data-admin-result-status]");
 const announceStatus = document.querySelector<HTMLElement>("[data-admin-announce-status]");
+const predictionsStatsStatus = document.querySelector<HTMLElement>("[data-admin-predictions-stats-status]");
 const pendingList = document.querySelector<HTMLElement>("[data-admin-pending-list]");
 const pendingStatus = document.querySelector<HTMLElement>("[data-admin-pending-status]");
 const usersList = document.querySelector<HTMLElement>("[data-admin-users-list]");
@@ -390,6 +393,23 @@ async function handleAnnouncement(): Promise<void> {
   }
 }
 
+async function handlePredictionsStats(): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  setStatus(predictionsStatsStatus, "Розрахунок та надсилання статистики…");
+  try {
+    const { response, data } = await postFactionPredictionsStats(API_BASE, "", getAdminToken());
+    if (!response.ok || !data.ok) {
+      setStatus(predictionsStatsStatus, "Не вдалося надіслати статистику.");
+      return;
+    }
+    setStatus(predictionsStatsStatus, "Статистику надіслано ✅");
+  } catch {
+    setStatus(predictionsStatsStatus, "Не вдалося надіслати статистику.");
+  }
+}
+
 function attachListeners(): void {
   actionButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -407,6 +427,9 @@ function attachListeners(): void {
   resultForm?.addEventListener("submit", handleResult);
   announceButton?.addEventListener("click", () => {
     void handleAnnouncement();
+  });
+  predictionsStatsButton?.addEventListener("click", () => {
+    void handlePredictionsStats();
   });
   pendingList?.addEventListener("click", (event) => {
     void handlePendingAction(event);

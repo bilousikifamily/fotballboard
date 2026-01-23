@@ -93,6 +93,10 @@ export type AnnouncementResponse =
   | { ok: true }
   | { ok: false; error: string };
 
+export type FactionPredictionsStatsResponse =
+  | { ok: true }
+  | { ok: false; error: string };
+
 export type AnalitikaItem = {
   id: number;
   cache_key: string;

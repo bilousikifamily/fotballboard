@@ -3,6 +3,7 @@ import type {
   ClubSyncResponse,
   ConfirmMatchResponse,
   CreateMatchResponse,
+  FactionPredictionsStatsResponse,
   MatchWeatherResponse,
   MatchesResponse,
   OddsRefreshResponse,
@@ -116,6 +117,18 @@ export function postMatchesAnnouncement(
   adminToken?: string
 ): Promise<{ response: Response; data: AnnouncementResponse }> {
   return requestJson<AnnouncementResponse>(`${apiBase}/api/matches/announcement`, {
+    method: "POST",
+    headers: authJsonHeaders(initData, adminToken),
+    body: JSON.stringify({ initData })
+  });
+}
+
+export function postFactionPredictionsStats(
+  apiBase: string,
+  initData: string,
+  adminToken?: string
+): Promise<{ response: Response; data: FactionPredictionsStatsResponse }> {
+  return requestJson<FactionPredictionsStatsResponse>(`${apiBase}/api/faction-predictions-stats`, {
     method: "POST",
     headers: authJsonHeaders(initData, adminToken),
     body: JSON.stringify({ initData })
