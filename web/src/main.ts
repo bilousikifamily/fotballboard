@@ -1418,6 +1418,9 @@ function renderUser(
             </div>
             <span class="admin-layout__pagination" data-admin-layout-pagination></span>
           </div>
+          <div class="admin-layout__no-voting" data-admin-layout-no-voting>
+            ГОЛОСУВАННЯ ВІДСУТНЄ
+          </div>
         </div>
       </section>
     `;
@@ -3525,6 +3528,20 @@ function getUserPointsTotal(user: PredictionUser | null): number {
   return typeof user?.points_total === "number" ? user.points_total : 0;
 }
 
+function hasMatchesForPrediction(matches: Match[]): boolean {
+  const now = Date.now();
+  return matches.some((match) => {
+    if (match.status === "finished") {
+      return false;
+    }
+    const closeAtMs = getMatchPredictionCloseAtMs(match);
+    if (closeAtMs !== null && now > closeAtMs) {
+      return false;
+    }
+    return true;
+  });
+}
+
 function updateAdminLayoutView(): void {
   const homeSlot = app.querySelector<HTMLElement>("[data-admin-layout-home]");
   const awaySlot = app.querySelector<HTMLElement>("[data-admin-layout-away]");
@@ -3547,6 +3564,8 @@ function updateAdminLayoutView(): void {
   const weatherFillEl = app.querySelector<HTMLElement>("[data-admin-layout-weather-fill]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
   const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
+  const noVotingEl = app.querySelector<HTMLElement>("[data-admin-layout-no-voting]");
+  const adminLayout = app.querySelector<HTMLElement>(".admin-layout");
   if (
     !homeSlot ||
     !awaySlot ||
@@ -3568,13 +3587,20 @@ function updateAdminLayoutView(): void {
     !humidityEl ||
     !weatherEl ||
     !weatherIconEl ||
-    !weatherFillEl
+    !weatherFillEl ||
+    !noVotingEl ||
+    !adminLayout
   ) {
     return;
   }
 
   const total = adminLayoutMatches.length;
-  if (!total) {
+  const hasVotingMatches = total > 0 && hasMatchesForPrediction(adminLayoutMatches);
+  
+  // Приховуємо/показуємо елементи залежно від наявності матчів для прогнозування
+  adminLayout.classList.toggle("has-no-voting", !hasVotingMatches);
+  
+  if (!hasVotingMatches) {
     homeSlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     awaySlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     pagination.innerHTML = "";

@@ -45,6 +45,7 @@ body.admin-layout-active #app {
   display: grid;
   grid-template-rows: auto auto auto 1fr auto auto;
   background: transparent;
+  position: relative;
 }
 
 .admin-layout__header {
@@ -736,4 +737,35 @@ body.admin-layout-active #app {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* Приховування елементів коли немає матчів для прогнозування */
+/* Перемикач календаря (.date-switcher) залишається видимим */
+.admin-layout.has-no-voting .admin-layout__time,
+.admin-layout.has-no-voting .admin-layout__info,
+.admin-layout.has-no-voting .admin-layout__body,
+.admin-layout.has-no-voting .admin-layout__vote,
+.admin-layout.has-no-voting .admin-layout__footer {
+  opacity: 0%;
+}
+
+/* Повідомлення про відсутність голосування */
+.admin-layout__no-voting {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  z-index: 10;
+  opacity: 0%;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.admin-layout.has-no-voting .admin-layout__no-voting {
+  opacity: 100%;
+  pointer-events: auto;
 }
