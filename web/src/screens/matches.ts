@@ -82,7 +82,7 @@ export function renderPendingMatchesList(matches: Match[]): string {
 
   return matches
     .map((match) => {
-      const preview = renderMatchCard(match, { preview: true });
+      const preview = renderMatchCard(match, { preview: true, admin: true });
       return `
         <div class="admin-pending-card" data-admin-pending-card data-match-id="${match.id}">
           ${preview}
@@ -130,6 +130,7 @@ function resolveMatchTimezone(match: Match): string | null {
 
 type MatchRenderOptions = {
   preview?: boolean;
+  admin?: boolean;
 };
 
 function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string {
@@ -214,7 +215,7 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
       : closed
         ? `<p class="muted small status-closed">Прогнози закрито.</p>`
         : "";
-  const form = closed || predicted
+  const form = closed || predicted || options.admin
     ? ""
     : `
       <form class="prediction-form" data-prediction-form data-match-id="${match.id}" ${
@@ -244,9 +245,31 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         <button class="button small-button prediction-submit" type="submit">ПРОГОЛОСУВАТИ</button>
       </form>
     `;
-  const countdown = closed || predicted || isPreview
+  const countdown = closed || predicted || isPreview || options.admin
     ? ""
     : `<p class="prediction-countdown muted small" data-prediction-countdown data-match-id="${match.id}"></p>`;
+
+  const predictionsBlock = options.admin
+    ? ""
+    : `<div class="predictions" data-predictions data-match-id="${match.id}" ${
+        predicted ? "data-auto-open='true'" : ""
+      }></div>`;
+
+  const adminLogoRow = options.admin
+    ? `
+      <div class="admin-match-logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
+        <div class="admin-match-logo-item">
+          ${homeLogoMarkup}
+          <span class="admin-match-team">${escapeHtml(homeName)}</span>
+        </div>
+        <div class="admin-match-vs">∙</div>
+        <div class="admin-match-logo-item">
+          ${awayLogoMarkup}
+          <span class="admin-match-team">${escapeHtml(awayName)}</span>
+        </div>
+      </div>
+    `
+    : "";
 
   return `
     <div class="match-item ${predicted ? "has-prediction" : ""}${isPreview ? " is-preview" : ""}">
@@ -265,15 +288,14 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         <div class="match-header">
           ${result}
         </div>
+        ${adminLogoRow}
         <div class="match-average" data-match-average data-match-id="${match.id}"></div>
         ${closed ? "" : statusLine}
         ${form}
-        <div class="predictions" data-predictions data-match-id="${match.id}" ${
-          predicted ? "data-auto-open='true'" : ""
-        }></div>
+        ${predictionsBlock}
         ${closed ? statusLine : ""}
       </article>
-      ${matchAnalitika}
+      ${options.admin ? "" : matchAnalitika}
       ${countdown}
     </div>
   `;
