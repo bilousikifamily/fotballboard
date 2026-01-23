@@ -66,6 +66,8 @@ const leagueSelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-leag
 const homeSelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-home]') ?? null;
 const awaySelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-away]') ?? null;
 const resultMatchSelect = resultForm?.querySelector<HTMLSelectElement>('[data-admin-result-match]') ?? null;
+const logsContent = document.querySelector<HTMLElement>("[data-admin-logs-content]");
+const logsClearButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-clear]");
 
 const state = {
   matches: [] as Match[],
@@ -73,6 +75,133 @@ const state = {
   leaderboard: [] as LeaderboardUser[],
   leaderboardLoaded: false
 };
+
+type LogLevel = "error" | "warn" | "info" | "log";
+
+interface LogEntry {
+  timestamp: number;
+  level: LogLevel;
+  message: string;
+  args?: unknown[];
+}
+
+const logs: LogEntry[] = [];
+const MAX_LOGS = 200;
+
+function formatLogTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("uk-UA", { hour12: false });
+}
+
+function addLog(level: LogLevel, message: string, ...args: unknown[]): void {
+  logs.push({
+    timestamp: Date.now(),
+    level,
+    message,
+    args: args.length > 0 ? args : undefined
+  });
+
+  if (logs.length > MAX_LOGS) {
+    logs.shift();
+  }
+
+  renderLogs();
+}
+
+function formatLogArg(arg: unknown): string {
+  if (arg === null) return "null";
+  if (arg === undefined) return "undefined";
+  if (typeof arg === "string") return arg;
+  if (typeof arg === "number" || typeof arg === "boolean") return String(arg);
+  if (arg instanceof Error) return `${arg.name}: ${arg.message}\n${arg.stack ?? ""}`;
+  if (typeof arg === "object") {
+    try {
+      return JSON.stringify(arg, null, 2);
+    } catch {
+      return String(arg);
+    }
+  }
+  return String(arg);
+}
+
+function renderLogs(): void {
+  if (!logsContent) {
+    return;
+  }
+
+  if (logs.length === 0) {
+    logsContent.innerHTML = "";
+    return;
+  }
+
+  logsContent.innerHTML = logs
+    .map((log) => {
+      const time = formatLogTime(log.timestamp);
+      let message = log.message;
+      if (log.args && log.args.length > 0) {
+        const formattedArgs = log.args.map(formatLogArg).join("\n");
+        message = `${message}\n${formattedArgs}`;
+      }
+      return `<div class="admin-log-entry admin-log-entry--${log.level}">
+        <span class="admin-log-entry__time">[${time}]</span>
+        <span>${escapeHtml(message)}</span>
+      </div>`;
+    })
+    .join("");
+  
+  logsContent.scrollTop = logsContent.scrollHeight;
+}
+
+function clearLogs(): void {
+  logs.length = 0;
+  renderLogs();
+}
+
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function setupLogging(): void {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  const originalInfo = console.info;
+  const originalLog = console.log;
+
+  console.error = (...args: unknown[]) => {
+    originalError.apply(console, args);
+    addLog("error", args.map((arg) => String(arg)).join(" "), ...args);
+  };
+
+  console.warn = (...args: unknown[]) => {
+    originalWarn.apply(console, args);
+    addLog("warn", args.map((arg) => String(arg)).join(" "), ...args);
+  };
+
+  console.info = (...args: unknown[]) => {
+    originalInfo.apply(console, args);
+    addLog("info", args.map((arg) => String(arg)).join(" "), ...args);
+  };
+
+  console.log = (...args: unknown[]) => {
+    originalLog.apply(console, args);
+    addLog("log", args.map((arg) => String(arg)).join(" "), ...args);
+  };
+
+  window.addEventListener("error", (event) => {
+    addLog("error", `Uncaught Error: ${event.message}`, {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error
+    });
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    addLog("error", `Unhandled Promise Rejection: ${event.reason}`, event.reason);
+  });
+}
 
 function showLogin(): void {
   loginPanel?.classList.remove("is-hidden");
@@ -159,14 +288,17 @@ async function loadMatches(): Promise<void> {
     const date = getKyivDateString();
     const { response, data } = await fetchMatches(API_BASE, "", date, getAdminToken());
     if (!response.ok || !data.ok) {
+      const errorMsg = `Не вдалося завантажити матчі. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(pendingStatus, "Не вдалося завантажити матчі.");
+      addLog("error", errorMsg, { response, data });
       return;
     }
     state.matches = data.matches;
     setStatus(pendingStatus, "");
     updateMatchSelects();
-  } catch {
+  } catch (error) {
     setStatus(pendingStatus, "Не вдалося завантажити матчі.");
+    addLog("error", "Помилка при завантаженні матчів", error);
   }
 }
 
@@ -179,7 +311,9 @@ async function loadPendingMatches(): Promise<void> {
   try {
     const { response, data } = await fetchPendingMatches(API_BASE, "", getAdminToken());
     if (!response.ok || !data.ok) {
+      const errorMsg = `Не вдалося завантажити очікування. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(pendingStatus, "Не вдалося завантажити очікування.");
+      addLog("error", errorMsg, { response, data });
       return;
     }
     state.pending = data.matches;
@@ -187,8 +321,9 @@ async function loadPendingMatches(): Promise<void> {
     if (pendingList) {
       pendingList.innerHTML = renderPendingMatchesList(state.pending);
     }
-  } catch {
+  } catch (error) {
     setStatus(pendingStatus, "Не вдалося завантажити очікування.");
+    addLog("error", "Помилка при завантаженні очікування", error);
   }
 }
 
@@ -384,12 +519,16 @@ async function handleAnnouncement(): Promise<void> {
   try {
     const { response, data } = await postMatchesAnnouncement(API_BASE, "", getAdminToken());
     if (!response.ok || !data.ok) {
+      const errorMsg = `Не вдалося надіслати повідомлення. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(announceStatus, "Не вдалося надіслати повідомлення.");
+      addLog("error", errorMsg, { response, data });
       return;
     }
     setStatus(announceStatus, "Повідомлення надіслано ✅");
-  } catch {
+    addLog("info", "Повідомлення успішно надіслано");
+  } catch (error) {
     setStatus(announceStatus, "Не вдалося надіслати повідомлення.");
+    addLog("error", "Помилка при надсиланні повідомлення", error);
   }
 }
 
@@ -398,15 +537,20 @@ async function handlePredictionsStats(): Promise<void> {
     return;
   }
   setStatus(predictionsStatsStatus, "Розрахунок та надсилання статистики…");
+  addLog("info", "Початок розрахунку статистики прогнозів");
   try {
     const { response, data } = await postFactionPredictionsStats(API_BASE, "", getAdminToken());
     if (!response.ok || !data.ok) {
+      const errorMsg = `Не вдалося надіслати статистику. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(predictionsStatsStatus, "Не вдалося надіслати статистику.");
+      addLog("error", errorMsg, { response, data });
       return;
     }
     setStatus(predictionsStatsStatus, "Статистику надіслано ✅");
-  } catch {
+    addLog("info", "Статистику успішно надіслано");
+  } catch (error) {
     setStatus(predictionsStatsStatus, "Не вдалося надіслати статистику.");
+    addLog("error", "Помилка при надсиланні статистики", error);
   }
 }
 
@@ -433,6 +577,9 @@ function attachListeners(): void {
   });
   pendingList?.addEventListener("click", (event) => {
     void handlePendingAction(event);
+  });
+  logsClearButton?.addEventListener("click", () => {
+    clearLogs();
   });
 }
 
@@ -473,6 +620,8 @@ function handleLogout(): void {
   state.leaderboard = [];
   showLogin();
 }
+
+setupLogging();
 
 if (loginForm) {
   loginForm.addEventListener("submit", handleLogin);

@@ -219,3 +219,89 @@
 .admin-analytics {
   gap: 12px;
 }
+
+.admin-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-dark);
+  background: rgba(255, 255, 255, 0.03);
+  max-height: 400px;
+}
+
+.admin-logs__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-logs__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-logs__content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 320px;
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid var(--outline-dark);
+}
+
+.admin-logs__content:empty::before {
+  content: "Логи будуть відображатися тут...";
+  color: var(--muted);
+  font-style: italic;
+}
+
+.admin-log-entry {
+  padding: 4px 8px;
+  border-radius: 4px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.admin-log-entry--error {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.admin-log-entry--warn {
+  color: #ffd93d;
+  background: rgba(255, 217, 61, 0.1);
+}
+
+.admin-log-entry--info {
+  color: #6bcf7f;
+  background: rgba(107, 207, 127, 0.1);
+}
+
+.admin-log-entry--log {
+  color: var(--ink);
+}
+
+.admin-log-entry__time {
+  color: var(--muted);
+  font-size: 0.7rem;
+  margin-right: 8px;
+}
+
+.button.small {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+}
