@@ -1698,12 +1698,10 @@ async function notifyFactionChatNewDeputy(
     return;
   }
   const nicknameCandidate = options?.nickname?.trim();
-  const mention =
-    user.username && user.username.trim()
-      ? `@${user.username.trim()}`
-      : nicknameCandidate && nicknameCandidate.length
-        ? nicknameCandidate
-        : formatUserDisplay(user);
+  const username = user.username?.trim();
+  const mention = username && nicknameCandidate
+    ? `@${username} - ${nicknameCandidate}`
+    : nicknameCandidate || formatUserDisplay(user);
   const message = `У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n${mention}`;
   await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
 }
