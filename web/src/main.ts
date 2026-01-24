@@ -1031,6 +1031,15 @@ function getPrimaryFactionLogo(profile: ProfileStatsPayload | null): string | nu
   return getFactionDisplay(selected).logo;
 }
 
+function getPrimaryFactionIdFromProfile(profile: ProfileStatsPayload | null): string | null {
+  const primaryId = getPrimaryFactionId();
+  if (!primaryId || !profile?.factions?.length) {
+    return null;
+  }
+  const selected = profile.factions.find((entry) => getFactionId(entry) === primaryId);
+  return selected ? getFactionId(selected) : null;
+}
+
 function updateLeaderboardPrimaryFaction(logo: string | null): void {
   if (!logo || !app) {
     return;
@@ -4224,7 +4233,8 @@ async function loadLeaderboard(): Promise<void> {
     container.innerHTML = renderLeaderboardList(data.users, {
       currentUserId,
       startingPoints: STARTING_POINTS,
-      primaryFactionLogo: getPrimaryFactionLogo(currentProfileStats)
+      primaryFactionLogo: getPrimaryFactionLogo(currentProfileStats),
+      primaryFactionId: getPrimaryFactionIdFromProfile(currentProfileStats)
     });
     updateFactionRankCache(data.users, STARTING_POINTS);
     leaderboardLoaded = true;

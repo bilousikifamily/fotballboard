@@ -127,6 +127,18 @@
   color: #0b0b0d;
 }
 
+.leaderboard-row.is-faction:not(.is-self) {
+  background: rgba(255, 154, 31, 0.15);
+  border: 1px solid rgba(255, 154, 31, 0.3);
+}
+
+.leaderboard-row.is-faction:not(.is-self) .leaderboard-rank,
+.leaderboard-row.is-faction:not(.is-self) .leaderboard-name,
+.leaderboard-row.is-faction:not(.is-self) .leaderboard-points {
+  color: rgba(255, 255, 255, 0.95);
+}
+}
+
 
 .leaderboard-rank {
   color: var(--muted);

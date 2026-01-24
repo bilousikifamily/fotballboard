@@ -65,7 +65,7 @@ function collapseLeaderboardByFaction(users: LeaderboardUser[]): LeaderboardUser
 
 export function renderLeaderboardList(
   users: LeaderboardUser[],
-  options: { currentUserId: number | null; startingPoints: number; primaryFactionLogo?: string | null }
+  options: { currentUserId: number | null; startingPoints: number; primaryFactionLogo?: string | null; primaryFactionId?: string | null }
 ): string {
   factionPrizeMap.clear();
   const uniqueUsers = collapseLeaderboardByFaction(users);
@@ -89,12 +89,18 @@ export function renderLeaderboardList(
       }
       const isSelf = options.currentUserId === user.id;
       const isTop = currentRank <= 5;
+      const normalizedUserFaction = normalizeFactionId(user.faction_club_id);
+      const normalizedPrimaryFaction = normalizeFactionId(options.primaryFactionId);
+      const isSameFaction = normalizedUserFaction && normalizedPrimaryFaction && normalizedUserFaction === normalizedPrimaryFaction;
       const rowClasses = ["leaderboard-row"];
       if (isSelf) {
         rowClasses.push("is-self");
       }
       if (isTop) {
         rowClasses.push("is-top");
+      }
+      if (isSameFaction) {
+        rowClasses.push("is-faction");
       }
       const primaryLogo = isSelf ? options.primaryFactionLogo : null;
       const avatarLogo = getAvatarLogoPath(user.avatar_choice);
