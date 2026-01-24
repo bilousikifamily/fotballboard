@@ -1032,12 +1032,23 @@ function getPrimaryFactionLogo(profile: ProfileStatsPayload | null): string | nu
 }
 
 function getPrimaryFactionIdFromProfile(profile: ProfileStatsPayload | null): string | null {
+  // Спочатку намагаємося отримати з localStorage (primary faction)
   const primaryId = getPrimaryFactionId();
-  if (!primaryId || !profile?.factions?.length) {
-    return null;
+  if (primaryId && profile?.factions?.length) {
+    const selected = profile.factions.find((entry) => getFactionId(entry) === primaryId);
+    if (selected) {
+      return getFactionId(selected);
+    }
   }
-  const selected = profile.factions.find((entry) => getFactionId(entry) === primaryId);
-  return selected ? getFactionId(selected) : null;
+  // Якщо primary faction не знайдено, використовуємо першу фракцію з профілю
+  if (profile?.factions?.length) {
+    return getFactionId(profile.factions[0]);
+  }
+  // Якщо немає фракцій у профілі, використовуємо onboarding
+  if (currentOnboarding?.faction_club_id) {
+    return currentOnboarding.faction_club_id;
+  }
+  return null;
 }
 
 function updateLeaderboardPrimaryFaction(logo: string | null): void {

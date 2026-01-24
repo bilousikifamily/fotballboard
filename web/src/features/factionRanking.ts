@@ -73,6 +73,10 @@ export function renderLeaderboardList(
     return `<p class="muted small">Поки що немає користувачів.</p>`;
   }
 
+  // Знаходимо фракцію поточного користувача з даних таблиці
+  const currentUserInList = uniqueUsers.find((user) => options.currentUserId === user.id);
+  const currentUserFactionId = currentUserInList?.faction_club_id ?? options.primaryFactionId ?? null;
+
   let lastPoints: number | null = null;
   let currentRank = 0;
   const rows = uniqueUsers
@@ -90,7 +94,7 @@ export function renderLeaderboardList(
       const isSelf = options.currentUserId === user.id;
       const isTop = currentRank <= 5;
       const normalizedUserFaction = normalizeFactionId(user.faction_club_id);
-      const normalizedPrimaryFaction = normalizeFactionId(options.primaryFactionId);
+      const normalizedPrimaryFaction = normalizeFactionId(currentUserFactionId);
       const isSameFaction = normalizedUserFaction && normalizedPrimaryFaction && normalizedUserFaction === normalizedPrimaryFaction;
       const rowClasses = ["leaderboard-row"];
       if (isSelf) {
