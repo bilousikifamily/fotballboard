@@ -270,7 +270,8 @@ function bootstrapDev(): void {
   adminLayoutHasPrediction = false;
   adminLayoutIsFinished = false;
   adminLayoutVoteMatchId = null;
-  if (isAdmin) {
+  const adminLayoutHome = app.querySelector("[data-admin-layout-home]");
+  if (adminLayoutHome) {
     updateAdminLayoutView();
   }
 
@@ -1465,7 +1466,7 @@ function renderUser(
         <button
           class="tabbar-button"
           type="button"
-          data-tab="matches"
+          data-tab="admin-layout"
           role="tab"
           aria-selected="false"
           aria-label="Матчі"
@@ -1481,7 +1482,7 @@ function renderUser(
         <button
           class="tabbar-button"
           type="button"
-          data-tab="matches"
+          data-tab="admin-layout"
           role="tab"
           aria-selected="false"
           aria-label="Матчі"
@@ -1849,7 +1850,8 @@ async function loadMatches(date: string): Promise<void> {
     data.matches.forEach((match) => {
       matchesById.set(match.id, match);
     });
-    if (app.querySelector("[data-admin-layout-home]")) {
+    const adminLayoutHome = app.querySelector("[data-admin-layout-home]");
+    if (adminLayoutHome) {
       adminLayoutMatches = data.matches.slice();
       adminLayoutIndex = 0;
       updateAdminLayoutView();
@@ -2934,6 +2936,13 @@ function setupTabs(): void {
     document.body.classList.toggle("admin-layout-active", tab === "admin-layout");
     if (tab === "leaderboard") {
       void loadLeaderboard();
+    }
+    if (tab === "admin-layout") {
+      if (adminLayoutMatches.length === 0 && currentDate) {
+        void loadMatches(currentDate);
+      } else if (adminLayoutMatches.length > 0) {
+        updateAdminLayoutView();
+      }
     }
   };
 
