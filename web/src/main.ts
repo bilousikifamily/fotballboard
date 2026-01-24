@@ -1337,7 +1337,7 @@ function renderUser(
       `
     : "";
   const adminLayoutScreen = `
-      <section class="screen screen--admin-layout is-active" data-screen="admin-layout">
+      <section class="screen screen--admin-layout" data-screen="admin-layout">
         <div class="admin-layout">
           <div class="admin-layout__header">
             <div class="date-switcher" data-admin-layout-date>
@@ -1424,8 +1424,7 @@ function renderUser(
         </div>
       </section>
     `;
-  const matchesScreen = admin
-    ? `
+  const matchesScreen = `
         <section class="screen" data-screen="matches">
           <section class="panel matches">
             <div class="section-header">
@@ -1446,9 +1445,9 @@ function renderUser(
             <div class="matches-list" data-matches></div>
           </section>
         </section>
-      `
-    : "";
-  const adminLayoutTabButton = `
+      `;
+  const adminLayoutTabButton = admin
+    ? `
         <button
           class="tabbar-button"
           type="button"
@@ -1459,7 +1458,8 @@ function renderUser(
         >
           <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
         </button>
-      `;
+      `
+    : "";
   const matchesTabButton = admin
     ? `
         <button
@@ -1477,7 +1477,18 @@ function renderUser(
           </svg>
         </button>
       `
-    : "";
+    : `
+        <button
+          class="tabbar-button"
+          type="button"
+          data-tab="matches"
+          role="tab"
+          aria-selected="false"
+          aria-label="Матчі"
+        >
+          <span class="tabbar-icon tabbar-icon--matches" aria-hidden="true"></span>
+        </button>
+      `;
   const tabbarClass = admin ? "tabbar is-admin" : "tabbar";
 
   app.innerHTML = `
@@ -1523,6 +1534,8 @@ function renderUser(
 
         ${adminLayoutScreen}
 
+        ${matchesScreen}
+
         <section class="screen" data-screen="leaderboard">
           <div class="leaderboard-shell">
             <img class="leaderboard-rada" src="/images/rada.png" alt="" />
@@ -1534,17 +1547,7 @@ function renderUser(
       </main>
 
       <nav class="${tabbarClass}" role="tablist" aria-label="Навігація">
-        <button
-          class="tabbar-button"
-          type="button"
-          data-tab="profile"
-          role="tab"
-          aria-selected="false"
-          aria-label="Профіль"
-        >
-          <span class="tabbar-icon tabbar-icon--profile" aria-hidden="true"></span>
-        </button>
-        ${adminLayoutTabButton}
+        ${admin ? adminLayoutTabButton : matchesTabButton}
         <button
           class="tabbar-button"
           type="button"
@@ -1554,6 +1557,16 @@ function renderUser(
           aria-label="Таблиця"
         >
           <span class="tabbar-icon tabbar-icon--leaderboard" aria-hidden="true"></span>
+        </button>
+        <button
+          class="tabbar-button"
+          type="button"
+          data-tab="profile"
+          role="tab"
+          aria-selected="false"
+          aria-label="Профіль"
+        >
+          <span class="tabbar-icon tabbar-icon--profile" aria-hidden="true"></span>
         </button>
       </nav>
     </div>
@@ -2938,7 +2951,7 @@ function setupTabs(): void {
     .map((button) => button.dataset.tab)
     .filter((tab): tab is string => Boolean(tab));
   const normalizedQueryTab = QUERY_TAB_PARAM?.trim().toLowerCase();
-  const fallbackTab = tabIds.includes("admin-layout") ? "admin-layout" : tabIds[0] ?? "profile";
+  const fallbackTab = tabIds.includes("leaderboard") ? "leaderboard" : tabIds.includes("admin-layout") ? "admin-layout" : tabIds[0] ?? "leaderboard";
   const initialTab =
     normalizedQueryTab && tabIds.includes(normalizedQueryTab) ? normalizedQueryTab : fallbackTab;
   setActive(initialTab);
