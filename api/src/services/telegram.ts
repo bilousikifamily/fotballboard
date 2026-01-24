@@ -19,7 +19,7 @@ export async function handleUpdate(update: TelegramUpdate, env: Env): Promise<vo
 
   if (command === "start" || command === "app" || command === "webapp") {
     const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
-    const imageUrl = `${webappBaseUrl}/images/beginig.png`;
+    const imageUrl = `${webappBaseUrl}/images/beginig_fraction.png`;
     await sendPhoto(
       env,
       message.chat.id,
