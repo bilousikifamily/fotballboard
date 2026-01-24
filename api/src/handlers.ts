@@ -1494,7 +1494,7 @@ export default {
           buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE),
           caption,
           {
-            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
+            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappMatchesUrl(env) } }]]
           }
         );
       }
@@ -7065,7 +7065,7 @@ async function handlePredictionReminders(env: Env): Promise<void> {
           imageUrl,
           message,
           {
-            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
+            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappMatchesUrl(env) } }]]
           },
           "HTML"
         );
@@ -7637,6 +7637,11 @@ function buildWebappImageUrl(env: Env, fileName: string): string {
 function buildWebappLeaderboardUrl(env: Env): string {
   const baseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
   return `${baseUrl}?tab=leaderboard`;
+}
+
+function buildWebappMatchesUrl(env: Env): string {
+  const baseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
+  return `${baseUrl}?tab=matches`;
 }
 
 function getMatchResultImageFile(delta: number): string | null {
