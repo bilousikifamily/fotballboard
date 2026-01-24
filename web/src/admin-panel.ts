@@ -272,8 +272,26 @@ function updateMatchSelects(): void {
   if (!resultMatchSelect) {
     return;
   }
-  const options = state.matches
-    .map((match) => `<option value="${match.id}">${formatMatchOption(match)}</option>`)
+  // Фільтруємо матчі: показуємо тільки ті, які розпочалися або завершилися
+  const resultMatches = state.matches.filter((match) => {
+    const isStarted = match.status === "started";
+    const isFinished = match.status === "finished";
+    const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
+    const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
+    return isStarted || isFinished || hasKickoffPassed;
+  });
+  
+  if (!resultMatches.length) {
+    resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
+    return;
+  }
+  
+  const options = resultMatches
+    .map((match) => {
+      const hasResult = match.home_score !== null && match.away_score !== null;
+      const resultLabel = hasResult ? ` [${match.home_score}:${match.away_score}]` : "";
+      return `<option value="${match.id}">${formatMatchOption(match)}${resultLabel}</option>`;
+    })
     .join("");
   resultMatchSelect.innerHTML = `<option value="">Оберіть матч</option>${options}`;
 }

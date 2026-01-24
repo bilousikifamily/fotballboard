@@ -3062,28 +3062,53 @@ function renderAdminMatchOptions(matches: Match[]): void {
     return;
   }
 
-  if (!matches.length) {
-    select.innerHTML = `<option value="">Немає матчів</option>`;
+  // Для введення результатів показуємо тільки матчі, які розпочалися або завершилися
+  const resultMatches = matches.filter((match) => {
+    const isStarted = match.status === "started";
+    const isFinished = match.status === "finished";
+    const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
+    const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
+    return isStarted || isFinished || hasKickoffPassed;
+  });
+
+  if (!resultMatches.length) {
+    select.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
     select.disabled = true;
     if (oddsSelect) {
-      oddsSelect.innerHTML = `<option value="">Немає матчів</option>`;
-      oddsSelect.disabled = true;
+      oddsSelect.disabled = false;
+      oddsSelect.innerHTML = matches
+        .map((match) => {
+          const { homeName, awayName } = getMatchTeamInfo(match);
+          const title = `${homeName} — ${awayName}`;
+          const kickoff = formatKyivDateTime(match.kickoff_at);
+          return `<option value="${match.id}">${escapeHtml(title)} (${kickoff})</option>`;
+        })
+        .join("");
     }
     return;
   }
 
   select.disabled = false;
-  select.innerHTML = matches
+  select.innerHTML = resultMatches
     .map((match) => {
       const { homeName, awayName } = getMatchTeamInfo(match);
       const title = `${homeName} — ${awayName}`;
       const kickoff = formatKyivDateTime(match.kickoff_at);
-      return `<option value="${match.id}">${escapeHtml(title)} (${kickoff})</option>`;
+      const hasResult = match.home_score !== null && match.away_score !== null;
+      const resultLabel = hasResult ? ` [${match.home_score}:${match.away_score}]` : "";
+      return `<option value="${match.id}">${escapeHtml(title)}${resultLabel} (${kickoff})</option>`;
     })
     .join("");
   if (oddsSelect) {
     oddsSelect.disabled = false;
-    oddsSelect.innerHTML = select.innerHTML;
+    oddsSelect.innerHTML = matches
+      .map((match) => {
+        const { homeName, awayName } = getMatchTeamInfo(match);
+        const title = `${homeName} — ${awayName}`;
+        const kickoff = formatKyivDateTime(match.kickoff_at);
+        return `<option value="${match.id}">${escapeHtml(title)} (${kickoff})</option>`;
+      })
+      .join("");
   }
 }
 
