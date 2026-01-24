@@ -3366,7 +3366,38 @@ function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[])
 
   homeAverageEl.textContent = count ? formatAverageValue(homeAvg) : "0";
   awayAverageEl.textContent = count ? formatAverageValue(awayAvg) : "0";
-  updateAdminLayoutScoreValuesFromAverage(matchId);
+  
+  // Перевіряємо, чи потрібно оновити відображення рахунку
+  const match = matchesById.get(matchId);
+  const isFinished = match?.status === "finished";
+  const isStarted = match?.status === "started";
+  const kickoffMs = match?.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
+  const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
+  const isClosed = isFinished || isStarted || hasKickoffPassed;
+  
+  if (adminLayoutHasPrediction) {
+    // Якщо є прогноз - використовуємо стандартну логіку
+    updateAdminLayoutScoreValuesFromAverage(matchId);
+  } else if (isClosed && count > 0) {
+    // Якщо немає прогнозу і матч розпочався - показуємо середній рахунок замість "0:0"
+    const homeValueEl = app.querySelector<HTMLElement>(
+      '.admin-layout__score-controls [data-team="home"] [data-score-value]'
+    );
+    const awayValueEl = app.querySelector<HTMLElement>(
+      '.admin-layout__score-controls [data-team="away"] [data-score-value]'
+    );
+    if (homeValueEl) {
+      homeValueEl.textContent = formatAverageValue(homeAvg);
+    }
+    if (awayValueEl) {
+      awayValueEl.textContent = formatAverageValue(awayAvg);
+    }
+    // Приховуємо середній рахунок знизу
+    const averageBadges = app.querySelectorAll<HTMLElement>(".admin-layout__average-score");
+    averageBadges.forEach((badge) => {
+      badge.classList.add("is-hidden");
+    });
+  }
 }
 
 function updateAdminLayoutAverage(matchId: number): void {
@@ -3452,6 +3483,7 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   const isClosed = isFinished || isStarted || hasKickoffPassed;
   const shouldHideVote = hasPrediction || isClosed;
   const shouldLockScores = hasPrediction || isClosed;
+  const shouldShowAverageInsteadOfZero = !hasPrediction && isClosed;
 
   if (voteButton) {
     voteButton.classList.toggle("is-faded", shouldHideVote);
@@ -3460,9 +3492,41 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   if (probability) {
     probability.classList.toggle("is-hidden", shouldHideVote);
   }
-  averageBadges.forEach((badge) => {
-    badge.classList.toggle("is-faded", hasPrediction && !adminLayoutIsFinished);
-  });
+  
+  // Якщо немає прогнозу і матч розпочався - показуємо середній рахунок замість "0:0"
+  if (shouldShowAverageInsteadOfZero) {
+    const cached = adminLayoutAverageCache.get(matchId);
+    if (cached && cached.count > 0) {
+      const homeValueEl = app.querySelector<HTMLElement>(
+        '.admin-layout__score-controls [data-team="home"] [data-score-value]'
+      );
+      const awayValueEl = app.querySelector<HTMLElement>(
+        '.admin-layout__score-controls [data-team="away"] [data-score-value]'
+      );
+      if (homeValueEl) {
+        homeValueEl.textContent = formatAverageValue(cached.homeAvg);
+      }
+      if (awayValueEl) {
+        awayValueEl.textContent = formatAverageValue(cached.awayAvg);
+      }
+      // Приховуємо середній рахунок знизу, якщо він показаний вище
+      averageBadges.forEach((badge) => {
+        badge.classList.add("is-hidden");
+      });
+    } else {
+      // Якщо немає середнього рахунку, залишаємо "0:0" і показуємо середній рахунок знизу
+      averageBadges.forEach((badge) => {
+        badge.classList.remove("is-hidden");
+      });
+    }
+  } else {
+    // Якщо є прогноз або матч ще не розпочався - показуємо середній рахунок знизу як завжди
+    averageBadges.forEach((badge) => {
+      badge.classList.toggle("is-faded", hasPrediction && !adminLayoutIsFinished);
+      badge.classList.remove("is-hidden");
+    });
+  }
+  
   scoreButtons.forEach((button) => {
     button.classList.toggle("is-hidden", shouldLockScores);
     button.disabled = shouldLockScores;
