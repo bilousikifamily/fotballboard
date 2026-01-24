@@ -2081,6 +2081,13 @@ async function enforceFactionChatPermissions(
   const chatFactionName = formatFactionName(chatFaction);
   const userFactionName = userFaction ? formatFactionName(userFaction) : NO_FACTION_LABEL;
 
+  // Видаляємо повідомлення
+  try {
+    await deleteMessage(env, message.chat.id, message.message_id);
+  } catch (error) {
+    console.error("Failed to delete message", error);
+  }
+
   if (previousWarning && previousWarning.length > 0) {
     // Було попереднє попередження - віднімаємо бал
     const { data: userData } = await supabase
