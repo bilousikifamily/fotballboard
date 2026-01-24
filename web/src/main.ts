@@ -3608,6 +3608,8 @@ function setupAdminLayoutVoteButton(matchId: number): void {
         match.has_prediction = true;
       }
       adminLayoutHasPrediction = true;
+      // Очищаємо кеш середнього рахунку, щоб отримати оновлені дані з новим голосом
+      adminLayoutAverageCache.delete(resolvedMatchId);
       updateAdminLayoutAverage(resolvedMatchId);
       applyAdminLayoutPredictionState(resolvedMatchId, true);
     } catch {
