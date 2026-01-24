@@ -3420,7 +3420,11 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   const scoreButtons = app.querySelectorAll<HTMLButtonElement>(".admin-layout__score-controls .score-btn");
   const scoreControls = app.querySelectorAll<HTMLElement>(".admin-layout__score-controls .score-control");
   const match = matchesById.get(matchId);
-  const isClosed = match?.status === "finished" || match?.status === "started";
+  const isFinished = match?.status === "finished";
+  const isStarted = match?.status === "started";
+  const kickoffMs = match?.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
+  const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
+  const isClosed = isFinished || isStarted || hasKickoffPassed;
   const shouldHideVote = hasPrediction || isClosed;
   const shouldLockScores = hasPrediction || isClosed;
 
@@ -3468,6 +3472,16 @@ function setupAdminLayoutVoteButton(matchId: number): void {
     const resolvedMatchId = Number.parseInt(matchIdRaw, 10);
     if (!Number.isFinite(resolvedMatchId)) {
       return;
+    }
+    const match = matchesById.get(resolvedMatchId);
+    if (match) {
+      const isFinished = match.status === "finished";
+      const isStarted = match.status === "started";
+      const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
+      const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
+      if (isFinished || isStarted || hasKickoffPassed) {
+        return;
+      }
     }
 
     const homeControl = app.querySelector<HTMLElement>(
