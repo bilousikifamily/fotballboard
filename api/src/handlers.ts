@@ -624,15 +624,29 @@ export default {
 
       const initData = getInitDataFromHeaders(request);
       const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        initData,
-        adminToken
-      );
-      if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
-        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      
+      // Allow admin token for admin access, or regular user authentication
+      if (adminToken) {
+        const authResult = await authorizePresentationAdminAccess(
+          supabase,
+          env,
+          initData,
+          adminToken
+        );
+        if (!authResult.ok) {
+          const status = authResult.error === "bad_initData" ? 401 : 403;
+          return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+        }
+      } else {
+        // Regular user authentication
+        if (!initData) {
+          return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+        }
+        const auth = await authenticateInitData(initData, env.BOT_TOKEN);
+        if (!auth.ok || !auth.user) {
+          return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
+        }
+        await storeUser(supabase, auth.user);
       }
 
       const limit = parseLimit(url.searchParams.get("limit"), 10, 200);
