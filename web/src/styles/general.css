@@ -236,6 +236,7 @@ body.intro-active {
 .tabbar-icon--leaderboard {
   width: 40.8px;
   height: 40.8px;
+  transform: scale(1.3);
   mask-image: url("/icons/top.svg");
   -webkit-mask-image: url("/icons/top.svg");
 }
