@@ -283,17 +283,19 @@ function updateMatchSelects(): void {
   
   // Логуємо всі матчі для діагностики
   state.matches.forEach((match) => {
-    addLog("log", `Матч ${match.id}: ${match.home_team} vs ${match.away_team}, status=${match.status}, kickoff=${match.kickoff_at}`);
+    addLog("log", `Матч ${match.id}: ${match.home_team} vs ${match.away_team}, status=${match.status}, kickoff=${match.kickoff_at}, score=${match.home_score}:${match.away_score}`);
   });
   
-  // Для адміна показуємо всі матчі - адмін може ввести результат для будь-якого матчу
-  const resultMatches = state.matches;
+  // Показуємо тільки матчі без введеного результату
+  const resultMatches = state.matches.filter((match) => {
+    return match.home_score === null || match.away_score === null;
+  });
   
-  addLog("info", `Матчів для результатів: ${resultMatches.length}`);
+  addLog("info", `Матчів без результату: ${resultMatches.length} з ${state.matches.length}`);
   
   if (!resultMatches.length) {
-    resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
-    addLog("warn", "Немає матчів для введення результатів після фільтрації. Перевірте логи вище.");
+    resultMatchSelect.innerHTML = `<option value="">Всі матчі вже мають введені результати</option>`;
+    addLog("info", "Всі матчі вже мають введені результати");
     return;
   }
   
