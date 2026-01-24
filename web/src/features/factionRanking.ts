@@ -26,7 +26,7 @@ function getFactionRankPrize(rank?: number | null): string | null {
     return null;
   }
   const normalizedRank = Math.floor(rank);
-  if (normalizedRank < 1 || normalizedRank > 5) {
+  if (normalizedRank < 1 || normalizedRank > 3) {
     return null;
   }
   return FACTION_PRIZE_MAP[normalizedRank] ?? null;
@@ -115,7 +115,7 @@ export function renderLeaderboardList(
           : user.photo_url
           ? `<img class="table-avatar" src="${escapeAttribute(user.photo_url)}" alt="" />`
           : `<div class="table-avatar placeholder"></div>`;
-      const prizeSrc = FACTION_PRIZE_MAP[currentRank];
+      const prizeSrc = currentRank <= 3 ? FACTION_PRIZE_MAP[currentRank] : null;
       const normalizedFaction = normalizeFactionId(user.faction_club_id);
       if (normalizedFaction && prizeSrc) {
         factionPrizeMap.set(normalizedFaction, prizeSrc);
