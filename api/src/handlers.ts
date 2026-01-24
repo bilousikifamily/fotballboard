@@ -2106,7 +2106,7 @@ async function enforceFactionChatPermissions(
         .update({ points_total: nextPoints, updated_at: now })
         .eq("id", message.from.id);
 
-      const penaltyMessage = `⚠️ Тебе попереджали!\n\nТи знову пишеш у чаті фракції ${chatFactionName.toUpperCase()}, але твоя фракція: ${userFactionName.toUpperCase()}.\n\nВіднято -1 ГОЛОС.`;
+      const penaltyMessage = `Я ПОПЕРЕДЖАВ.\n\n-1 ГОЛОС`;
 
       try {
         await sendMessage(env, message.from.id, penaltyMessage);
@@ -2116,7 +2116,7 @@ async function enforceFactionChatPermissions(
     }
   } else {
     // Перше попередження - надсилаємо попередження і зберігаємо запис
-    const warningMessage = `⚠️ Попередження!\n\nТи пишеш у чаті фракції ${chatFactionName.toUpperCase()}, але твоя фракція: ${userFactionName.toUpperCase()}.\n\nНаступного разу буде -1 ГОЛОС.`;
+    const warningMessage = `⚠️ ПОПЕРЕДЖЕННЯ! ⚠️\n\nТи пишеш у чаті фракції ${chatFactionName.toUpperCase()},\nа твоя фракція ${userFactionName.toUpperCase()}\n\nНаступного разу буде -1 ГОЛОС`;
 
     try {
       await sendMessage(env, message.from.id, warningMessage);
