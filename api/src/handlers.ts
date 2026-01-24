@@ -918,8 +918,22 @@ export default {
 
       if (request.method === "GET") {
         const initData = getInitDataFromHeaders(request);
+        const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
+        
+        // Перевіряємо, чи це адмін запит
+        let isAdmin = false;
+        if (adminToken) {
+          const authResult = await authorizePresentationAdminAccess(
+            supabase,
+            env,
+            initData,
+            adminToken
+          );
+          isAdmin = authResult.ok;
+        }
+        
         const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-        if (!auth.ok) {
+        if (!auth.ok && !isAdmin) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
         }
 
@@ -928,7 +942,10 @@ export default {
         }
 
         const date = url.searchParams.get("date") || undefined;
-        const matches = await listMatches(supabase, date);
+        // Для адміна завантажуємо всі матчі (включаючи "pending")
+        const matches = isAdmin 
+          ? await listAllMatches(supabase, date)
+          : await listMatches(supabase, date);
         if (!matches) {
           return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
         }
@@ -5677,6 +5694,35 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     return (data as DbMatch[]) ?? [];
   } catch (error) {
     console.error("Failed to list matches", error);
+    return null;
+  }
+}
+
+async function listAllMatches(supabase: SupabaseClient, date?: string): Promise<DbMatch[] | null> {
+  try {
+    let query = supabase
+      .from("matches")
+      .select(
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+      )
+      .order("kickoff_at", { ascending: true });
+
+    if (date) {
+      const range = getKyivDayRange(date);
+      if (range) {
+        query = query.gte("kickoff_at", range.start).lte("kickoff_at", range.end);
+      }
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to list all matches", error);
+      return null;
+    }
+
+    return (data as DbMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list all matches", error);
     return null;
   }
 }

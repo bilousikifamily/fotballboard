@@ -286,12 +286,10 @@ function updateMatchSelects(): void {
     addLog("log", `Матч ${match.id}: ${match.home_team} vs ${match.away_team}, status=${match.status}, kickoff=${match.kickoff_at}`);
   });
   
-  // Для адміна показуємо всі матчі, окрім "pending" - адмін може ввести результат для будь-якого матчу
-  const resultMatches = state.matches.filter((match) => {
-    return match.status !== "pending";
-  });
+  // Для адміна показуємо всі матчі - адмін може ввести результат для будь-якого матчу
+  const resultMatches = state.matches;
   
-  addLog("info", `Відфільтровано матчів для результатів (виключено pending): ${resultMatches.length}`);
+  addLog("info", `Матчів для результатів: ${resultMatches.length}`);
   
   if (!resultMatches.length) {
     resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
@@ -329,48 +327,16 @@ async function loadMatches(): Promise<void> {
 
   setStatus(pendingStatus, "Завантаження матчів…");
   try {
-    // Завантажуємо матчі з кількох дат: вчора, сьогодні, завтра
-    const today = getKyivDateString();
-    const todayDate = new Date(today + "T00:00:00");
-    const yesterdayDate = new Date(todayDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const tomorrowDate = new Date(todayDate);
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-    
-    const formatDateForApi = (date: Date): string => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
-    
-    const dates = [
-      formatDateForApi(yesterdayDate),
-      today,
-      formatDateForApi(tomorrowDate)
-    ];
-    
-    const allMatches: Match[] = [];
-    for (const date of dates) {
-      try {
-        const { response, data } = await fetchMatches(API_BASE, "", date, getAdminToken());
-        if (response.ok && data.ok && data.matches) {
-          allMatches.push(...data.matches);
-        }
-      } catch (error) {
-        addLog("warn", `Не вдалося завантажити матчі на ${date}`, error);
-      }
+    // Для адміна завантажуємо всі матчі без фільтрації по даті
+    // Робимо запит без параметра date, щоб отримати всі матчі
+    const { response, data } = await fetchMatches(API_BASE, "", "", getAdminToken());
+    if (!response.ok || !data.ok || !data.matches) {
+      setStatus(pendingStatus, "Не вдалося завантажити матчі.");
+      addLog("error", "Помилка при завантаженні матчів", { response, data });
+      return;
     }
     
-    // Видаляємо дублікати за ID
-    const uniqueMatches = new Map<number, Match>();
-    for (const match of allMatches) {
-      if (!uniqueMatches.has(match.id)) {
-        uniqueMatches.set(match.id, match);
-      }
-    }
-    
-    state.matches = Array.from(uniqueMatches.values());
+    state.matches = data.matches;
     setStatus(pendingStatus, "");
     updateMatchSelects();
   } catch (error) {
@@ -637,6 +603,10 @@ function attachListeners(): void {
       const action = button.dataset.adminAction ?? "";
       if (action === "users" && !state.leaderboardLoaded) {
         void loadLeaderboard();
+      }
+      if (action === "result") {
+        // Оновлюємо матчі при відкритті панелі результатів
+        void loadMatches();
       }
       updateActivePanel(action);
     });

@@ -18,7 +18,10 @@ export function fetchMatches(
   date: string,
   adminToken?: string
 ): Promise<{ response: Response; data: MatchesResponse }> {
-  return requestJson<MatchesResponse>(`${apiBase}/api/matches?date=${encodeURIComponent(date)}`, {
+  const url = date 
+    ? `${apiBase}/api/matches?date=${encodeURIComponent(date)}`
+    : `${apiBase}/api/matches`;
+  return requestJson<MatchesResponse>(url, {
     headers: authHeaders(initData, adminToken)
   });
 }
