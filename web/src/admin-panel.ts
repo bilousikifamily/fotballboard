@@ -275,6 +275,20 @@ function updateMatchSelects(): void {
   
   addLog("info", `Завантажено матчів: ${state.matches.length}`);
   
+  if (state.matches.length === 0) {
+    resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
+    addLog("warn", "Немає матчів взагалі");
+    return;
+  }
+  
+  // Логуємо всі матчі для діагностики
+  state.matches.forEach((match) => {
+    const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
+    const now = Date.now();
+    const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && now >= kickoffMs;
+    addLog("log", `Матч ${match.id}: status=${match.status}, kickoff=${match.kickoff_at}, passed=${hasKickoffPassed}, now=${new Date(now).toISOString()}`);
+  });
+  
   // Фільтруємо матчі: показуємо тільки ті, які розпочалися або завершилися
   const resultMatches = state.matches.filter((match) => {
     const isStarted = match.status === "started";
@@ -294,7 +308,7 @@ function updateMatchSelects(): void {
   
   if (!resultMatches.length) {
     resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
-    addLog("warn", "Немає матчів для введення результатів після фільтрації");
+    addLog("warn", "Немає матчів для введення результатів після фільтрації. Перевірте логи вище.");
     return;
   }
   
