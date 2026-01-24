@@ -7057,10 +7057,12 @@ async function handlePredictionReminders(env: Env): Promise<void> {
 
     if (users.length > 0) {
       const message = formatPredictionReminderMessage(match);
+      const imageUrl = buildWebappImageUrl(env, "1 hour.png");
       for (const user of users) {
-        await sendMessage(
+        await sendPhoto(
           env,
           user.id,
+          imageUrl,
           message,
           {
             inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: env.WEBAPP_URL } }]]
@@ -7471,7 +7473,7 @@ function formatPredictionReminderMessage(match: PredictionReminderMatch): string
   const away = resolveUkrainianClubName(match.away_team, match.away_club_id ?? null);
   const homeLabel = escapeTelegramHtml(home);
   const awayLabel = escapeTelegramHtml(away);
-  return `${homeLabel} — ${awayLabel}\nрозпочнеться через 1 годину.\nтвоя фракція розраховує на твій голос.`;
+  return `${homeLabel} — ${awayLabel}\nпочинають матч через 1 годину`;
 }
 
 function formatAnnouncementMatchLine(match: DbMatch): string {
