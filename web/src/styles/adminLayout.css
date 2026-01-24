@@ -704,29 +704,29 @@ body.admin-layout-active #app {
 
 @keyframes swing-3d {
   0% {
-    transform: translate(-50%, -50%) rotateY(-25deg);
+    transform: translate(-50%, -50%) scale(0.85) rotateY(-25deg);
   }
 
   50% {
-    transform: translate(-50%, -50%) rotateY(25deg);
+    transform: translate(-50%, -50%) scale(0.85) rotateY(25deg);
   }
 
   100% {
-    transform: translate(-50%, -50%) rotateY(-25deg);
+    transform: translate(-50%, -50%) scale(0.85) rotateY(-25deg);
   }
 }
 
 @keyframes swing-3d-reverse {
   0% {
-    transform: translate(-50%, -50%) rotateY(25deg);
+    transform: translate(-50%, -50%) scale(0.85) rotateY(25deg);
   }
 
   50% {
-    transform: translate(-50%, -50%) rotateY(-25deg);
+    transform: translate(-50%, -50%) scale(0.85) rotateY(-25deg);
   }
 
   100% {
-    transform: translate(-50%, -50%) rotateY(25deg);
+    transform: translate(-50%, -50%) scale(0.85) rotateY(25deg);
   }
 }
 
