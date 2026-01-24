@@ -283,28 +283,15 @@ function updateMatchSelects(): void {
   
   // Логуємо всі матчі для діагностики
   state.matches.forEach((match) => {
-    const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
-    const now = Date.now();
-    const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && now >= kickoffMs;
-    addLog("log", `Матч ${match.id}: status=${match.status}, kickoff=${match.kickoff_at}, passed=${hasKickoffPassed}, now=${new Date(now).toISOString()}`);
+    addLog("log", `Матч ${match.id}: ${match.home_team} vs ${match.away_team}, status=${match.status}, kickoff=${match.kickoff_at}`);
   });
   
-  // Фільтруємо матчі: показуємо тільки ті, які розпочалися або завершилися
+  // Для адміна показуємо всі матчі, окрім "pending" - адмін може ввести результат для будь-якого матчу
   const resultMatches = state.matches.filter((match) => {
-    const isStarted = match.status === "started";
-    const isFinished = match.status === "finished";
-    const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
-    const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
-    const shouldInclude = isStarted || isFinished || hasKickoffPassed;
-    
-    if (!shouldInclude) {
-      addLog("log", `Матч ${match.id} пропущено: status=${match.status}, kickoff=${match.kickoff_at}`);
-    }
-    
-    return shouldInclude;
+    return match.status !== "pending";
   });
   
-  addLog("info", `Відфільтровано матчів для результатів: ${resultMatches.length}`);
+  addLog("info", `Відфільтровано матчів для результатів (виключено pending): ${resultMatches.length}`);
   
   if (!resultMatches.length) {
     resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
@@ -312,11 +299,24 @@ function updateMatchSelects(): void {
     return;
   }
   
+  // Сортуємо матчі: спочатку ті, що розпочалися/завершилися, потім заплановані
+  resultMatches.sort((a, b) => {
+    const aStarted = a.status === "started" || a.status === "finished";
+    const bStarted = b.status === "started" || b.status === "finished";
+    if (aStarted !== bStarted) {
+      return aStarted ? -1 : 1;
+    }
+    const aKickoff = a.kickoff_at ? new Date(a.kickoff_at).getTime() : 0;
+    const bKickoff = b.kickoff_at ? new Date(b.kickoff_at).getTime() : 0;
+    return bKickoff - aKickoff; // Новіші спочатку
+  });
+  
   const options = resultMatches
     .map((match) => {
       const hasResult = match.home_score !== null && match.away_score !== null;
       const resultLabel = hasResult ? ` [${match.home_score}:${match.away_score}]` : "";
-      return `<option value="${match.id}">${formatMatchOption(match)}${resultLabel}</option>`;
+      const statusLabel = match.status === "started" ? " (розпочався)" : match.status === "finished" ? " (завершено)" : "";
+      return `<option value="${match.id}">${formatMatchOption(match)}${statusLabel}${resultLabel}</option>`;
     })
     .join("");
   resultMatchSelect.innerHTML = `<option value="">Оберіть матч</option>${options}`;
