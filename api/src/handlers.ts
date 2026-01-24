@@ -2052,10 +2052,81 @@ async function enforceFactionChatPermissions(
     return;
   }
 
-  try {
-    await deleteMessage(env, message.chat.id, message.message_id);
-  } catch (error) {
-    console.error("Failed to delete unauthorized message", error);
+  // Знаходимо, яка фракція відповідає за цей чат
+  let chatFaction: FactionBranchSlug | null = null;
+  for (const [slug, ref] of Object.entries(refs.bySlug)) {
+    if (ref && matchChatRef(ref, message)) {
+      chatFaction = slug as FactionBranchSlug;
+      break;
+    }
+  }
+
+  if (!chatFaction) {
+    return;
+  }
+
+  if (!supabase) {
+    return;
+  }
+
+  // Перевіряємо, чи було попереднє попередження для цього користувача
+  const { data: previousWarning } = await supabase
+    .from("debug_updates")
+    .select("id")
+    .eq("user_id", message.from.id)
+    .eq("update_type", "faction_warning")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const chatFactionName = formatFactionName(chatFaction);
+  const userFactionName = userFaction ? formatFactionName(userFaction) : NO_FACTION_LABEL;
+
+  if (previousWarning && previousWarning.length > 0) {
+    // Було попереднє попередження - віднімаємо бал
+    const { data: userData } = await supabase
+      .from("users")
+      .select("points_total")
+      .eq("id", message.from.id)
+      .maybeSingle();
+
+    if (userData) {
+      const currentPoints = typeof userData.points_total === "number" ? userData.points_total : STARTING_POINTS;
+      const nextPoints = Math.max(0, currentPoints - 1);
+      const now = new Date().toISOString();
+
+      await supabase
+        .from("users")
+        .update({ points_total: nextPoints, updated_at: now })
+        .eq("id", message.from.id);
+
+      const penaltyMessage = `⚠️ Тебе попереджали!\n\nТи знову пишеш у чаті фракції ${chatFactionName.toUpperCase()}, але твоя фракція: ${userFactionName.toUpperCase()}.\n\nВіднято -1 ГОЛОС.`;
+
+      try {
+        await sendMessage(env, message.from.id, penaltyMessage);
+      } catch (error) {
+        console.error("Failed to send penalty message", error);
+      }
+    }
+  } else {
+    // Перше попередження - надсилаємо попередження і зберігаємо запис
+    const warningMessage = `⚠️ Попередження!\n\nТи пишеш у чаті фракції ${chatFactionName.toUpperCase()}, але твоя фракція: ${userFactionName.toUpperCase()}.\n\nНаступного разу буде -1 ГОЛОС.`;
+
+    try {
+      await sendMessage(env, message.from.id, warningMessage);
+      
+      // Зберігаємо запис про попередження
+      await supabase.from("debug_updates").insert({
+        update_type: "faction_warning",
+        chat_id: message.chat.id,
+        thread_id: message.message_thread_id ?? null,
+        message_id: message.message_id,
+        user_id: message.from.id,
+        text: null,
+        created_at: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to send warning message", error);
+    }
   }
 }
 
