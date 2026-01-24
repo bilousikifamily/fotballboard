@@ -19,12 +19,12 @@ export async function handleUpdate(update: TelegramUpdate, env: Env): Promise<vo
 
   if (command === "start" || command === "app" || command === "webapp") {
     const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
-    const imageUrl = `${webappBaseUrl}/images/beginig_fraction.png`;
+    const imageUrl = `${webappBaseUrl}/images/beginig_fraction1.png`;
     await sendPhoto(
       env,
       message.chat.id,
       imageUrl,
-      "Кожен депутат Футбольної Ради представляє певні фракції.\n\nБез фракції:\n— нема голосу\n— нема впливу\n— нема комунікації",
+      "Кожен депутат Футбольної Ради\nмає долучитись до ФРАКЦІЇ.\n\nБез фракції:\n— нема голосу\n— нема комунікації\n— нема впливу",
       {
         inline_keyboard: [[{ text: "ОБРАТИ ФРАКЦІЮ", web_app: { url: env.WEBAPP_URL } }]]
       },
