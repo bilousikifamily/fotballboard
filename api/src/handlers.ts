@@ -7100,6 +7100,7 @@ function buildMatchResultStatsLines(notification: MatchResultNotification): stri
   if (guessers.length > 0) {
     const formattedGuessers = guessers.map(formatExactGuessLabel);
     const verb = guessers.length === 1 ? "Вгадав" : "Вгадали";
+    lines.push("");
     lines.push(`${verb} рахунок:`);
     lines.push(...formattedGuessers);
   }
