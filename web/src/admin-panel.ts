@@ -272,17 +272,29 @@ function updateMatchSelects(): void {
   if (!resultMatchSelect) {
     return;
   }
+  
+  addLog("info", `Завантажено матчів: ${state.matches.length}`);
+  
   // Фільтруємо матчі: показуємо тільки ті, які розпочалися або завершилися
   const resultMatches = state.matches.filter((match) => {
     const isStarted = match.status === "started";
     const isFinished = match.status === "finished";
     const kickoffMs = match.kickoff_at ? new Date(match.kickoff_at).getTime() : null;
     const hasKickoffPassed = kickoffMs !== null && !Number.isNaN(kickoffMs) && Date.now() >= kickoffMs;
-    return isStarted || isFinished || hasKickoffPassed;
+    const shouldInclude = isStarted || isFinished || hasKickoffPassed;
+    
+    if (!shouldInclude) {
+      addLog("log", `Матч ${match.id} пропущено: status=${match.status}, kickoff=${match.kickoff_at}`);
+    }
+    
+    return shouldInclude;
   });
+  
+  addLog("info", `Відфільтровано матчів для результатів: ${resultMatches.length}`);
   
   if (!resultMatches.length) {
     resultMatchSelect.innerHTML = `<option value="">Немає матчів для введення результатів</option>`;
+    addLog("warn", "Немає матчів для введення результатів після фільтрації");
     return;
   }
   
@@ -303,15 +315,48 @@ async function loadMatches(): Promise<void> {
 
   setStatus(pendingStatus, "Завантаження матчів…");
   try {
-    const date = getKyivDateString();
-    const { response, data } = await fetchMatches(API_BASE, "", date, getAdminToken());
-    if (!response.ok || !data.ok) {
-      const errorMsg = `Не вдалося завантажити матчі. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
-      setStatus(pendingStatus, "Не вдалося завантажити матчі.");
-      addLog("error", errorMsg, { response, data });
-      return;
+    // Завантажуємо матчі з кількох дат: вчора, сьогодні, завтра
+    const today = getKyivDateString();
+    const todayDate = new Date(today + "T00:00:00");
+    const yesterdayDate = new Date(todayDate);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const tomorrowDate = new Date(todayDate);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    
+    const formatDateForApi = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    
+    const dates = [
+      formatDateForApi(yesterdayDate),
+      today,
+      formatDateForApi(tomorrowDate)
+    ];
+    
+    const allMatches: Match[] = [];
+    for (const date of dates) {
+      try {
+        const { response, data } = await fetchMatches(API_BASE, "", date, getAdminToken());
+        if (response.ok && data.ok && data.matches) {
+          allMatches.push(...data.matches);
+        }
+      } catch (error) {
+        addLog("warn", `Не вдалося завантажити матчі на ${date}`, error);
+      }
     }
-    state.matches = data.matches;
+    
+    // Видаляємо дублікати за ID
+    const uniqueMatches = new Map<number, Match>();
+    for (const match of allMatches) {
+      if (!uniqueMatches.has(match.id)) {
+        uniqueMatches.set(match.id, match);
+      }
+    }
+    
+    state.matches = Array.from(uniqueMatches.values());
     setStatus(pendingStatus, "");
     updateMatchSelects();
   } catch (error) {

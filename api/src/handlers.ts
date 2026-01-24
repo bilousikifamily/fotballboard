@@ -5658,7 +5658,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
       .select(
         "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
       )
-      .in("status", ["scheduled", "finished"])
+      .in("status", ["scheduled", "started", "finished"])
       .order("kickoff_at", { ascending: true });
 
     if (date) {
