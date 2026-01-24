@@ -137,8 +137,6 @@
 .leaderboard-row.is-faction:not(.is-self) .leaderboard-points {
   color: rgba(255, 255, 255, 0.95);
 }
-}
-
 
 .leaderboard-rank {
   color: var(--muted);
