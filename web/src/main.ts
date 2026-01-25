@@ -284,6 +284,7 @@ function bootstrapDev(): void {
 
   renderAdminMatchOptions(matches);
   setupMatchAnalitikaFilters();
+  prefetchMatchAverages(matches);
   startPredictionCountdowns();
 
   if (isAdmin) {
@@ -1867,6 +1868,7 @@ async function loadMatches(date: string): Promise<void> {
     }
 
     predictionsLoaded.clear();
+    matchAveragesLoaded.clear();
     matchesById.clear();
     data.matches.forEach((match) => {
       matchesById.set(match.id, match);
