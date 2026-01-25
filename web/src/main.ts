@@ -127,6 +127,7 @@ const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
 const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada";
+const ADMIN_TOKEN_STORAGE_KEY = "presentation.admin.token";
 let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -294,6 +295,14 @@ function bootstrapDev(): void {
       list.innerHTML = renderPendingMatchesList(pendingMatches);
     }
   }
+}
+
+function getStoredAdminToken(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  const token = window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+  return token?.trim() || undefined;
 }
 
 function getDevMatches(): Match[] {
@@ -2292,6 +2301,7 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
 
   const home = formatClubName(homeClubId);
   const away = formatClubName(awayClubId);
+  const adminToken = getStoredAdminToken();
 
   if (status) {
     status.textContent = "Створення...";
@@ -2305,8 +2315,9 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
       league_id: leagueId,
       home_club_id: homeClubId,
       away_club_id: awayClubId,
-      kickoff_at: kickoff
-    });
+      kickoff_at: kickoff,
+      admin_token: adminToken
+    }, adminToken);
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося створити матч.";
@@ -2345,10 +2356,12 @@ async function confirmPendingMatch(
   }
 
   try {
+    const adminToken = getStoredAdminToken();
     const { response, data } = await postConfirmMatch(apiBase, {
       initData,
-      match_id: matchId
-    });
+      match_id: matchId,
+      admin_token: adminToken
+    }, adminToken);
     if (!response.ok || !data.ok) {
       if (statusEl) {
         statusEl.textContent = getConfirmMatchError(data.ok ? undefined : data.error);
@@ -2391,11 +2404,13 @@ async function refreshPendingMatchOdds(
   }
 
   try {
+    const adminToken = getStoredAdminToken();
     const { response, data } = await postOddsRefresh(apiBase, {
       initData,
       match_id: matchId,
-      debug: true
-    });
+      debug: true,
+      admin_token: adminToken
+    }, adminToken);
     if (!response.ok || !data || !data.ok) {
       if (statusEl) {
         statusEl.textContent = formatOddsRefreshError(data);
@@ -2450,14 +2465,16 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
   }
 
   try {
+    const adminToken = getStoredAdminToken();
     const { response, data } = await postResult(apiBase, {
       initData,
       match_id: matchId,
       home_score: homeScore,
       away_score: awayScore,
       home_avg_rating: homeRating,
-      away_avg_rating: awayRating
-    });
+      away_avg_rating: awayRating,
+      admin_token: adminToken
+    }, adminToken);
     if (!response.ok || !data.ok) {
       if (status) {
         status.textContent = "Не вдалося зберегти результат.";
