@@ -3642,7 +3642,7 @@ function setupAdminLayoutVoteButton(matchId: number): void {
     }
     if (
       typeof window !== "undefined" &&
-      !window.confirm(`Підтвердити прогноз ${home}:${away}?`)
+      !window.confirm(`підтвердіть прогноз\n${home}:${away}`)
     ) {
       return;
     }
