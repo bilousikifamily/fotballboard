@@ -3422,7 +3422,7 @@ function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[])
   if (adminLayoutHasPrediction) {
     // Якщо є прогноз - використовуємо стандартну логіку
     updateAdminLayoutScoreValuesFromAverage(matchId);
-  } else if (isClosed && count > 0) {
+  } else if (!isFinished && isClosed && count > 0) {
     // Якщо немає прогнозу і матч розпочався - показуємо середній рахунок замість "0:0"
     const homeValueEl = app.querySelector<HTMLElement>(
       '.admin-layout__score-controls [data-team="home"] [data-score-value]'
@@ -3440,6 +3440,12 @@ function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[])
     const averageBadges = app.querySelectorAll<HTMLElement>(".admin-layout__average-score");
     averageBadges.forEach((badge) => {
       badge.classList.add("is-hidden");
+    });
+  } else if (isFinished) {
+    // Для завершених матчів завжди залишаємо середній рахунок у бейджах
+    const averageBadges = app.querySelectorAll<HTMLElement>(".admin-layout__average-score");
+    averageBadges.forEach((badge) => {
+      badge.classList.remove("is-hidden");
     });
   }
 }
@@ -3538,7 +3544,7 @@ function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean
   }
   
   // Якщо немає прогнозу і матч розпочався - показуємо середній рахунок замість "0:0"
-  if (shouldShowAverageInsteadOfZero) {
+  if (shouldShowAverageInsteadOfZero && !isFinished) {
     const cached = adminLayoutAverageCache.get(matchId);
     if (cached && cached.count > 0) {
       const homeValueEl = app.querySelector<HTMLElement>(
