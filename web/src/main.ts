@@ -3640,6 +3640,12 @@ function setupAdminLayoutVoteButton(matchId: number): void {
     if (home === null || away === null) {
       return;
     }
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Підтвердити прогноз ${home}:${away}?`)
+    ) {
+      return;
+    }
 
     button.disabled = true;
     const originalText = button.textContent;
