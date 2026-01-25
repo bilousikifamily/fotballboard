@@ -2438,6 +2438,12 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
     }
     return;
   }
+  if (
+    typeof window !== "undefined" &&
+    !window.confirm(`Підтвердити рахунок ${homeScore}:${awayScore}?`)
+  ) {
+    return;
+  }
 
   if (status) {
     status.textContent = "Збереження...";

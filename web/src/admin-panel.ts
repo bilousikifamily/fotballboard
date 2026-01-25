@@ -529,6 +529,12 @@ async function handleResult(event: Event): Promise<void> {
     setStatus(resultStatus, "Заповніть усі поля коректно.");
     return;
   }
+  if (
+    typeof window !== "undefined" &&
+    !window.confirm(`Підтвердити рахунок ${homeScore}:${awayScore}?`)
+  ) {
+    return;
+  }
   setStatus(resultStatus, "Збереження результату…");
   try {
     const { response, data } = await postResult(
