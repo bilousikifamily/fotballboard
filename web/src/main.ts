@@ -115,6 +115,7 @@ let predictionCountdownId: number | null = null;
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
 const analitikaTeamInFlight = new Map<string, Promise<TeamMatchStat[] | null>>();
 const predictionsLoaded = new Set<number>();
+const matchAveragesLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const adminLayoutAverageCache = new Map<number, { homeAvg: number; awayAvg: number; count: number }>();
 const matchWeatherCache = new Map<number, number | null>();
@@ -1883,6 +1884,7 @@ async function loadMatches(date: string): Promise<void> {
     bindMatchActions();
     setupMatchAnalitikaFilters();
     renderAdminMatchOptions(data.matches);
+    prefetchMatchAverages(data.matches);
     void loadMatchWeather(data.matches);
     startPredictionCountdowns();
   } catch {
@@ -3226,6 +3228,46 @@ async function togglePredictions(
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити прогнози.</p>`;
   }
+}
+
+function shouldPrefetchMatchAverage(match: Match): boolean {
+  if (matchAveragesLoaded.has(match.id)) {
+    return false;
+  }
+  if (match.has_prediction) {
+    return false;
+  }
+  if (match.status === "finished" || match.status === "started") {
+    return true;
+  }
+  const closeAtMs = getMatchPredictionCloseAtMs(match);
+  return closeAtMs !== null && Date.now() > closeAtMs;
+}
+
+async function prefetchMatchAverage(matchId: number): Promise<void> {
+  if (!apiBase || matchAveragesLoaded.has(matchId)) {
+    return;
+  }
+  matchAveragesLoaded.add(matchId);
+  try {
+    const { response, data } = await fetchPredictions(apiBase, initData, matchId);
+    if (!response.ok || !data.ok) {
+      matchAveragesLoaded.delete(matchId);
+      return;
+    }
+    updateMatchAverage(matchId, data.predictions);
+  } catch {
+    matchAveragesLoaded.delete(matchId);
+  }
+}
+
+function prefetchMatchAverages(matches: Match[]): void {
+  matches.forEach((match) => {
+    if (!shouldPrefetchMatchAverage(match)) {
+      return;
+    }
+    void prefetchMatchAverage(match.id);
+  });
 }
 
 function renderPredictionsPanel(matchId: number, predictions: PredictionView[]): string {
