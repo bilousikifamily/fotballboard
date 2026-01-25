@@ -33,6 +33,10 @@ export function formatClubName(slug: string): string {
   if (override) {
     return override;
   }
+  const ukrainian = UKRAINIAN_CLUB_NAMES[slug];
+  if (ukrainian) {
+    return ukrainian;
+  }
   return slug
     .split("-")
     .filter(Boolean)
@@ -109,6 +113,9 @@ export function getChampionsClubLogo(slug: string | null): string | null {
 }
 
 const CLUB_LOGO_FILE_OVERRIDES: Partial<Record<LogoLeagueId, Record<string, string>>> = {
+  "la-liga": {
+    "real-oviedo": "oviedo"
+  },
   "champions-league": {
     "slavia-praga": "slavia"
   }

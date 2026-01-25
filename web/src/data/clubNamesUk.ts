@@ -94,6 +94,7 @@ export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "rc-strasbourg-alsace": "СТРАСБУР",
   "real-betis": "БЕТІС",
   "real-madrid": "МАДРИД",
+  "real-oviedo": "ОВ'ЄДО",
   "real-sociedad": "СОСЬЄДАД",
   "rennes": "РЕНН",
   "roma": "РОМА",

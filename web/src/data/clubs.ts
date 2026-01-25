@@ -87,6 +87,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "rayo-vallecano",
     "real-betis",
     "real-madrid",
+    "real-oviedo",
     "real-sociedad",
     "sevilla",
     "talavera",
