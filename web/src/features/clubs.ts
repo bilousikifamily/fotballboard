@@ -6,7 +6,6 @@ import {
   type LogoLeagueId,
   type MatchLeagueId
 } from "../data/clubs";
-import { UKRAINIAN_CLUB_NAMES } from "../data/clubNamesUk";
 import type { Match } from "../types";
 import { normalizeTeamSlugValue } from "./teamSlugs";
 
@@ -32,10 +31,6 @@ export function formatClubName(slug: string): string {
   const override = CLUB_NAME_OVERRIDES[slug];
   if (override) {
     return override;
-  }
-  const ukrainian = UKRAINIAN_CLUB_NAMES[slug];
-  if (ukrainian) {
-    return ukrainian;
   }
   return slug
     .split("-")

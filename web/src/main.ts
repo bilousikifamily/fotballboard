@@ -1278,7 +1278,10 @@ function renderUser(
         </div>
         <p class="muted small" data-admin-announce-status></p>
         <div class="admin-pending" data-admin-pending>
-          <p class="muted small">Матчі на підтвердження</p>
+          <div class="admin-pending-header">
+            <p class="muted small">Матчі на підтвердження</p>
+            <button class="button secondary small-button" type="button" data-admin-refresh-pending>Оновити список</button>
+          </div>
           <div class="admin-pending-list" data-admin-pending-list></div>
           <p class="muted small" data-admin-pending-status></p>
         </div>
@@ -1750,6 +1753,13 @@ function renderUser(
     if (announceButton) {
       announceButton.addEventListener("click", () => {
         void publishMatchesAnnouncement();
+      });
+    }
+
+    const refreshButton = app.querySelector<HTMLButtonElement>("[data-admin-refresh-pending]");
+    if (refreshButton) {
+      refreshButton.addEventListener("click", () => {
+        void loadPendingMatches();
       });
     }
 
