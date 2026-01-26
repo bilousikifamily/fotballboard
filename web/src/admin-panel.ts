@@ -279,11 +279,6 @@ function updateMatchSelects(): void {
     return;
   }
   
-  // Логуємо всі матчі для діагностики
-  state.matches.forEach((match) => {
-    addLog("log", `Матч ${match.id}: ${match.home_team} vs ${match.away_team}, status=${match.status}, kickoff=${match.kickoff_at}, score=${match.home_score}:${match.away_score}`);
-  });
-  
   // Показуємо тільки матчі без введеного результату
   const resultMatches = state.matches.filter((match) => {
     return match.home_score === null || match.away_score === null;
