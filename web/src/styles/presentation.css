@@ -1041,6 +1041,45 @@ a {
   font-weight: 600;
 }
 
+.admin-match-logos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(8px, 2vw, 16px);
+  margin: 6px 0 4px;
+}
+
+.admin-match-logo-item {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+}
+
+.admin-match-logo-item .match-logo,
+.admin-match-logo-item .match-logo-fallback {
+  width: clamp(52px, 20vw, 88px);
+  height: clamp(52px, 20vw, 88px);
+  object-fit: contain;
+}
+
+.admin-match-team {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-match-vs {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  letter-spacing: 0.2em;
+}
+
 @media (max-width: 600px) {
   .presentation-match-card,
   .admin-login,
