@@ -3408,6 +3408,11 @@ function updateMatchFactionAverage(
     resetMatchFactionAverage(container);
     return;
   }
+  const form = app.querySelector<HTMLFormElement>(`[data-prediction-form][data-match-id="${matchId}"]`);
+  if (form) {
+    form.classList.add("is-hidden");
+    form.classList.remove("is-closed");
+  }
 
   const factions = new Map<string, PredictionView[]>();
   predictions.forEach((prediction) => {
