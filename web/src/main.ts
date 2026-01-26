@@ -3417,13 +3417,19 @@ function updateMatchFactionAverage(
     form.classList.remove("is-closed");
   }
 
+  if (!predictions.length) {
+    container.classList.add("is-visible");
+    container.innerHTML = `
+      <span class="match-faction-label">Середній прогноз по фракціям</span>
+      <p class="muted small">Поки що немає прогнозів.</p>
+    `;
+    return;
+  }
+
   const factions = new Map<string, PredictionView[]>();
   predictions.forEach((prediction) => {
-    const factionId = prediction.user?.faction_club_id;
-    if (!factionId) {
-      return;
-    }
-    const normalized = normalizeFactionSlug(factionId);
+    const factionId = prediction.user?.faction_club_id ?? null;
+    const normalized = factionId ? normalizeFactionSlug(factionId) : "unknown-faction";
     if (!factions.has(normalized)) {
       factions.set(normalized, []);
     }
@@ -3447,7 +3453,10 @@ function updateMatchFactionAverage(
     })
     .sort((a, b) => b.count - a.count)
     .map((entry) => {
-      const factionLabel = formatClubName(entry.factionId);
+      const factionLabel =
+        entry.factionId === "unknown-faction"
+          ? "Без фракції"
+          : formatClubName(entry.factionId);
       return `
         <div class="match-faction-row">
           <span class="match-faction-name">${escapeHtml(factionLabel)}</span>
