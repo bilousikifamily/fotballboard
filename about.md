@@ -12,25 +12,35 @@ Use this file as a map for where to make changes.
 Entry points and core files:
 
 - `web/src/main.ts` - app bootstrap, state wiring, event handlers, routing between screens.
-- `web/src/style.css` - global styles.
-- `web/src/types.ts` - shared frontend types.
+- `web/src/style.css` and `web/src/styles/` - global and component-level styles used by both the SPA and presentation views.
+- `web/src/types.ts` - shared TypeScript definitions consumed across screens and features.
+- `web/src/presentation.ts` and `web/src/presentation/` - presentation-only flows with bespoke navigation or static layouts.
 
-Feature and screen structure:
+### Folder intents
 
-- `web/src/screens/` - page level rendering.
-  - `web/src/screens/matches.ts` - matches list screen.
-  - `web/src/screens/leaderboard.ts` - leaderboard screen.
-- `web/src/features/` - reusable feature renderers and logic.
-  - `web/src/features/analitika.ts` - analytics UI blocks.
-  - `web/src/features/odds.ts` - odds parsing and rendering.
-  - `web/src/features/clubs.ts` - club name formatting helpers.
-  - `web/src/features/predictionTime.ts` - prediction cutoff helpers.
-- `web/src/api/` - API clients for the Worker.
-  - `web/src/api/client.ts` - fetch wrapper.
-  - `web/src/api/auth.ts`, `web/src/api/matches.ts`, `web/src/api/predictions.ts`, `web/src/api/leaderboard.ts`, `web/src/api/profile.ts`, `web/src/api/analitika.ts`.
-- `web/src/formatters/` - small string/date format helpers.
-- `web/src/utils/` - tiny utilities (escaping, time helpers).
-- `web/src/data/` - static data (clubs list).
+- `web/src/screens/` – full-page compositions that blend routing, layout, and features (matches list, leaderboard, admin users, etc.).
+- `web/src/features/` – reusable UI helpers and blocks: analytics cards, odds formatting, prediction timers, faction ranking helpers, slug resolvers, etc.
+- `web/src/api/` – typed clients for every backend route handled by the Cloudflare Worker.
+- `web/src/utils/` + `web/src/formatters/` – side-by-side utility folders for low-level helpers such as escaping, time math, date formatting, and shared string routines.
+- `web/src/data/` – static fixtures like club metadata and faction chat links imported by features/screens.
+- `web/src/presentation/` – isolated presentation flow (scripts, static templates, custom styles) that sometimes borrows from `features` or `utils` without routing through `main.ts`.
+
+### Feature and screen breakdown
+
+- `web/src/screens/matches.ts` – matches list screen wiring features and API data.
+- `web/src/screens/leaderboard.ts` – leaderboard view.
+- `web/src/screens/adminUsers.ts` – admin user management view used in the admin panel.
+- `web/src/features/analitika.ts` – analytics UI blocks.
+- `web/src/features/odds.ts` – odds parsing and rendering helpers.
+- `web/src/features/clubs.ts` – club name formatting helpers shared between frontend and backend data.
+- `web/src/features/predictionTime.ts` – prediction cutoff helpers (countdowns, time validation).
+- `web/src/features/factionRanking.ts` – faction ranking helpers for screens and presentations.
+- `web/src/features/teamSlugs.ts` – slug helpers used across screens.
+- `web/src/api/client.ts` – fetch wrapper used internally by all `web/src/api/*` modules.
+- API modules for authentication, matches, predictions, leaderboard, profile, analitika.
+- `web/src/formatters/` – string/date helper collection.
+- `web/src/utils/` – escaping/time helpers.
+- `web/src/data/` – static data for clubs and faction chat links.
 
 Where to change what:
 
@@ -49,6 +59,7 @@ Entry points and shared helpers:
 - `api/src/http.ts` - CORS and JSON helpers.
 - `api/src/auth.ts` - Telegram initData validation.
 - `api/src/env.ts` - Worker env shape.
+- `api/src/utils/` - miscellaneous helpers (e.g., `clubs.ts` for shared club data/formatting).
 
 External integrations:
 
