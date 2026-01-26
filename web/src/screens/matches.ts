@@ -219,6 +219,9 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         <button class="button small-button prediction-submit" type="submit">ПРОГОЛОСУВАТИ</button>
       </form>
     `;
+  const predictionSlot = form
+    ? `<div class="prediction-slot" data-prediction-slot data-match-id="${match.id}">${form}</div>`
+    : "";
   const countdown = closed || predicted || isPreview || options.admin
     ? ""
     : `<p class="prediction-countdown muted small" data-prediction-countdown data-match-id="${match.id}"></p>`;
@@ -266,7 +269,7 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         ${adminLogoRow}
         <div class="match-average" data-match-average data-match-id="${match.id}"></div>
         ${closed ? "" : statusLine}
-        ${form}
+        ${predictionSlot}
         ${factionAverageBlock}
         ${predictionsBlock}
         ${closed ? statusLine : ""}

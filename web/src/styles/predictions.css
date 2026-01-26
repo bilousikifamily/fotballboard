@@ -259,6 +259,10 @@
   display: none;
 }
 
+.prediction-slot.is-hidden {
+  display: none;
+}
+
 .score-controls {
   display: flex;
   align-items: center;
