@@ -234,7 +234,11 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
   const factionAverageBlock =
     options.admin || isPreview
       ? ""
-      : `<div class="match-faction-average" data-match-faction-average data-match-id="${match.id}"></div>`;
+      : `
+        <div class="match-faction-average${finished ? " is-visible" : ""}" data-match-faction-average data-match-id="${match.id}">
+          ${finished ? '<p class="muted small">Завантаження прогнозів...</p>' : ""}
+        </div>
+      `;
 
   const adminLogoRow = options.admin
     ? `

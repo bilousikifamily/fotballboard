@@ -575,8 +575,8 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const auth = await authenticateInitData(body.initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
+      const auth = await authenticateWithDevBypass(request, env, body.initData);
+      if (!auth.ok) {
         return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
       }
 
@@ -729,11 +729,8 @@ export default {
           return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
         }
       } else {
-        if (!initData) {
-          return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
-        }
-        const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-        if (!auth.ok || !auth.user) {
+        const auth = await authenticateWithDevBypass(request, env, initData);
+        if (!auth.ok) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
         }
         await storeUser(supabase, auth.user);
@@ -762,8 +759,8 @@ export default {
       }
 
       const initData = getInitDataFromHeaders(request);
-      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
+      const auth = await authenticateWithDevBypass(request, env, initData);
+      if (!auth.ok) {
         return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
       }
 
@@ -902,8 +899,8 @@ export default {
       }
 
       const initData = getInitDataFromHeaders(request);
-      const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-      if (!auth.ok || !auth.user) {
+      const auth = await authenticateWithDevBypass(request, env, initData);
+      if (!auth.ok) {
         return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
       }
 
@@ -1024,10 +1021,11 @@ export default {
       if (isAdmin) {
         auth = adminAuthResult!;
       } else {
-        auth = await authenticateInitData(initData, env.BOT_TOKEN);
-        if (!auth.ok || !auth.user) {
+        const devAuth = await authenticateWithDevBypass(request, env, initData);
+        if (!devAuth.ok) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
         }
+        auth = devAuth;
         await storeUser(supabase, auth.user);
       }
 
@@ -1408,7 +1406,7 @@ export default {
 
       if (request.method === "GET") {
         const initDataHeader = getInitDataFromHeaders(request);
-        const auth = await authenticateInitData(initDataHeader, env.BOT_TOKEN);
+        const auth = await authenticateWithDevBypass(request, env, initDataHeader);
         if (!auth.ok) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
         }
@@ -1660,6 +1658,50 @@ function createSupabaseClient(env: Env): SupabaseClient | null {
     auth: { persistSession: false },
     global: { headers: { "X-Client-Info": "tg-webapp-worker" } }
   });
+}
+
+function isDevBypassRequest(request: Request, env: Env): boolean {
+  if (env.DEV_BYPASS !== "1") {
+    return false;
+  }
+  const url = new URL(request.url);
+  const hostname = url.hostname;
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return true;
+  }
+  if (url.searchParams.get("dev") === "1") {
+    return true;
+  }
+  const headerToken = request.headers.get("x-dev-bypass");
+  return Boolean(env.DEV_BYPASS_TOKEN && headerToken === env.DEV_BYPASS_TOKEN);
+}
+
+function getDevUser(): TelegramUser {
+  return {
+    id: 1,
+    first_name: "Dev",
+    last_name: "User",
+    username: "dev"
+  };
+}
+
+async function authenticateWithDevBypass(
+  request: Request,
+  env: Env,
+  initData?: string | null
+): Promise<{ ok: true; user: TelegramUser } | { ok: false }> {
+  if (isDevBypassRequest(request, env)) {
+    return { ok: true, user: getDevUser() };
+  }
+  const initDataValue = initData ?? getInitDataFromHeaders(request);
+  if (!initDataValue) {
+    return { ok: false };
+  }
+  const auth = await authenticateInitData(initDataValue, env.BOT_TOKEN);
+  if (!auth.ok || !auth.user) {
+    return { ok: false };
+  }
+  return { ok: true, user: auth.user };
 }
 
 async function insertDebugUpdate(supabase: SupabaseClient, update: TelegramUpdate): Promise<void> {

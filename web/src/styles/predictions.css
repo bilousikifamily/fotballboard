@@ -559,10 +559,12 @@
   grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 10px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(12, 13, 16, 0.6);
+  padding: 0;
+  border: none;
+  background: transparent;
+  width: 100%;
+  position: relative;
+  overflow: visible;
 }
 
 .match-faction-average.is-visible {
@@ -576,47 +578,91 @@
   color: var(--muted);
 }
 
-.match-faction-list {
-  display: grid;
-  gap: 8px;
-}
-
-.match-faction-row {
+.match-faction-carousel {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 12px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  margin-bottom: 48px;
+  
 }
 
-.match-faction-name {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink);
+.match-faction-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.match-faction-card {
+  min-width: 180px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 0;
+  border-radius: 12px;
+  background: transparent;
+  scroll-snap-align: center;
+  overflow: visible;
+}
+
+.match-faction-card__logo {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: transparent;
+  z-index: 2;
+  margin-right: -24px;
+}
+
+.match-faction-logo {
+  width: 48px;
+  height: 48px;
+  margin-left: 12px;
+  object-fit: contain;
+}
+
+.match-faction-logo--fallback {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.match-faction-card__meta {
+  display: grid;
+  gap: 0;
+  justify-items: start;
+  margin-left: 4px;
 }
 
 .match-faction-score {
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 154, 31, 0.25) 0%, rgba(255, 122, 26, 0.2) 100%);
+  gap: 6px;
+  padding: 6px 18px 6px 36px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 154, 31, 0.3) 0%, rgba(255, 122, 26, 0.22) 100%);
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(255, 154, 31, 0.35) inset;
+  box-shadow: none;
+  width: fit-content;
+  position: relative;
+  z-index: 1;
 }
 
 .match-faction-score-value {
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: 1.3rem;
+  font-weight: 900;
   letter-spacing: 0.02em;
 }
 
 .match-faction-score-sep {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 900;
   opacity: 0.7;
 }
 

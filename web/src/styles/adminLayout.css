@@ -49,7 +49,8 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__header {
-  padding-top: 8px;
+  padding-top: 24px;
+  padding-bottom: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -266,7 +267,7 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__logo-frame .score-value {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 900;
   color: var(--ink);
   font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
@@ -279,7 +280,7 @@ body.admin-layout-active #app {
 
 .admin-layout__logo-frame .admin-layout__average-score {
   position: absolute;
-  bottom: -2%;
+  bottom: -1%;
   left: 50%;
   transform: translateX(-50%);
   font-size: 1.2rem;
@@ -537,6 +538,12 @@ body.admin-layout-active #app {
   margin-top: 16px;
 }
 
+.admin-layout__faction-average {
+  width: 100%;
+  margin: 0px auto 0;
+  padding: 0 24px;
+}
+
 .admin-layout__vote .admin-layout__score-probability {
   align-self: center;
   color: #ffffff;
@@ -581,7 +588,8 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__info-title {
-  font-size: 0.9rem;
+  padding-top: 4px;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -593,6 +601,7 @@ body.admin-layout-active #app {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  padding-bottom: 4px;
 }
 
 .admin-layout__info-odds {
@@ -631,8 +640,8 @@ body.admin-layout-active #app {
 
 .admin-layout__header .date-pill {
   text-align: center;
-  font-size: clamp(0.82rem, 2.4vh, 1rem);
-  padding: clamp(6px, 1.8vh, 10px) clamp(10px, 3vw, 16px);
+  font-size: 1.2rem;
+  padding: 10px 20px;
 }
 
 .admin-layout__header .date-switcher {

@@ -113,6 +113,7 @@ const predictionsLoaded = new Set<number>();
 const matchAveragesLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const adminLayoutAverageCache = new Map<number, { homeAvg: number; awayAvg: number; count: number }>();
+const adminLayoutPredictionsCache = new Map<number, PredictionView[]>();
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
@@ -249,6 +250,11 @@ function bootstrapDev(): void {
 
   document.body.classList.remove("onboarding-active");
   renderUser(currentUser, stats, isAdmin, currentDate, currentNickname, profile);
+
+  if (apiBase) {
+    void loadMatches(currentDate);
+    return;
+  }
 
   const matches = getDevMatches();
   matchesById.clear();
@@ -1402,6 +1408,7 @@ function renderUser(
               Проголосувати
             </button>
           </div>
+          <div class="admin-layout__faction-average match-faction-average" data-admin-layout-faction-average data-match-faction-average></div>
           <div class="admin-layout__footer">
             <div class="admin-layout__countdown" data-admin-layout-countdown>
               початок матчу через --:--:--
@@ -3095,6 +3102,10 @@ async function togglePredictions(
     predictionsLoaded.add(matchId);
   } catch {
     container.innerHTML = `<p class="muted small">Не вдалося завантажити прогнози.</p>`;
+    const match = matchesById.get(matchId);
+    if (match?.status === "finished") {
+      showMatchFactionAverageStatus(matchId, "Не вдалося завантажити прогнози.");
+    }
   }
 }
 
@@ -3124,6 +3135,10 @@ async function prefetchMatchAverage(matchId: number): Promise<void> {
     const { response, data } = await fetchPredictions(apiBase, initData, matchId);
     if (!response.ok || !data.ok) {
       matchAveragesLoaded.delete(matchId);
+      const match = matchesById.get(matchId);
+      if (match?.status === "finished") {
+        showMatchFactionAverageStatus(matchId, "Не вдалося завантажити прогнози.");
+      }
       return;
     }
     updateMatchAverage(matchId, data.predictions);
@@ -3132,6 +3147,10 @@ async function prefetchMatchAverage(matchId: number): Promise<void> {
     updateMatchFactionAverage(matchId, data.predictions, shouldShowFactionAverage);
   } catch {
     matchAveragesLoaded.delete(matchId);
+    const match = matchesById.get(matchId);
+    if (match?.status === "finished") {
+      showMatchFactionAverageStatus(matchId, "Не вдалося завантажити прогнози.");
+    }
   }
 }
 
@@ -3269,6 +3288,7 @@ function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[])
   const { homeAvg, awayAvg } = getAveragePrediction(predictions);
   const count = predictions.length;
   adminLayoutAverageCache.set(matchId, { homeAvg, awayAvg, count });
+  adminLayoutPredictionsCache.set(matchId, predictions);
 
   if (adminLayoutAverageMatchId !== matchId) {
     return;
@@ -3320,6 +3340,14 @@ function storeAdminLayoutAverage(matchId: number, predictions: PredictionView[])
       badge.classList.remove("is-hidden");
     });
   }
+
+  const shouldShowFactionAverage = Boolean(
+    match?.status === "finished" ||
+      match?.status === "started" ||
+      (match?.kickoff_at && Date.now() >= new Date(match.kickoff_at).getTime()) ||
+      match?.has_prediction
+  );
+  updateMatchFactionAverage(matchId, predictions, shouldShowFactionAverage);
 }
 
 function updateAdminLayoutAverage(matchId: number): void {
@@ -3335,6 +3363,17 @@ function updateAdminLayoutAverage(matchId: number): void {
     homeAverageEl.textContent = cached.count ? formatAverageValue(cached.homeAvg) : "0";
     awayAverageEl.textContent = cached.count ? formatAverageValue(cached.awayAvg) : "0";
     updateAdminLayoutScoreValuesFromAverage(matchId);
+    const match = matchesById.get(matchId);
+    const cachedPredictions = adminLayoutPredictionsCache.get(matchId) ?? [];
+    const shouldShowFactionAverage = Boolean(
+      match?.status === "finished" ||
+        match?.status === "started" ||
+        (match?.kickoff_at && Date.now() >= new Date(match.kickoff_at).getTime()) ||
+        match?.has_prediction
+    );
+    if (cachedPredictions.length || shouldShowFactionAverage) {
+      updateMatchFactionAverage(matchId, cachedPredictions, shouldShowFactionAverage);
+    }
     return;
   }
 
@@ -3396,19 +3435,35 @@ function resetMatchFactionAverage(container: HTMLElement): void {
   container.innerHTML = "";
 }
 
+function showMatchFactionAverageStatus(matchId: number, message: string): void {
+  const containers = app.querySelectorAll<HTMLElement>(
+    `[data-match-faction-average][data-match-id="${matchId}"]`
+  );
+  if (!containers.length) {
+    return;
+  }
+  const markup = `
+    <p class="muted small">${escapeHtml(message)}</p>
+  `;
+  containers.forEach((container) => {
+    container.classList.add("is-visible");
+    container.innerHTML = markup;
+  });
+}
+
 function updateMatchFactionAverage(
   matchId: number,
   predictions: PredictionView[],
   shouldShow: boolean
 ): void {
-  const container = app.querySelector<HTMLElement>(
+  const containers = app.querySelectorAll<HTMLElement>(
     `[data-match-faction-average][data-match-id="${matchId}"]`
   );
-  if (!container) {
+  if (!containers.length) {
     return;
   }
   if (!shouldShow) {
-    resetMatchFactionAverage(container);
+    containers.forEach((container) => resetMatchFactionAverage(container));
     return;
   }
   const slot = app.querySelector<HTMLElement>(`[data-prediction-slot][data-match-id="${matchId}"]`);
@@ -3417,11 +3472,13 @@ function updateMatchFactionAverage(
   }
 
   if (!predictions.length) {
-    container.classList.add("is-visible");
-    container.innerHTML = `
-      <span class="match-faction-label">Середній прогноз по фракціям</span>
+    const emptyMarkup = `
       <p class="muted small">Поки що немає прогнозів.</p>
     `;
+    containers.forEach((container) => {
+      container.classList.add("is-visible");
+      container.innerHTML = emptyMarkup;
+    });
     return;
   }
 
@@ -3452,30 +3509,34 @@ function updateMatchFactionAverage(
     })
     .sort((a, b) => b.count - a.count)
     .map((entry) => {
-      const factionLabel =
-        entry.factionId === "unknown-faction"
-          ? "Без фракції"
-          : formatClubName(entry.factionId);
+      const isUnknown = entry.factionId === "unknown-faction";
+      const logoMarkup = isUnknown ? `<div class="match-faction-logo match-faction-logo--fallback"></div>` : renderFactionLogo(entry.factionId);
       return `
-        <div class="match-faction-row">
-          <span class="match-faction-name">${escapeHtml(factionLabel)}</span>
-          <div class="match-faction-score" role="group" aria-label="Середній прогноз фракції">
-            <span class="match-faction-score-value">${formatAverageValue(entry.homeAvg)}</span>
-            <span class="match-faction-score-sep">:</span>
-            <span class="match-faction-score-value">${formatAverageValue(entry.awayAvg)}</span>
+        <div class="match-faction-card" role="listitem">
+          <div class="match-faction-card__logo">
+            ${logoMarkup}
+          </div>
+          <div class="match-faction-card__meta">
+            <div class="match-faction-score" role="group" aria-label="Середній прогноз фракції">
+              <span class="match-faction-score-value">${formatAverageValue(entry.homeAvg)}</span>
+              <span class="match-faction-score-sep">:</span>
+              <span class="match-faction-score-value">${formatAverageValue(entry.awayAvg)}</span>
+            </div>
           </div>
         </div>
       `;
     })
     .join("");
 
-  container.classList.add("is-visible");
-  container.innerHTML = `
-    <span class="match-faction-label">Середній прогноз по фракціям</span>
-    <div class="match-faction-list">
+  const markup = `
+    <div class="match-faction-carousel" role="list">
       ${rows}
     </div>
   `;
+  containers.forEach((container) => {
+    container.classList.add("is-visible");
+    container.innerHTML = markup;
+  });
 }
 
 function applyAdminLayoutPredictionState(matchId: number, hasPrediction: boolean): void {
@@ -3706,6 +3767,7 @@ function updateAdminLayoutView(): void {
   const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
   const noVotingEl = app.querySelector<HTMLElement>("[data-admin-layout-no-voting]");
   const adminLayout = app.querySelector<HTMLElement>(".admin-layout");
+  const factionAverageEl = app.querySelector<HTMLElement>("[data-admin-layout-faction-average]");
   if (
     !homeSlot ||
     !awaySlot ||
@@ -3721,7 +3783,8 @@ function updateAdminLayoutView(): void {
     !prevButton ||
     !nextButton ||
     !noVotingEl ||
-    !adminLayout
+    !adminLayout ||
+    !factionAverageEl
   ) {
     return;
   }
@@ -3753,6 +3816,9 @@ function updateAdminLayoutView(): void {
   const match = adminLayoutMatches[adminLayoutIndex] ?? adminLayoutMatches[0];
   adminLayoutHasPrediction = Boolean(match.has_prediction);
   adminLayoutIsFinished = match.status === "finished";
+  factionAverageEl.dataset.matchId = String(match.id);
+  factionAverageEl.classList.remove("is-visible");
+  factionAverageEl.innerHTML = "";
   const { homeName, awayName, homeLogo, awayLogo, homeSlug, awaySlug } = getMatchTeamInfo(match);
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
@@ -4028,6 +4094,20 @@ function getAveragePrediction(predictions: PredictionView[]): { homeAvg: number;
     homeAvg: total.home / count,
     awayAvg: total.away / count
   };
+}
+
+function renderFactionLogo(factionId: string): string {
+  const league = findClubLeague(factionId);
+  if (!league) {
+    return `<div class="match-faction-logo match-faction-logo--fallback"></div>`;
+  }
+  const logo = getClubLogoPath(league, factionId);
+  if (!logo) {
+    return `<div class="match-faction-logo match-faction-logo--fallback"></div>`;
+  }
+  return `<img class="match-faction-logo" src="${escapeAttribute(logo)}" alt="${escapeAttribute(
+    formatClubName(factionId)
+  )}" />`;
 }
 
 function formatAverageValue(value: number): string {

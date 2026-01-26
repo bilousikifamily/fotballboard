@@ -43,4 +43,6 @@ export interface Env {
   PRESENTATION_ADMIN_USERNAME?: string;
   PRESENTATION_ADMIN_PASSWORD?: string;
   ADMIN_JWT_SECRET?: string;
+  DEV_BYPASS?: string;
+  DEV_BYPASS_TOKEN?: string;
 }
