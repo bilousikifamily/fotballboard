@@ -1,6 +1,6 @@
 import { ALL_CLUBS } from "./data/clubs";
 import { formatClubName } from "./features/clubs";
-import type { LeaderboardUser, Match } from "./types";
+import type { LeaderboardUser, Match, OddsRefreshDebug } from "./types";
 import {
   fetchMatches,
   fetchPendingMatches,
@@ -159,6 +159,45 @@ function escapeHtml(text: string): string {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+function describeOddsDebug(debug?: OddsRefreshDebug | null): string {
+  if (!debug) {
+    return "";
+  }
+  const parts: string[] = [];
+  const pushIf = (label: string, value: unknown) => {
+    if (value === null || value === undefined) {
+      return;
+    }
+    if (typeof value === "string" && value.trim() === "") {
+      return;
+    }
+    parts.push(`${label}: ${value}`);
+  };
+  pushIf("league", debug.leagueId ?? debug.apiLeagueId);
+  pushIf("kickoff", debug.kickoffAt);
+  pushIf("fallback", debug.fallbackReason);
+  pushIf("fixture", debug.fixtureId);
+  pushIf("home status", debug.homeTeamSearchStatus);
+  pushIf("away status", debug.awayTeamSearchStatus);
+  pushIf("home match score", debug.homeTeamMatchScore);
+  pushIf("away match score", debug.awayTeamMatchScore);
+  pushIf("home match", debug.homeTeamMatchedName);
+  pushIf("away match", debug.awayTeamMatchedName);
+  if (Array.isArray(debug.homeTeamSearchDetails) && debug.homeTeamSearchDetails.length) {
+    const summary = debug.homeTeamSearchDetails
+      .map((detail) => `${detail.query}(${detail.status})`)
+      .join(", ");
+    pushIf("home searches", summary);
+  }
+  if (Array.isArray(debug.awayTeamSearchDetails) && debug.awayTeamSearchDetails.length) {
+    const summary = debug.awayTeamSearchDetails
+      .map((detail) => `${detail.query}(${detail.status})`)
+      .join(", ");
+    pushIf("away searches", summary);
+  }
+  return parts.join(" | ");
 }
 
 function setupLogging(): void {
@@ -394,7 +433,10 @@ async function handlePendingAction(event: Event): Promise<void> {
       }
       const { response, data } = await postOddsRefresh(API_BASE, { initData: "", match_id: matchId, debug: true }, token);
       if (!response.ok || !data?.ok) {
-        const errorMsg = `Не вдалося підтягнути коефіцієнти для матчу ${matchId}. Status: ${response.status}, Error: ${data?.error ?? data?.message ?? "unknown"}`;
+        const reasonSummary = describeOddsDebug(data?.debug);
+        const detail = data?.detail ? `, Detail: ${data.detail}` : "";
+        const reasonSuffix = reasonSummary ? ` (${reasonSummary})` : "";
+        const errorMsg = `Не вдалося підтягнути коефіцієнти для матчу ${matchId}. Status: ${response.status}${detail}, Error: ${data?.error ?? "unknown"}${reasonSuffix}`;
         setStatus(pendingStatus, "Не вдалося підтягнути коефіцієнти.");
         addLog("error", errorMsg, { response, data });
         return;
