@@ -580,21 +580,19 @@
 
 .match-faction-carousel {
   display: flex;
+  gap: 12px;
   width: 100%;
   margin: 0 auto 48px;
-  justify-content: center;
+  justify-content: flex-start;
   overflow-x: auto;
   overflow-y: visible;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
-  scroll-padding: 0;
-  padding: 0 0 4px;
-}
-
-.match-faction-carousel::before,
-.match-faction-carousel::after {
-  content: "";
-  flex: 0 0 max(0px, calc((100% - (2 * var(--match-faction-card-width)) - 12px) / 2));
+  scroll-padding-left: 12px;
+  scroll-padding-right: 12px;
+  padding: 0 12px 4px;
+  scrollbar-width: none;
+  --match-faction-card-width: min(240px, calc((100% - 12px) / 2));
 }
 
 .match-faction-carousel::-webkit-scrollbar {
@@ -612,7 +610,7 @@
   padding: 0;
   border-radius: 12px;
   background: transparent;
-  scroll-snap-align: center;
+  scroll-snap-align: start;
   overflow: visible;
 }
 

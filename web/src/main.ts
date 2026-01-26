@@ -3510,7 +3510,9 @@ function updateMatchFactionAverage(
     .sort((a, b) => b.count - a.count)
     .map((entry) => {
       const isUnknown = entry.factionId === "unknown-faction";
-      const logoMarkup = isUnknown ? `<div class="match-faction-logo match-faction-logo--fallback"></div>` : renderFactionLogo(entry.factionId);
+      const logoMarkup = isUnknown
+        ? `<div class="match-faction-logo match-faction-logo--fallback"></div>`
+        : renderFactionLogo(entry.factionId);
       return `
         <div class="match-faction-card" role="listitem">
           <div class="match-faction-card__logo">
@@ -3518,9 +3520,9 @@ function updateMatchFactionAverage(
           </div>
           <div class="match-faction-card__meta">
             <div class="match-faction-score" role="group" aria-label="Середній прогноз фракції">
-              <span class="match-faction-score-value">${formatAverageValue(entry.homeAvg)}</span>
+              <span class="match-faction-score-value">${formatAverageValueInteger(entry.homeAvg)}</span>
               <span class="match-faction-score-sep">:</span>
-              <span class="match-faction-score-value">${formatAverageValue(entry.awayAvg)}</span>
+              <span class="match-faction-score-value">${formatAverageValueInteger(entry.awayAvg)}</span>
             </div>
           </div>
         </div>
@@ -4115,6 +4117,12 @@ function formatAverageValue(value: number): string {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1
   }).format(value);
+}
+
+function formatAverageValueInteger(value: number): string {
+  return new Intl.NumberFormat("uk-UA", {
+    maximumFractionDigits: 0
+  }).format(Math.round(value));
 }
 
 function getPredictionError(error: string | undefined): string {
