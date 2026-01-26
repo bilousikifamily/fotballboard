@@ -3086,7 +3086,9 @@ async function togglePredictions(
     const hasSelfPrediction = Boolean(
       currentUserId && data.predictions.some((item) => item.user_id === currentUserId)
     );
-    updateMatchFactionAverage(matchId, data.predictions, hasSelfPrediction);
+    const match = matchesById.get(matchId);
+    const shouldShowFactionAverage = hasSelfPrediction || match?.status === "finished";
+    updateMatchFactionAverage(matchId, data.predictions, shouldShowFactionAverage);
     if (form && hasSelfPrediction) {
       form.classList.add("is-hidden");
     }
@@ -3122,6 +3124,9 @@ async function prefetchMatchAverage(matchId: number): Promise<void> {
       return;
     }
     updateMatchAverage(matchId, data.predictions);
+    const match = matchesById.get(matchId);
+    const shouldShowFactionAverage = match?.status === "finished";
+    updateMatchFactionAverage(matchId, data.predictions, shouldShowFactionAverage);
   } catch {
     matchAveragesLoaded.delete(matchId);
   }
@@ -3383,53 +3388,6 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
   `;
 }
 
-type OutcomeDistribution = {
-  home: number;
-  draw: number;
-  away: number;
-  total: number;
-};
-
-function getOutcomeDistribution(predictions: PredictionView[]): OutcomeDistribution {
-  return predictions.reduce(
-    (acc, prediction) => {
-      if (prediction.home_pred > prediction.away_pred) {
-        acc.home += 1;
-      } else if (prediction.home_pred < prediction.away_pred) {
-        acc.away += 1;
-      } else {
-        acc.draw += 1;
-      }
-      acc.total += 1;
-      return acc;
-    },
-    { home: 0, draw: 0, away: 0, total: 0 }
-  );
-}
-
-function toOutcomePercentages(distribution: OutcomeDistribution): {
-  home: number;
-  draw: number;
-  away: number;
-} {
-  const { home, draw, away, total } = distribution;
-  if (total <= 0) {
-    return { home: 0, draw: 0, away: 0 };
-  }
-  const values = [home, draw, away];
-  const exacts = values.map((value) => (value / total) * 100);
-  const rounded = exacts.map((value) => Math.floor(value));
-  let remainder = 100 - rounded.reduce((sum, value) => sum + value, 0);
-  const order = exacts
-    .map((value, index) => ({ index, frac: value - Math.floor(value) }))
-    .sort((a, b) => b.frac - a.frac);
-  for (let i = 0; i < remainder; i += 1) {
-    const target = order[i % order.length];
-    rounded[target.index] += 1;
-  }
-  return { home: rounded[0], draw: rounded[1], away: rounded[2] };
-}
-
 function resetMatchFactionAverage(container: HTMLElement): void {
   container.classList.remove("is-visible");
   container.innerHTML = "";
@@ -3470,31 +3428,15 @@ function updateMatchFactionAverage(
     return;
   }
 
-  const distribution = getOutcomeDistribution(factionPredictions);
-  if (distribution.total === 0) {
-    resetMatchFactionAverage(container);
-    return;
-  }
-
-  const percentages = toOutcomePercentages(distribution);
-  const maxValue = Math.max(percentages.home, percentages.draw, percentages.away);
+  const { homeAvg, awayAvg } = getAveragePrediction(factionPredictions);
   const factionLabel = formatClubName(normalizedPrimary);
   container.classList.add("is-visible");
   container.innerHTML = `
     <span class="match-faction-label">Середній прогноз фракції ${escapeHtml(factionLabel)}</span>
-    <div class="match-faction-slider" role="group" aria-label="Середній прогноз фракції">
-      <div class="match-faction-segment${percentages.home === maxValue ? " is-leading" : ""}" data-type="home">
-        <span class="match-faction-segment-label">1</span>
-        <strong class="match-faction-segment-value">${percentages.home}%</strong>
-      </div>
-      <div class="match-faction-segment${percentages.draw === maxValue ? " is-leading" : ""}" data-type="draw">
-        <span class="match-faction-segment-label">X</span>
-        <strong class="match-faction-segment-value">${percentages.draw}%</strong>
-      </div>
-      <div class="match-faction-segment${percentages.away === maxValue ? " is-leading" : ""}" data-type="away">
-        <span class="match-faction-segment-label">2</span>
-        <strong class="match-faction-segment-value">${percentages.away}%</strong>
-      </div>
+    <div class="match-faction-score" role="group" aria-label="Середній прогноз фракції">
+      <span class="match-faction-score-value">${formatAverageValue(homeAvg)}</span>
+      <span class="match-faction-score-sep">:</span>
+      <span class="match-faction-score-value">${formatAverageValue(awayAvg)}</span>
     </div>
   `;
 }

@@ -572,45 +572,28 @@
   color: var(--muted);
 }
 
-.match-faction-slider {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 0 0 1px var(--outline-dark) inset;
-}
-
-.match-faction-segment {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: 10px 6px 8px;
-  background: var(--surface-strong);
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.match-faction-segment + .match-faction-segment {
-  box-shadow: -1px 0 0 var(--outline-dark);
-}
-
-.match-faction-segment.is-leading {
-  background: linear-gradient(180deg, #ff9a1f 0%, #ff7a1a 100%);
+.match-faction-score {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 154, 31, 0.25) 0%, rgba(255, 122, 26, 0.2) 100%);
   color: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 154, 31, 0.35) inset;
 }
 
-.match-faction-segment-label {
-  font-size: 0.7rem;
+.match-faction-score-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.match-faction-score-sep {
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--muted);
-}
-
-.match-faction-segment.is-leading .match-faction-segment-label {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.match-faction-segment-value {
-  font-size: 1rem;
+  opacity: 0.7;
 }
 
 .prediction-row {
