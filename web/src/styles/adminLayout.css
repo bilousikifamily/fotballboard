@@ -798,6 +798,7 @@ body.admin-layout-active #app {
 .admin-layout.has-no-voting .admin-layout__info,
 .admin-layout.has-no-voting .admin-layout__body,
 .admin-layout.has-no-voting .admin-layout__vote,
+.admin-layout.has-no-voting .admin-layout__faction-average,
 .admin-layout.has-no-voting .admin-layout__footer {
   opacity: 0%;
 }

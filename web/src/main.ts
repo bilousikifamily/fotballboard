@@ -3799,6 +3799,8 @@ function updateAdminLayoutView(): void {
   if (total === 0) {
     homeSlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
     awaySlot.innerHTML = `<div class="admin-layout__logo-placeholder" aria-hidden="true"></div>`;
+    factionAverageEl.classList.remove("is-visible");
+    factionAverageEl.innerHTML = "";
     pagination.innerHTML = "";
     countdown.textContent = "початок матчу через --:--:--";
     countdown.classList.remove("is-closed");
