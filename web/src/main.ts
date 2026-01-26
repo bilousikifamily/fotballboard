@@ -3102,6 +3102,9 @@ function shouldPrefetchMatchAverage(match: Match): boolean {
   if (matchAveragesLoaded.has(match.id)) {
     return false;
   }
+  if (match.status === "finished") {
+    return true;
+  }
   if (match.has_prediction) {
     return false;
   }
