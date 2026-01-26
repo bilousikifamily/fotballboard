@@ -46,7 +46,6 @@ import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString
 import { formatPredictionName, formatTelegramName } from "./formatters/names";
 import {
   formatTimeInZone,
-  resolveMatchTimezone,
   renderPendingMatchesList,
   renderMatchesList,
   renderTeamLogo
@@ -1364,14 +1363,6 @@ function renderUser(
                   <path d="M9 6l6 6-6 6"></path>
                 </svg>
               </button>
-            </div>
-            <div class="match-time admin-layout__time">
-              <div class="match-time-row">
-                <span data-admin-layout-time>--:--</span>
-                <span class="match-meta-sep">·</span>
-                <span class="match-city" data-admin-layout-city>—</span>
-                <span class="match-time-alt" data-admin-layout-local-time>(--:--)</span>
-              </div>
             </div>
           </div>
           <div class="admin-layout__info">
@@ -3612,9 +3603,6 @@ function updateAdminLayoutView(): void {
   const oddDrawEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='draw']");
   const oddAwayEl = app.querySelector<HTMLElement>("[data-admin-layout-odd='away']");
   const oddsBlock = app.querySelector<HTMLElement>(".admin-layout__info-odds");
-  const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
-  const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
-  const localTimeEl = app.querySelector<HTMLElement>("[data-admin-layout-local-time]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
   const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
   const noVotingEl = app.querySelector<HTMLElement>("[data-admin-layout-no-voting]");
@@ -3633,9 +3621,6 @@ function updateAdminLayoutView(): void {
     !oddsBlock ||
     !prevButton ||
     !nextButton ||
-    !timeEl ||
-    !cityEl ||
-    !localTimeEl ||
     !noVotingEl ||
     !adminLayout
   ) {
@@ -3661,9 +3646,6 @@ function updateAdminLayoutView(): void {
     oddDrawEl.textContent = "—";
     oddAwayEl.textContent = "—";
     oddsBlock.classList.add("is-empty");
-    timeEl.textContent = "--:--";
-    cityEl.textContent = "—";
-    localTimeEl.textContent = "(--:--)";
     prevButton.disabled = true;
     nextButton.disabled = true;
     return;
@@ -3676,7 +3658,6 @@ function updateAdminLayoutView(): void {
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
   const matchOdds = getMatchWinnerProbabilities(match, homeName, awayName);
-  const localTimezone = resolveMatchTimezone(match) ?? "Europe/Kyiv";
   const renderScoreControls = (team: "home" | "away"): string => `
     <div class="score-controls admin-layout__score-controls">
       <div class="score-control" data-score-control data-team="${team}">
@@ -3723,9 +3704,6 @@ function updateAdminLayoutView(): void {
   oddDrawEl.textContent = matchOdds ? formatProbability(matchOdds.draw) : "—";
   oddAwayEl.textContent = matchOdds ? formatProbability(matchOdds.away) : "—";
   oddsBlock.classList.toggle("is-empty", !matchOdds);
-  timeEl.textContent = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
-  cityEl.textContent = (match.venue_city ?? match.venue_name ?? "").trim().toUpperCase() || "—";
-  localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, localTimezone)})`;
   prevButton.disabled = total < 2;
   nextButton.disabled = total < 2;
 }

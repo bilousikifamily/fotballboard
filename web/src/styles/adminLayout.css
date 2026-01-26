@@ -641,13 +641,6 @@ body.admin-layout-active #app {
   padding: clamp(2px, 0.6vh, 6px) clamp(4px, 2vw, 8px);
 }
 
-.admin-layout__time {
-  height: auto;
-  padding-top: 0;
-  color: var(--ink);
-  font-size: 0.6rem;
-}
-
 .admin-layout__pagination {
   display: flex;
   gap: 10px;
@@ -793,7 +786,6 @@ body.admin-layout-active #app {
 
 /* Приховування елементів коли немає матчів для прогнозування */
 /* Перемикач календаря (.date-switcher) залишається видимим */
-.admin-layout.has-no-voting .admin-layout__time,
 .admin-layout.has-no-voting .admin-layout__info,
 .admin-layout.has-no-voting .admin-layout__body,
 .admin-layout.has-no-voting .admin-layout__vote,
