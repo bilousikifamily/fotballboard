@@ -127,7 +127,7 @@
   gap: 10px;
   text-align: center;
   box-shadow: 0 0 0 1px var(--outline-dark) inset;
-  overflow-x: hidden;
+  overflow: visible;
   align-self: start;
 }
 
@@ -580,15 +580,21 @@
 
 .match-faction-carousel {
   display: flex;
-  gap: 12px;
+  width: 100%;
+  margin: 0 auto 48px;
+  justify-content: center;
   overflow-x: auto;
   overflow-y: visible;
   scroll-snap-type: x mandatory;
-  scroll-padding: 12px;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-  margin-bottom: 48px;
-  
+  scroll-behavior: smooth;
+  scroll-padding: 0;
+  padding: 0 0 4px;
+}
+
+.match-faction-carousel::before,
+.match-faction-carousel::after {
+  content: "";
+  flex: 0 0 max(0px, calc((100% - (2 * var(--match-faction-card-width)) - 12px) / 2));
 }
 
 .match-faction-carousel::-webkit-scrollbar {
@@ -596,7 +602,9 @@
 }
 
 .match-faction-card {
-  min-width: 180px;
+  flex: 0 0 var(--match-faction-card-width);
+  min-width: var(--match-faction-card-width);
+  max-width: var(--match-faction-card-width);
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 6px;
