@@ -3409,34 +3409,55 @@ function updateMatchFactionAverage(
     return;
   }
 
-  const primaryFactionId = getPrimaryFactionIdFromProfile(currentProfileStats);
-  if (!primaryFactionId) {
-    resetMatchFactionAverage(container);
-    return;
-  }
-  const normalizedPrimary = normalizeFactionSlug(primaryFactionId);
-  const factionPredictions = predictions.filter((prediction) => {
+  const factions = new Map<string, PredictionView[]>();
+  predictions.forEach((prediction) => {
     const factionId = prediction.user?.faction_club_id;
     if (!factionId) {
-      return false;
+      return;
     }
-    return normalizeFactionSlug(factionId) === normalizedPrimary;
+    const normalized = normalizeFactionSlug(factionId);
+    if (!factions.has(normalized)) {
+      factions.set(normalized, []);
+    }
+    factions.get(normalized)!.push(prediction);
   });
 
-  if (!factionPredictions.length) {
+  if (factions.size === 0) {
     resetMatchFactionAverage(container);
     return;
   }
 
-  const { homeAvg, awayAvg } = getAveragePrediction(factionPredictions);
-  const factionLabel = formatClubName(normalizedPrimary);
+  const rows = Array.from(factions.entries())
+    .map(([factionId, factionPredictions]) => {
+      const { homeAvg, awayAvg } = getAveragePrediction(factionPredictions);
+      return {
+        factionId,
+        count: factionPredictions.length,
+        homeAvg,
+        awayAvg
+      };
+    })
+    .sort((a, b) => b.count - a.count)
+    .map((entry) => {
+      const factionLabel = formatClubName(entry.factionId);
+      return `
+        <div class="match-faction-row">
+          <span class="match-faction-name">${escapeHtml(factionLabel)}</span>
+          <div class="match-faction-score" role="group" aria-label="Середній прогноз фракції">
+            <span class="match-faction-score-value">${formatAverageValue(entry.homeAvg)}</span>
+            <span class="match-faction-score-sep">:</span>
+            <span class="match-faction-score-value">${formatAverageValue(entry.awayAvg)}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
   container.classList.add("is-visible");
   container.innerHTML = `
-    <span class="match-faction-label">Середній прогноз фракції ${escapeHtml(factionLabel)}</span>
-    <div class="match-faction-score" role="group" aria-label="Середній прогноз фракції">
-      <span class="match-faction-score-value">${formatAverageValue(homeAvg)}</span>
-      <span class="match-faction-score-sep">:</span>
-      <span class="match-faction-score-value">${formatAverageValue(awayAvg)}</span>
+    <span class="match-faction-label">Середній прогноз по фракціям</span>
+    <div class="match-faction-list">
+      ${rows}
     </div>
   `;
 }

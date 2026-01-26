@@ -572,6 +572,26 @@
   color: var(--muted);
 }
 
+.match-faction-list {
+  display: grid;
+  gap: 8px;
+}
+
+.match-faction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.match-faction-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
 .match-faction-score {
   display: flex;
   justify-content: center;
