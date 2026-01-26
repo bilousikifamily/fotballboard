@@ -4,7 +4,6 @@ import type {
   ConfirmMatchResponse,
   CreateMatchResponse,
   FactionPredictionsStatsResponse,
-  MatchWeatherResponse,
   MatchesResponse,
   OddsRefreshResponse,
   ManualOddsResponse,
@@ -33,17 +32,6 @@ export function fetchPendingMatches(
   adminSessionToken?: string
 ): Promise<{ response: Response; data: PendingMatchesResponse }> {
   return requestJson<PendingMatchesResponse>(`${apiBase}/api/matches/pending`, {
-    headers: authHeaders(initData, adminSessionToken)
-  });
-}
-
-export function fetchMatchWeather(
-  apiBase: string,
-  initData: string,
-  matchId: number,
-  adminSessionToken?: string
-): Promise<{ response: Response; data: MatchWeatherResponse }> {
-  return requestJson<MatchWeatherResponse>(`${apiBase}/api/matches/weather?match_id=${matchId}`, {
     headers: authHeaders(initData, adminSessionToken)
   });
 }

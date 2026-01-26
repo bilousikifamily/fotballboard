@@ -19,7 +19,6 @@ import { fetchAuth } from "./api/auth";
 import { fetchAnalitikaTeam as fetchAnalitikaTeamApi } from "./api/analitika";
 import { fetchLeaderboard } from "./api/leaderboard";
 import {
-  fetchMatchWeather,
   fetchMatches,
   fetchPendingMatches,
   postClubSync,
@@ -46,11 +45,8 @@ import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predict
 import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
 import { formatPredictionName, formatTelegramName } from "./formatters/names";
 import {
-  formatRainProbability,
-  formatTemperature,
   formatTimeInZone,
-  getWeatherIcon,
-  normalizeRainProbability,
+  resolveMatchTimezone,
   renderPendingMatchesList,
   renderMatchesList,
   renderTeamLogo
@@ -118,11 +114,6 @@ const predictionsLoaded = new Set<number>();
 const matchAveragesLoaded = new Set<number>();
 const matchesById = new Map<number, Match>();
 const adminLayoutAverageCache = new Map<number, { homeAvg: number; awayAvg: number; count: number }>();
-const matchWeatherCache = new Map<number, number | null>();
-const matchWeatherConditionCache = new Map<number, string | null>();
-const matchWeatherTempCache = new Map<number, number | null>();
-const matchWeatherTimezoneCache = new Map<number, string | null>();
-const WEATHER_CLIENT_CACHE_MIN = 60;
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
@@ -318,9 +309,6 @@ function getDevMatches(): Match[] {
       prediction_closes_at: upcoming,
       status: "scheduled",
       venue_city: "Kyiv",
-      rain_probability: 40,
-      weather_condition: "thunderstorm",
-      weather_temp_c: 3,
       tournament_name: "Українська Прем'єр-ліга",
       tournament_stage: "Group stage",
       odds_json: [
@@ -352,9 +340,6 @@ function getDevMatches(): Match[] {
       prediction_closes_at: closed,
       status: "pending",
       venue_city: "London",
-      rain_probability: 10,
-      weather_condition: "snow",
-      weather_temp_c: 1,
       has_prediction: true,
       tournament_name: "Premier League",
       tournament_stage: "Round of 16",
@@ -388,9 +373,6 @@ function getDevMatches(): Match[] {
       home_score: 2,
       away_score: 1,
       venue_city: "Barcelona",
-      rain_probability: 0,
-      weather_condition: "snow",
-      weather_temp_c: 7,
       has_prediction: true
     }
   ];
@@ -1389,19 +1371,6 @@ function renderUser(
                 <span class="match-meta-sep">·</span>
                 <span class="match-city" data-admin-layout-city>—</span>
                 <span class="match-time-alt" data-admin-layout-local-time>(--:--)</span>
-                <span class="match-meta-sep">·</span>
-                <span class="match-temp" data-admin-layout-temp>—°C</span>
-              </div>
-              <div
-                class="match-weather-row"
-                data-admin-layout-weather
-                aria-label="Вологість: —"
-              >
-                <span class="match-weather-icon" data-admin-layout-weather-icon aria-hidden="true">🌧️</span>
-                <span class="match-weather-bar" aria-hidden="true">
-                  <span class="match-weather-bar-fill" data-admin-layout-weather-fill style="width: 0%"></span>
-                </span>
-                <span class="match-weather-value" data-admin-layout-humidity>—</span>
               </div>
             </div>
           </div>
@@ -1901,7 +1870,6 @@ async function loadMatches(date: string): Promise<void> {
     setupMatchAnalitikaFilters();
     renderAdminMatchOptions(data.matches);
     prefetchMatchAverages(data.matches);
-    void loadMatchWeather(data.matches);
     startPredictionCountdowns();
   } catch {
     if (container) {
@@ -1943,7 +1911,6 @@ async function loadPendingMatches(): Promise<void> {
   updateAdminLayoutView();
   bindMatchActions(list);
     setupMatchAnalitikaFilters(list);
-    void loadMatchWeather(data.matches);
     if (status) {
       status.textContent = "";
     }
@@ -2015,64 +1982,6 @@ async function loadAdminUserSessions(): Promise<void> {
       status.textContent = "Не вдалося завантажити користувачів.";
     }
   }
-}
-
-async function loadMatchWeather(matches: Match[]): Promise<void> {
-  if (!apiBase) {
-    return;
-  }
-  const tasks = matches.map(async (match) => {
-    if (isWeatherFresh(match)) {
-      const cachedValue = match.rain_probability ?? null;
-      const cachedCondition = match.weather_condition ?? null;
-      const cachedTemp = match.weather_temp_c ?? null;
-      const cachedTimezone = match.weather_timezone ?? null;
-      matchWeatherCache.set(match.id, cachedValue);
-      matchWeatherConditionCache.set(match.id, cachedCondition);
-      matchWeatherTempCache.set(match.id, cachedTemp);
-      matchWeatherTimezoneCache.set(match.id, cachedTimezone);
-      updateMatchWeather(match.id, cachedValue, cachedCondition, cachedTemp, cachedTimezone);
-      return;
-    }
-    if (matchWeatherCache.has(match.id)) {
-      updateMatchWeather(
-        match.id,
-        matchWeatherCache.get(match.id) ?? null,
-        matchWeatherConditionCache.get(match.id) ?? null,
-        matchWeatherTempCache.get(match.id) ?? null,
-        matchWeatherTimezoneCache.get(match.id) ?? null
-      );
-      return;
-    }
-    try {
-      const { response, data } = await fetchMatchWeather(apiBase, initData, match.id);
-      if (!response.ok || !data.ok) {
-        updateMatchWeather(match.id, null, null, null, null);
-        return;
-      }
-      matchWeatherCache.set(match.id, data.rain_probability ?? null);
-      matchWeatherConditionCache.set(match.id, data.weather_condition ?? null);
-      matchWeatherTempCache.set(match.id, data.weather_temp_c ?? null);
-      matchWeatherTimezoneCache.set(match.id, data.weather_timezone ?? null);
-      const stored = matchesById.get(match.id);
-      if (stored) {
-        stored.rain_probability = data.rain_probability ?? null;
-        stored.weather_condition = data.weather_condition ?? null;
-        stored.weather_temp_c = data.weather_temp_c ?? null;
-        stored.weather_timezone = data.weather_timezone ?? null;
-      }
-      updateMatchWeather(
-        match.id,
-        data.rain_probability ?? null,
-        data.weather_condition ?? null,
-        data.weather_temp_c ?? null,
-        data.weather_timezone ?? null
-      );
-    } catch {
-      updateMatchWeather(match.id, null, null, null, null);
-    }
-  });
-  await Promise.all(tasks);
 }
 
 function setupMatchAnalitikaFilters(root: ParentNode = app): void {
@@ -2210,70 +2119,6 @@ async function fetchAnalitikaTeam(teamSlug: string): Promise<TeamMatchStat[] | n
   })();
   analitikaTeamInFlight.set(teamSlug, promise);
   return promise;
-}
-
-function isWeatherFresh(match: Match): boolean {
-  if (!match.weather_fetched_at) {
-    return false;
-  }
-  if (match.weather_temp_c === null || match.weather_temp_c === undefined) {
-    return false;
-  }
-  if (!match.weather_timezone) {
-    return false;
-  }
-  const fetchedAt = new Date(match.weather_fetched_at);
-  if (Number.isNaN(fetchedAt.getTime())) {
-    return false;
-  }
-  const ageMinutes = (Date.now() - fetchedAt.getTime()) / (60 * 1000);
-  return ageMinutes < WEATHER_CLIENT_CACHE_MIN;
-}
-
-function updateMatchWeather(
-  matchId: number,
-  rainProbability: number | null,
-  condition: string | null,
-  tempC: number | null,
-  timezone: string | null
-): void {
-  const el = app.querySelector<HTMLElement>(`[data-match-rain][data-match-id="${matchId}"]`);
-  if (el) {
-    const percent = normalizeRainProbability(rainProbability);
-    const value = formatRainProbability(percent);
-    const icon = getWeatherIcon(condition);
-    const valueEl = el.querySelector<HTMLElement>("[data-match-rain-value]");
-    const iconEl = el.querySelector<HTMLElement>("[data-match-rain-icon]");
-    const fillEl = el.querySelector<HTMLElement>("[data-match-rain-fill]");
-    if (valueEl) {
-      valueEl.textContent = value;
-    }
-    if (iconEl) {
-      iconEl.textContent = icon;
-    }
-    if (fillEl) {
-      fillEl.style.width = `${percent ?? 0}%`;
-    }
-    el.setAttribute("aria-label", `Дощ: ${value}`);
-  }
-
-  const match = matchesById.get(matchId);
-  if (!match) {
-    return;
-  }
-  const tempEl = app.querySelector<HTMLElement>(`[data-match-temp][data-match-id="${matchId}"]`);
-  if (tempEl) {
-    tempEl.textContent = formatTemperature(tempC);
-  }
-  const tz = timezone ?? "Europe/Kyiv";
-  const localTimeEl = app.querySelector<HTMLElement>(`[data-match-local-time][data-match-id="${matchId}"]`);
-  if (localTimeEl) {
-    localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, tz)})`;
-  }
-
-  if (isAdmin) {
-    updateAdminLayoutView();
-  }
 }
 
 async function submitMatch(form: HTMLFormElement): Promise<void> {
@@ -3770,11 +3615,6 @@ function updateAdminLayoutView(): void {
   const timeEl = app.querySelector<HTMLElement>("[data-admin-layout-time]");
   const cityEl = app.querySelector<HTMLElement>("[data-admin-layout-city]");
   const localTimeEl = app.querySelector<HTMLElement>("[data-admin-layout-local-time]");
-  const tempEl = app.querySelector<HTMLElement>("[data-admin-layout-temp]");
-  const humidityEl = app.querySelector<HTMLElement>("[data-admin-layout-humidity]");
-  const weatherEl = app.querySelector<HTMLElement>("[data-admin-layout-weather]");
-  const weatherIconEl = app.querySelector<HTMLElement>("[data-admin-layout-weather-icon]");
-  const weatherFillEl = app.querySelector<HTMLElement>("[data-admin-layout-weather-fill]");
   const prevButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-prev]");
   const nextButton = app.querySelector<HTMLButtonElement>("[data-admin-layout-next]");
   const noVotingEl = app.querySelector<HTMLElement>("[data-admin-layout-no-voting]");
@@ -3796,11 +3636,6 @@ function updateAdminLayoutView(): void {
     !timeEl ||
     !cityEl ||
     !localTimeEl ||
-    !tempEl ||
-    !humidityEl ||
-    !weatherEl ||
-    !weatherIconEl ||
-    !weatherFillEl ||
     !noVotingEl ||
     !adminLayout
   ) {
@@ -3829,11 +3664,6 @@ function updateAdminLayoutView(): void {
     timeEl.textContent = "--:--";
     cityEl.textContent = "—";
     localTimeEl.textContent = "(--:--)";
-    tempEl.textContent = "—°C";
-    humidityEl.textContent = "—";
-    weatherEl.setAttribute("aria-label", "Вологість: —");
-    weatherIconEl.textContent = "🌧️";
-    weatherFillEl.style.width = "0%";
     prevButton.disabled = true;
     nextButton.disabled = true;
     return;
@@ -3846,12 +3676,7 @@ function updateAdminLayoutView(): void {
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStageAdmin(match.tournament_stage) : "";
   const matchOdds = getMatchWinnerProbabilities(match, homeName, awayName);
-  const localTimezone = match.weather_timezone ?? matchWeatherTimezoneCache.get(match.id) ?? "Europe/Kyiv";
-  const tempValue = match.weather_temp_c ?? matchWeatherTempCache.get(match.id) ?? null;
-  const humidityValue = match.rain_probability ?? matchWeatherCache.get(match.id) ?? null;
-  const normalizedHumidity = normalizeRainProbability(humidityValue);
-  const humidityPercent = formatRainProbability(normalizedHumidity);
-  const weatherIcon = getWeatherIcon(match.weather_condition ?? null);
+  const localTimezone = resolveMatchTimezone(match) ?? "Europe/Kyiv";
   const renderScoreControls = (team: "home" | "away"): string => `
     <div class="score-controls admin-layout__score-controls">
       <div class="score-control" data-score-control data-team="${team}">
@@ -3901,11 +3726,6 @@ function updateAdminLayoutView(): void {
   timeEl.textContent = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
   cityEl.textContent = (match.venue_city ?? match.venue_name ?? "").trim().toUpperCase() || "—";
   localTimeEl.textContent = `(${formatTimeInZone(match.kickoff_at, localTimezone)})`;
-  tempEl.textContent = formatTemperature(tempValue);
-  humidityEl.textContent = `${humidityPercent}`;
-  weatherEl.setAttribute("aria-label", `Вологість: ${humidityPercent}`);
-  weatherIconEl.textContent = weatherIcon;
-  weatherFillEl.style.width = `${normalizedHumidity ?? 0}%`;
   prevButton.disabled = total < 2;
   nextButton.disabled = total < 2;
 }

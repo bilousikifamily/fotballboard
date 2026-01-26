@@ -5,27 +5,6 @@ import { renderMatchAnalitika } from "../features/analitika";
 import { getMatchTeamInfo } from "../features/clubs";
 import { renderMatchOdds } from "../features/odds";
 
-export function normalizeRainProbability(value: number | null): number | null {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return null;
-  }
-  return Math.min(100, Math.max(0, Math.round(value)));
-}
-
-export function formatRainProbability(value: number | null): string {
-  if (value === null) {
-    return "—";
-  }
-  return `${value}%`;
-}
-
-export function formatTemperature(value: number | null): string {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "—°C";
-  }
-  return `${Math.round(value)}°C`;
-}
-
 export function formatTimeInZone(value: string, timeZone: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -36,16 +15,6 @@ export function formatTimeInZone(value: string, timeZone: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
-}
-
-export function getWeatherIcon(condition: string | null): string {
-  if (condition === "thunderstorm") {
-    return "⛈️";
-  }
-  if (condition === "snow") {
-    return "🌨️";
-  }
-  return "🌧️";
 }
 
 export function renderTeamLogo(
@@ -123,10 +92,7 @@ export function renderPendingMatchesList(matches: Match[]): string {
     .join("");
 }
 
-function resolveMatchTimezone(match: Match): string | null {
-  if (match.weather_timezone) {
-    return match.weather_timezone;
-  }
+export function resolveMatchTimezone(match: Match): string | null {
   switch (match.league_id) {
     case "english-premier-league":
     case "fa-cup":
@@ -171,38 +137,12 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
   const kyivTime = formatTimeInZone(match.kickoff_at, "Europe/Kyiv");
   const localTimezone = resolveMatchTimezone(match);
   const localTime = localTimezone ? formatTimeInZone(match.kickoff_at, localTimezone) : null;
-  const tempValue = formatTemperature(match.weather_temp_c ?? null);
   const cityMarkup = city
     ? `<span class="match-meta-sep">·</span><span class="match-city">${escapeHtml(cityLabel)}</span>`
     : "";
   const localTimeMarkup = localTime
     ? `<span class="match-time-alt" data-match-local-time data-match-id="${match.id}">(${escapeHtml(localTime)})</span>`
     : "";
-  const hasWeatherData = Boolean(match.weather_fetched_at);
-  const rainPercent = hasWeatherData ? normalizeRainProbability(match.rain_probability ?? null) : null;
-  const rainValue = hasWeatherData ? formatRainProbability(rainPercent) : " ";
-  const rainIcon = getWeatherIcon(match.weather_condition ?? null);
-  const rainBarWidth = hasWeatherData ? rainPercent ?? 0 : 0;
-  const shouldHideTimeBlock = !hasWeatherData;
-  const matchTimeClass = ["match-time"];
-  if (shouldHideTimeBlock) {
-    matchTimeClass.push("match-time--hidden");
-  }
-  const rainMarkup = hasWeatherData
-    ? `
-      <div class="match-weather-row" data-match-rain data-match-id="${match.id}" aria-label="Дощ: ${rainValue}">
-        <span class="match-weather-icon" data-match-rain-icon aria-hidden="true">${rainIcon}</span>
-        <span class="match-weather-bar" aria-hidden="true">
-          <span class="match-weather-bar-fill" data-match-rain-fill style="width: ${rainBarWidth}%"></span>
-        </span>
-        <span class="match-weather-value" data-match-rain-value>${rainValue}</span>
-      </div>
-    `
-    : `
-      <div class="match-weather-row match-weather-row--placeholder" aria-hidden="true">
-        <span class="match-weather-placeholder"></span>
-      </div>
-    `;
   const tournamentName = match.tournament_name?.trim() ?? "";
   const tournamentStage = match.tournament_stage ? formatTournamentStage(match.tournament_stage) : "";
   const oddsMarkup = renderMatchOdds(match, homeName, awayName);
@@ -307,15 +247,12 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
 
   return `
     <div class="match-item ${predicted ? "has-prediction" : ""}${isPreview ? " is-preview" : ""}">
-      <div class="${matchTimeClass.join(" ")}">
+      <div class="match-time">
         <div class="match-time-row">
           <span class="match-time-value" data-match-kyiv-time data-match-id="${match.id}">${escapeHtml(kyivTime)}</span>
           ${cityMarkup}
           ${localTimeMarkup}
-          <span class="match-meta-sep">·</span>
-          <span class="match-temp" data-match-temp data-match-id="${match.id}">${escapeHtml(tempValue)}</span>
         </div>
-        ${rainMarkup}
       </div>
       <article class="match">
         ${oddsBlock}

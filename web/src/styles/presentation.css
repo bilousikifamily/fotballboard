@@ -352,7 +352,6 @@ a {
 .presentation-match-card[data-view-mode="chart"] .presentation-match-card__header .presentation-match-card__time,
 .presentation-match-card[data-view-mode="chart"] .presentation-match-card__header .presentation-match-card__meta,
 .presentation-match-card[data-view-mode="chart"] .presentation-match-card__teams:not(:has(.presentation-match-card__vs)),
-.presentation-match-card[data-view-mode="chart"] .presentation-match-weather,
 .presentation-match-card[data-view-mode="chart"] .presentation-probabilities,
 .presentation-match-card[data-view-mode="chart"] .presentation-match-predictions {
   display: none;
@@ -371,7 +370,6 @@ a {
   justify-content: center;
 }
 
-.presentation-match-card[data-view-mode="average"] .presentation-match-weather,
 .presentation-match-card[data-view-mode="average"] .presentation-probabilities,
 .presentation-match-card[data-view-mode="average"] .presentation-match-predictions,
 .presentation-match-card[data-view-mode="average"] .presentation-match-history {
@@ -464,10 +462,6 @@ a {
 
 .presentation-match-card__teams {
   --animation-delay: 1;
-}
-
-.presentation-match-weather {
-  --animation-delay: 2;
 }
 
 .presentation-probabilities {
@@ -607,48 +601,6 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.presentation-match-weather {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.8rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(245, 246, 250, 0.7);
-}
-
-.presentation-match-weather__temp {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-
-.presentation-match-weather__rain {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.presentation-weather-icon {
-  font-size: 1.2rem;
-}
-
-.presentation-match-weather__bar {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-.presentation-match-weather__bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #5f97ff, #8dd2ff);
-  transition: width 200ms ease;
 }
 
 .presentation-match-predictions {

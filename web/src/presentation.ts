@@ -2,13 +2,7 @@ import { escapeAttribute, escapeHtml } from "./utils/escape";
 import { formatKyivDateTime, formatKyivDateShort } from "./formatters/dates";
 import { formatPredictionName } from "./formatters/names";
 import { formatClubName, getMatchTeamInfo } from "./features/clubs";
-import {
-  normalizeRainProbability,
-  formatRainProbability,
-  formatTemperature,
-  getWeatherIcon,
-  renderTeamLogo
-} from "./screens/matches";
+import { renderTeamLogo } from "./screens/matches";
 import {
   getPresentationUpdatedAt,
   loadPresentationMatches,
@@ -28,7 +22,6 @@ const PRESENTATION_LAST5_TEAM_KEY = "presentation.last5Team";
 type PresentationViewMode = 
   | "logos-only"      // НАСТУПНИЙ МАТЧ - only two logos
   | "stage"           // СТАДІЯ - tournament and stage
-  | "weather"         // ПОГОДА - humidity and temperature
   | "probability"     // ЙМОВІРНІСТЬ - probability 1 / X / 2
   | "last5"           // ОСТАННІ 5 МАТЧІВ - filters for two teams
   | "average-score";  // СЕРЕДНІЙ РАХУНОК - logos and average score
@@ -64,7 +57,6 @@ function getViewMode(): PresentationViewMode {
   if (
     stored === "logos-only" ||
     stored === "stage" ||
-    stored === "weather" ||
     stored === "probability" ||
     stored === "last5" ||
     stored === "average-score"
@@ -193,10 +185,6 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
   const awayLogo = logos.awayLogo;
   const homeLogoFallback = logos.homeLogoFallback;
   const awayLogoFallback = logos.awayLogoFallback;
-  const rainPercent = normalizeRainProbability(match.rainProbability ?? null);
-  const rainLabel = formatRainProbability(rainPercent);
-  const weatherIcon = getWeatherIcon(match.weatherCondition ?? null);
-  const tempLabel = formatTemperature(match.weatherTempC ?? null);
   const venueName = typeof match.venueName === "string" ? match.venueName.trim() : "";
   const venueCity = typeof match.venueCity === "string" ? match.venueCity.trim() : "";
   const venueCityLabel = venueCity ? venueCity.toUpperCase() : "";
@@ -244,35 +232,6 @@ function renderMatchCard(match: PresentationMatch, viewMode: PresentationViewMod
           </div>
           <div class="presentation-match-team">
             ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
-          </div>
-        </div>
-      </article>
-    `;
-  }
-  
-  if (viewMode === "weather") {
-    // 3. ПОГОДА - humidity and temperature
-    return `
-      <article class="presentation-match-card" data-view-mode="${viewMode}">
-        <div class="presentation-match-card__teams">
-          <div class="presentation-match-team">
-            ${renderTeamLogo(homeName, homeLogo, homeLogoFallback)}
-          </div>
-          <div class="presentation-match-team">
-            ${renderTeamLogo(awayName, awayLogo, awayLogoFallback)}
-          </div>
-        </div>
-        <div class="presentation-match-weather">
-          <div class="presentation-match-weather__temp">
-            <span>${escapeHtml(tempLabel)}</span>
-            ${match.weatherTimezone ? `<span>${escapeHtml(match.weatherTimezone.toUpperCase())}</span>` : match.venueCity ? `<span>${escapeHtml(match.venueCity.toUpperCase())}</span>` : ""}
-          </div>
-          <div class="presentation-match-weather__rain">
-            <span class="presentation-weather-icon" aria-hidden="true">${weatherIcon}</span>
-            <div class="presentation-match-weather__bar">
-              <span style="width: ${rainPercent ?? 0}%"></span>
-            </div>
-            <span>${escapeHtml(rainLabel)}</span>
           </div>
         </div>
       </article>

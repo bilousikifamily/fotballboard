@@ -34,16 +34,6 @@ export type PredictionsResponse =
   | { ok: true; predictions: PredictionView[] }
   | { ok: false; error: string };
 
-export type MatchWeatherResponse =
-  | {
-      ok: true;
-      rain_probability: number | null;
-      weather_condition?: string | null;
-      weather_temp_c?: number | null;
-      weather_timezone?: string | null;
-    }
-  | { ok: false; error: string };
-
 export type FactionEntry = {
   key: "faction_club_id";
   value: string;
@@ -292,11 +282,6 @@ export type Match = {
   venue_lon?: number | null;
   tournament_name?: string | null;
   tournament_stage?: string | null;
-  rain_probability?: number | null;
-  weather_fetched_at?: string | null;
-  weather_condition?: string | null;
-  weather_temp_c?: number | null;
-  weather_timezone?: string | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
   odds_manual_home?: number | null;

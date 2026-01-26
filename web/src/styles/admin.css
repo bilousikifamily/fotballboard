@@ -128,8 +128,7 @@
   padding: 10px 12px !important;
 }
 
-.admin-pending-card .match-time,
-.admin-pending-card .match-weather-row {
+.admin-pending-card .match-time {
   font-size: 0.7rem !important;
   gap: 4px !important;
 }
