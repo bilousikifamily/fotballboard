@@ -219,6 +219,7 @@ export function renderFactionMembersRows(
       const points = typeof member.points_total === "number" ? member.points_total : 0;
       const safePoints = escapeHtml(String(points));
       const isSelf = highlightId !== null && member.id === highlightId;
+      const isTopMember = topMembers.some((topMember) => topMember.id === member.id);
       const avatarLogo = getAvatarLogoPath(member.avatar_choice);
       const avatar = factionLogo
         ? `<img class="table-avatar logo-avatar" src="${escapeAttribute(factionLogo)}" alt="" />`
@@ -227,7 +228,8 @@ export function renderFactionMembersRows(
           : member.photo_url
           ? `<img class="table-avatar" src="${escapeAttribute(member.photo_url)}" alt="" />`
           : `<div class="table-avatar placeholder"></div>`;
-      const prizeIcon = globalPrizeSrc ? `<img src="${escapeAttribute(globalPrizeSrc)}" alt="" />` : "";
+      const prizeIcon =
+        isTopMember && globalPrizeSrc ? `<img src="${escapeAttribute(globalPrizeSrc)}" alt="" />` : "";
       return `
         <div class="leaderboard-row${isSelf ? " is-self" : ""}">
           <div class="leaderboard-rank" aria-hidden="true"></div>

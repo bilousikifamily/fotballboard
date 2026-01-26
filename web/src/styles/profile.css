@@ -275,7 +275,7 @@ body.profile-tab-active #app {
 }
 
 .screen.screen--profile .panel.faction-members {
-  height: 100%;
+  height: auto;
 }
 
 .screen.screen--profile .panel.faction-recent-messages {
