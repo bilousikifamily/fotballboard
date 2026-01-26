@@ -394,13 +394,16 @@ async function handlePendingAction(event: Event): Promise<void> {
       }
       const { response, data } = await postOddsRefresh(API_BASE, { initData: "", match_id: matchId, debug: true }, token);
       if (!response.ok || !data?.ok) {
+        const errorMsg = `Не вдалося підтягнути коефіцієнти для матчу ${matchId}. Status: ${response.status}, Error: ${data?.error ?? data?.message ?? "unknown"}`;
         setStatus(pendingStatus, "Не вдалося підтягнути коефіцієнти.");
+        addLog("error", errorMsg, { response, data });
         return;
       }
       setStatus(pendingStatus, "Коефіцієнти оновлено ✅");
       await loadPendingMatches();
-    } catch {
+    } catch (error) {
       setStatus(pendingStatus, "Не вдалося підтягнути коефіцієнти.");
+      addLog("error", `Помилка при оновленні коефіцієнтів для матчу ${matchId}`, error);
     }
     return;
   }
