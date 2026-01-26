@@ -127,7 +127,6 @@ const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
 const FACTION_CHAT_PREVIEW_LIMIT = 2;
 const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada";
-const ADMIN_TOKEN_STORAGE_KEY = "presentation.admin.token";
 let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
   { id: "english-premier-league", label: "АПЛ", flag: "🇬🇧" },
@@ -298,11 +297,7 @@ function bootstrapDev(): void {
 }
 
 function getStoredAdminToken(): string | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  const token = window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
-  return token?.trim() || undefined;
+  return undefined;
 }
 
 function getDevMatches(): Match[] {
@@ -2326,7 +2321,6 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
       home_club_id: homeClubId,
       away_club_id: awayClubId,
       kickoff_at: kickoff,
-      admin_token: adminToken
     }, adminToken);
     if (!response.ok || !data.ok) {
       if (status) {
@@ -2369,8 +2363,7 @@ async function confirmPendingMatch(
     const adminToken = getStoredAdminToken();
     const { response, data } = await postConfirmMatch(apiBase, {
       initData,
-      match_id: matchId,
-      admin_token: adminToken
+      match_id: matchId
     }, adminToken);
     if (!response.ok || !data.ok) {
       if (statusEl) {
@@ -2418,8 +2411,7 @@ async function refreshPendingMatchOdds(
     const { response, data } = await postOddsRefresh(apiBase, {
       initData,
       match_id: matchId,
-      debug: true,
-      admin_token: adminToken
+      debug: true
     }, adminToken);
     if (!response.ok || !data || !data.ok) {
       if (statusEl) {
@@ -2482,8 +2474,7 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
       home_score: homeScore,
       away_score: awayScore,
       home_avg_rating: homeRating,
-      away_avg_rating: awayRating,
-      admin_token: adminToken
+      away_avg_rating: awayRating
     }, adminToken);
     if (!response.ok || !data.ok) {
       if (status) {

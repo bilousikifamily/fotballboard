@@ -80,6 +80,7 @@ import {
 } from "./services/apiFootball";
 import { deleteMessage, getUpdateMessage, handleUpdate, sendMessage, sendPhoto } from "./services/telegram";
 import { formatClubName } from "./utils/clubs";
+import { createAdminJwt, verifyAdminJwt } from "./services/adminSession";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
 
 const STARTING_POINTS = 100;
@@ -126,35 +127,45 @@ const KNOWN_API_TEAM_IDS: Record<string, number> = {
   "as-monaco": 200
 };
 
-const ADMIN_TOKEN_HEADER = "x-presentation-admin-token";
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_LOGIN_MAX_ATTEMPTS = 5;
+const ADMIN_LOGIN_BLOCK_MS = 15 * 60 * 1000;
+const adminLoginState = new Map<string, { attempts: number; firstAttempt: number; blockedUntil?: number }>();
+
+type AdminAccessError = "missing_token" | "invalid_token" | "token_expired" | "missing_secret" | "bad_initData";
 
 async function authorizePresentationAdminAccess(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient | null,
   env: Env,
-  initData?: string,
-  adminToken?: string
-): Promise<{ ok: true; user?: TelegramUser } | { ok: false; error: "bad_initData" | "forbidden" }> {
-  const trimmedInitData = initData?.trim() ?? "";
-  if (trimmedInitData) {
-    const auth = await authenticateInitData(trimmedInitData, env.BOT_TOKEN);
+  request: Request,
+  initData?: string
+): Promise<{ ok: true; user?: TelegramUser } | { ok: false; error: AdminAccessError }> {
+  const token = getAdminBearerToken(request);
+  if (!token) {
+    return { ok: false, error: "missing_token" };
+  }
+  const secret = env.ADMIN_JWT_SECRET?.trim();
+  if (!secret) {
+    return { ok: false, error: "missing_secret" };
+  }
+  const verification = await verifyAdminJwt(token, secret);
+  if (!verification.ok) {
+    const error = verification.error === "expired" ? "token_expired" : "invalid_token";
+    return { ok: false, error };
+  }
+  if (initData) {
+    const auth = await authenticateInitData(initData, env.BOT_TOKEN);
     if (!auth.ok || !auth.user) {
       return { ok: false, error: "bad_initData" };
     }
     await storeUser(supabase, auth.user);
-    const isAdmin = await checkAdmin(supabase, auth.user.id);
-    if (!isAdmin) {
-      return { ok: false, error: "forbidden" };
-    }
     return { ok: true, user: auth.user };
   }
+  return { ok: true };
+}
 
-  const DEFAULT_ADMIN_TOKEN = "Qwe123Asd321";
-  const expected = env.PRESENTATION_ADMIN_TOKEN?.trim() || DEFAULT_ADMIN_TOKEN;
-  if (adminToken?.trim() === expected) {
-    return { ok: true };
-  }
-
-  return { ok: false, error: "forbidden" };
+function adminAccessErrorStatus(error: AdminAccessError): number {
+  return error === "missing_secret" ? 500 : 401;
 }
 
 type ClassicoFaction = "real_madrid" | "barcelona";
@@ -398,12 +409,118 @@ function formatFactionChatUrl(ref: FactionChatRef | undefined | null): string | 
   return null;
 }
 
+function getClientIp(request: Request): string {
+  return (
+    request.headers.get("CF-Connecting-IP") ??
+    request.headers.get("X-Real-IP") ??
+    request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
+function isLoginBlocked(ip: string): boolean {
+  const entry = adminLoginState.get(ip);
+  if (!entry) {
+    return false;
+  }
+  const now = Date.now();
+  if (entry.blockedUntil) {
+    if (entry.blockedUntil > now) {
+      return true;
+    }
+    adminLoginState.delete(ip);
+    return false;
+  }
+  if (now - entry.firstAttempt > ADMIN_LOGIN_WINDOW_MS) {
+    adminLoginState.delete(ip);
+    return false;
+  }
+  return false;
+}
+
+function recordFailedLoginAttempt(ip: string): void {
+  const now = Date.now();
+  const entry = adminLoginState.get(ip);
+  if (!entry || now - entry.firstAttempt > ADMIN_LOGIN_WINDOW_MS) {
+    adminLoginState.set(ip, { attempts: 1, firstAttempt: now });
+    return;
+  }
+  const updated = {
+    attempts: entry.attempts + 1,
+    firstAttempt: entry.firstAttempt,
+    blockedUntil: entry.blockedUntil
+  };
+  if (!updated.blockedUntil && updated.attempts >= ADMIN_LOGIN_MAX_ATTEMPTS) {
+    updated.blockedUntil = now + ADMIN_LOGIN_BLOCK_MS;
+  }
+  adminLoginState.set(ip, updated);
+}
+
+function resetLoginAttempts(ip: string): void {
+  adminLoginState.delete(ip);
+}
+
+function getAdminBearerToken(request: Request): string | null {
+  const header = request.headers.get("Authorization");
+  if (!header) {
+    return null;
+  }
+  const [scheme, token] = header.trim().split(" ");
+  if (!scheme || scheme.toLowerCase() !== "bearer" || !token) {
+    return null;
+  }
+  return token.trim();
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === "/healthcheck") {
       return jsonResponse({ ok: true });
+    }
+
+    if (url.pathname === "/api/admin/login") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const clientIp = getClientIp(request);
+      const userAgent = request.headers.get("User-Agent") ?? "";
+      if (isLoginBlocked(clientIp)) {
+        console.warn("Admin login rate limited", { ip: clientIp });
+        return jsonResponse({ ok: false, error: "rate_limited" }, 429, corsHeaders());
+      }
+
+      const body = await readJson<{ username?: string; password?: string }>(request);
+      if (!body) {
+        recordFailedLoginAttempt(clientIp);
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const username = String(body.username ?? "").trim();
+      const password = String(body.password ?? "");
+      const expectedUsername = env.PRESENTATION_ADMIN_USERNAME?.trim();
+      const expectedPassword = env.PRESENTATION_ADMIN_PASSWORD?.trim();
+      const jwtSecret = env.ADMIN_JWT_SECRET?.trim();
+      if (!expectedUsername || !expectedPassword || !jwtSecret) {
+        console.error("Admin login is not configured");
+        return jsonResponse({ ok: false, error: "server_error" }, 500, corsHeaders());
+      }
+
+      if (!username || !password || username !== expectedUsername || password !== expectedPassword) {
+        recordFailedLoginAttempt(clientIp);
+        console.warn("Admin login failed", { ip: clientIp, userAgent });
+        return jsonResponse({ ok: false, error: "invalid_credentials" }, 401, corsHeaders());
+      }
+
+      const token = await createAdminJwt({ sub: expectedUsername, scope: "admin" }, jwtSecret);
+      resetLoginAttempts(clientIp);
+      console.info("Admin login success", { ip: clientIp, userAgent });
+      return jsonResponse({ ok: true, token }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/auth") {
@@ -623,22 +740,14 @@ export default {
       }
 
       const initData = getInitDataFromHeaders(request);
-      const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
-      
-      // Allow admin token for admin access, or regular user authentication
-      if (adminToken) {
-        const authResult = await authorizePresentationAdminAccess(
-          supabase,
-          env,
-          initData,
-          adminToken
-        );
+      const adminBearer = getAdminBearerToken(request);
+      if (adminBearer) {
+        const authResult = await authorizePresentationAdminAccess(supabase, env, request, initData);
         if (!authResult.ok) {
-          const status = authResult.error === "bad_initData" ? 401 : 403;
+          const status = adminAccessErrorStatus(authResult.error);
           return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
         }
       } else {
-        // Regular user authentication
         if (!initData) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
         }
@@ -917,29 +1026,29 @@ export default {
       }
 
       if (request.method === "GET") {
-        const initData = getInitDataFromHeaders(request);
-        const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
-        
-        // Перевіряємо, чи це адмін запит
-        let isAdmin = false;
-        if (adminToken) {
-          const authResult = await authorizePresentationAdminAccess(
-            supabase,
-            env,
-            initData,
-            adminToken
-          );
-          isAdmin = authResult.ok;
+      const initData = getInitDataFromHeaders(request);
+      const adminBearer = getAdminBearerToken(request);
+      let isAdmin = false;
+      let adminAuthResult: { ok: true; user?: TelegramUser } | { ok: false; error: AdminAccessError } | null = null;
+      if (adminBearer) {
+        adminAuthResult = await authorizePresentationAdminAccess(supabase, env, request, initData);
+        if (!adminAuthResult.ok) {
+          const status = adminAccessErrorStatus(adminAuthResult.error);
+          return jsonResponse({ ok: false, error: adminAuthResult.error }, status, corsHeaders());
         }
-        
-        const auth = await authenticateInitData(initData, env.BOT_TOKEN);
-        if (!auth.ok && !isAdmin) {
+        isAdmin = true;
+      }
+
+      let auth: { ok: true; user?: TelegramUser };
+      if (isAdmin) {
+        auth = adminAuthResult!;
+      } else {
+        auth = await authenticateInitData(initData, env.BOT_TOKEN);
+        if (!auth.ok || !auth.user) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
         }
-
-        if (auth.user) {
-          await storeUser(supabase, auth.user);
-        }
+        await storeUser(supabase, auth.user);
+      }
 
         const date = url.searchParams.get("date") || undefined;
         // Для адміна завантажуємо всі матчі (включаючи "pending")
@@ -980,14 +1089,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        body.initData,
-        body.admin_token
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
@@ -1017,15 +1121,9 @@ export default {
       }
 
       const initData = getInitDataFromHeaders(request);
-      const adminToken = request.headers.get(ADMIN_TOKEN_HEADER) ?? undefined;
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        initData,
-        adminToken
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
@@ -1055,14 +1153,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        body.initData,
-        body.admin_token
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
@@ -1115,7 +1208,6 @@ export default {
 
       const body = await readJson<{
         initData?: string;
-        admin_token?: string;
         match_id?: number | string;
         debug?: boolean;
       }>(request);
@@ -1123,14 +1215,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        body.initData,
-        body.admin_token
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
@@ -1178,7 +1265,14 @@ export default {
       }
 
       const initData = body.initData?.trim() ?? "";
-      if (initData) {
+      const adminBearer = getAdminBearerToken(request);
+      if (adminBearer) {
+        const authResult = await authorizePresentationAdminAccess(supabase, env, request, initData || undefined);
+        if (!authResult.ok) {
+          const status = adminAccessErrorStatus(authResult.error);
+          return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+        }
+      } else if (initData) {
         const auth = await authenticateInitData(initData, env.BOT_TOKEN);
         if (!auth.ok || !auth.user) {
           return jsonResponse({ ok: false, error: "bad_initData" }, 401, corsHeaders());
@@ -1190,11 +1284,7 @@ export default {
           return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
         }
       } else {
-        const token = body.admin_token?.trim() ?? "";
-        const expected = env.PRESENTATION_ADMIN_TOKEN?.trim() ?? "";
-        if (!token || !expected || token !== expected) {
-          return jsonResponse({ ok: false, error: "forbidden" }, 403, corsHeaders());
-        }
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
       }
 
       if (!env.API_FOOTBALL_KEY) {
@@ -1426,14 +1516,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        body.initData,
-        body.admin_token
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
@@ -1479,14 +1564,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        body.initData,
-        body.admin_token
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
@@ -1551,14 +1631,9 @@ export default {
         return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
       }
 
-      const authResult = await authorizePresentationAdminAccess(
-        supabase,
-        env,
-        body.initData,
-        body.admin_token
-      );
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
       if (!authResult.ok) {
-        const status = authResult.error === "bad_initData" ? 401 : 403;
+        const status = adminAccessErrorStatus(authResult.error);
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 

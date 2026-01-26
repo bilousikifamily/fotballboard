@@ -18,6 +18,10 @@ export type MatchesResponse =
   | { ok: true; matches: Match[] }
   | { ok: false; error: string };
 
+export type AdminLoginResponse =
+  | { ok: true; token: string }
+  | { ok: false; error: string };
+
 export type PendingMatchesResponse =
   | { ok: true; matches: Match[] }
   | { ok: false; error: string };

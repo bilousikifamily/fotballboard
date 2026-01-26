@@ -11,17 +11,15 @@ import {
   postResult,
   postConfirmMatch
 } from "./api/matches";
+import { postAdminLogin } from "./api/admin";
 import { fetchLeaderboard } from "./api/leaderboard";
 import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderPendingMatchesList } from "./screens/matches";
 import { formatKyivDateTime, getKyivDateString } from "./formatters/dates";
 import { toKyivISOString } from "./utils/time";
 
-const LOGIN_USERNAME = "artur2026";
-const LOGIN_PASSWORD = "Qwe123Asd321";
-const AUTH_KEY = "presentation.admin.auth";
-const ADMIN_TOKEN_KEY = "presentation.admin.token";
 const API_BASE = import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
+let adminSessionToken: string | null = null;
 const BUILD_ID = import.meta.env.VITE_BUILD_ID ?? "";
 const BUILD_TIME = import.meta.env.VITE_BUILD_TIME ?? "";
 
@@ -215,7 +213,7 @@ function showAdmin(): void {
 }
 
 function getAdminToken(): string {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY) ?? "";
+  return adminSessionToken ?? "";
 }
 
 function updateBuildBadge(): void {
@@ -329,9 +327,14 @@ async function loadMatches(): Promise<void> {
 
   setStatus(pendingStatus, "Завантаження матчів…");
   try {
+    const token = getAdminToken();
+    if (!token) {
+      setStatus(pendingStatus, "Ви не авторизовані.");
+      return;
+    }
     // Для адміна завантажуємо всі матчі без фільтрації по даті
     // Робимо запит без параметра date, щоб отримати всі матчі
-    const { response, data } = await fetchMatches(API_BASE, "", "", getAdminToken());
+    const { response, data } = await fetchMatches(API_BASE, "", "", token);
     if (!response.ok || !data.ok || !data.matches) {
       setStatus(pendingStatus, "Не вдалося завантажити матчі.");
       addLog("error", "Помилка при завантаженні матчів", { response, data });
@@ -354,7 +357,12 @@ async function loadPendingMatches(): Promise<void> {
 
   setStatus(pendingStatus, "Завантаження списку…");
   try {
-    const { response, data } = await fetchPendingMatches(API_BASE, "", getAdminToken());
+    const token = getAdminToken();
+    if (!token) {
+      setStatus(pendingStatus, "Ви не авторизовані.");
+      return;
+    }
+    const { response, data } = await fetchPendingMatches(API_BASE, "", token);
     if (!response.ok || !data.ok) {
       const errorMsg = `Не вдалося завантажити очікування. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(pendingStatus, "Не вдалося завантажити очікування.");
@@ -384,11 +392,12 @@ async function handlePendingAction(event: Event): Promise<void> {
     }
     setStatus(pendingStatus, "Оновлення коефіцієнтів…");
     try {
-      const { response, data } = await postOddsRefresh(
-        API_BASE,
-        { initData: "", match_id: matchId, debug: true, admin_token: getAdminToken() },
-        getAdminToken()
-      );
+      const token = getAdminToken();
+      if (!token) {
+        setStatus(pendingStatus, "Ви не авторизовані.");
+        return;
+      }
+      const { response, data } = await postOddsRefresh(API_BASE, { initData: "", match_id: matchId, debug: true }, token);
       if (!response.ok || !data?.ok) {
         setStatus(pendingStatus, "Не вдалося підтягнути коефіцієнти.");
         return;
@@ -409,11 +418,12 @@ async function handlePendingAction(event: Event): Promise<void> {
     }
     setStatus(pendingStatus, "Підтвердження матчу…");
     try {
-      const { response, data } = await postConfirmMatch(
-        API_BASE,
-        { initData: "", match_id: matchId, admin_token: getAdminToken() },
-        getAdminToken()
-      );
+      const token = getAdminToken();
+      if (!token) {
+        setStatus(pendingStatus, "Ви не авторизовані.");
+        return;
+      }
+      const { response, data } = await postConfirmMatch(API_BASE, { initData: "", match_id: matchId }, token);
       if (!response.ok || !data.ok) {
         setStatus(pendingStatus, "Не вдалося підтвердити матч.");
         return;
@@ -432,7 +442,12 @@ async function loadLeaderboard(): Promise<void> {
   }
   setStatus(usersStatus, "Завантаження користувачів…");
   try {
-    const { response, data } = await fetchLeaderboard(API_BASE, "", 200, getAdminToken());
+    const token = getAdminToken();
+    if (!token) {
+      setStatus(usersStatus, "Ви не авторизовані.");
+      return;
+    }
+    const { response, data } = await fetchLeaderboard(API_BASE, "", 200, token);
     if (!response.ok || !data.ok) {
       setStatus(usersStatus, "Не вдалося завантажити користувачів.");
       return;
@@ -488,9 +503,13 @@ async function handleAddMatch(event: Event): Promise<void> {
     setStatus(addStatus, "Обидві команди не можуть бути однаковими.");
     return;
   }
+  const token = getAdminToken();
+  if (!token) {
+    setStatus(addStatus, "Ви не авторизовані.");
+    return;
+  }
   const payload = {
     initData: "",
-    admin_token: getAdminToken(),
     league_id: leagueId,
     home_club_id: homeClubId,
     away_club_id: awayClubId,
@@ -500,12 +519,12 @@ async function handleAddMatch(event: Event): Promise<void> {
   };
   setStatus(addStatus, "Створення матчу…");
   try {
-    const { response, data } = await postMatch(API_BASE, payload, getAdminToken());
+    const { response, data } = await postMatch(API_BASE, payload, token);
     if (!response.ok || !data.ok || !data.match) {
       setStatus(addStatus, "Не вдалося додати матч.");
       return;
     }
-    await postOddsRefresh(API_BASE, { initData: "", match_id: data.match.id, admin_token: getAdminToken() }, getAdminToken());
+    await postOddsRefresh(API_BASE, { initData: "", match_id: data.match.id }, token);
     setStatus(addStatus, "Матч додано. Коефіцієнти оновлені.");
     addForm.reset();
     await Promise.all([loadMatches(), loadPendingMatches()]);
@@ -535,6 +554,11 @@ async function handleResult(event: Event): Promise<void> {
   ) {
     return;
   }
+  const token = getAdminToken();
+  if (!token) {
+    setStatus(resultStatus, "Ви не авторизовані.");
+    return;
+  }
   setStatus(resultStatus, "Збереження результату…");
   try {
     const { response, data } = await postResult(
@@ -545,10 +569,9 @@ async function handleResult(event: Event): Promise<void> {
         home_score: homeScore,
         away_score: awayScore,
         home_avg_rating: homeRating,
-        away_avg_rating: awayRating,
-        admin_token: getAdminToken()
+        away_avg_rating: awayRating
       },
-      getAdminToken()
+      token
     );
     if (!response.ok || !data.ok) {
       setStatus(resultStatus, "Не вдалося зберегти результат.");
@@ -566,9 +589,14 @@ async function handleAnnouncement(): Promise<void> {
   if (!API_BASE) {
     return;
   }
+  const token = getAdminToken();
+  if (!token) {
+    setStatus(announceStatus, "Ви не авторизовані.");
+    return;
+  }
   setStatus(announceStatus, "Надсилання повідомлення…");
   try {
-    const { response, data } = await postMatchesAnnouncement(API_BASE, "", getAdminToken());
+    const { response, data } = await postMatchesAnnouncement(API_BASE, "", token);
     if (!response.ok || !data.ok) {
       const errorMsg = `Не вдалося надіслати повідомлення. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(announceStatus, "Не вдалося надіслати повідомлення.");
@@ -587,10 +615,15 @@ async function handlePredictionsStats(): Promise<void> {
   if (!API_BASE) {
     return;
   }
+  const token = getAdminToken();
+  if (!token) {
+    setStatus(predictionsStatsStatus, "Ви не авторизовані.");
+    return;
+  }
   setStatus(predictionsStatsStatus, "Розрахунок та надсилання статистики…");
   addLog("info", "Початок розрахунку статистики прогнозів");
   try {
-    const { response, data } = await postFactionPredictionsStats(API_BASE, "", getAdminToken());
+    const { response, data } = await postFactionPredictionsStats(API_BASE, "", token);
     if (!response.ok || !data.ok) {
       const errorMsg = `Не вдалося надіслати статистику. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
       setStatus(predictionsStatsStatus, "Не вдалося надіслати статистику.");
@@ -645,51 +678,63 @@ async function initializeAdminView(): Promise<void> {
   await Promise.all([loadMatches(), loadPendingMatches()]);
 }
 
-function handleLogin(event: Event): void {
+async function handleLogin(event: Event): Promise<void> {
   event.preventDefault();
-  if (!loginForm) {
+  if (!loginForm || !API_BASE) {
     return;
   }
   const formData = new FormData(loginForm);
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (username === LOGIN_USERNAME && password === LOGIN_PASSWORD) {
-    sessionStorage.setItem(AUTH_KEY, "1");
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, password);
+  if (!username || !password) {
+    loginError && (loginError.textContent = "Введіть логін і пароль.");
+    return;
+  }
+  const submitButton = loginForm.querySelector<HTMLButtonElement>("button[type=submit]");
+  submitButton?.setAttribute("disabled", "true");
+  try {
+    const { response, data } = await postAdminLogin(API_BASE, { username, password });
+    if (!response.ok || !data.ok || !data.token) {
+      loginError && (loginError.textContent = "Невірний логін або пароль.");
+      return;
+    }
+    adminSessionToken = data.token;
     loginError && (loginError.textContent = "");
     showAdmin();
     populateLeagueOptions();
     populateClubOptions(leagueSelect?.value ?? MATCH_LEAGUES[0].id);
     void initializeAdminView();
-    return;
-  }
-  if (loginError) {
-    loginError.textContent = "Невірний логін або пароль.";
+  } catch (error) {
+    loginError && (loginError.textContent = "Не вдалося виконати вхід.");
+    addLog("error", "Помилка при авторизації", error);
+  } finally {
+    submitButton?.removeAttribute("disabled");
   }
 }
 
 function handleLogout(): void {
-  sessionStorage.removeItem(AUTH_KEY);
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  adminSessionToken = null;
   state.leaderboardLoaded = false;
   state.leaderboard = [];
+  state.matches = [];
+  state.pending = [];
+  setStatus(pendingStatus, "");
+  setStatus(usersStatus, "");
+  setStatus(addStatus, "");
+  setStatus(resultStatus, "");
+  setStatus(announceStatus, "");
+  setStatus(predictionsStatsStatus, "");
   showLogin();
 }
 
 setupLogging();
 
 if (loginForm) {
-  loginForm.addEventListener("submit", handleLogin);
+  loginForm.addEventListener("submit", (event) => {
+    void handleLogin(event);
+  });
 }
 logoutButton?.addEventListener("click", handleLogout);
 attachListeners();
 updateBuildBadge();
-const isLogged = sessionStorage.getItem(AUTH_KEY) === "1";
-if (isLogged) {
-  showAdmin();
-  populateLeagueOptions();
-  populateClubOptions(leagueSelect?.value ?? MATCH_LEAGUES[0].id);
-  void initializeAdminView();
-} else {
-  showLogin();
-}
+showLogin();

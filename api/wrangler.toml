@@ -30,3 +30,6 @@ FACTION_CHAT_NAPOLI = "https://t.me/c/3415133128/458"
 FACTION_CHAT_DYNAMO_KYIV = "https://t.me/c/3415133128/459"
 FACTION_CHAT_SHAKHTAR = "https://t.me/c/3415133128/460"
 FACTION_CHAT_EXCLUDED_THREADS = "https://t.me/c/3415133128/701,https://t.me/c/3415133128/770"
+
+# Secrets for the new admin login flow (PRESENTATION_ADMIN_USERNAME, PRESENTATION_ADMIN_PASSWORD, ADMIN_JWT_SECRET)
+# must be configured via `npx wrangler secret put` before running `wrangler deploy`.

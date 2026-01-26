@@ -20,6 +20,9 @@ tg-webapp-starter/
 - `SUPABASE_SERVICE_ROLE_KEY` (Worker secret)
 - `WEBAPP_URL` (Worker var: Cloudflare Pages URL)
 - `VITE_API_BASE` (Web env: Worker URL)
+- `PRESENTATION_ADMIN_USERNAME` (Worker secret)
+- `PRESENTATION_ADMIN_PASSWORD` (Worker secret)
+- `ADMIN_JWT_SECRET` (Worker secret)
 
 ## Secrets setup (Cloudflare Workers)
 
@@ -29,6 +32,9 @@ npx wrangler login
 npx wrangler secret put BOT_TOKEN
 npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put PRESENTATION_ADMIN_USERNAME
+npx wrangler secret put PRESENTATION_ADMIN_PASSWORD
+npx wrangler secret put ADMIN_JWT_SECRET
 npx wrangler deploy
 ```
 
@@ -191,11 +197,13 @@ For real Telegram WebApp testing, you need a public URL (Cloudflare Tunnel or ng
 - `POST /api/avatar` -> update avatar logo choice
 - `POST /api/matches/result` -> admin sets final score + awards points
 - `POST /tg/webhook` -> Telegram updates
+- `POST /api/admin/login` -> exchange admin credentials for a short-lived JWT (15 min)
 
 ## Notes
 
 - The WebApp never sees the bot token.
 - `/api/auth` validates `initData` using Telegram HMAC algorithm.
+- Admin-only routes now require `Authorization: Bearer <token>` (token issued by `POST /api/admin/login` and valid for 15 minutes); keep the secret only in Cloudflare secrets.
 
 ## Presentation & admin pages
 

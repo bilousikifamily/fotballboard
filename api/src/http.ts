@@ -2,7 +2,7 @@ export function corsHeaders(): HeadersInit {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Telegram-InitData, X-Presentation-Admin-Token"
+    "Access-Control-Allow-Headers": "Content-Type, X-Telegram-InitData, Authorization"
   };
 }
 
