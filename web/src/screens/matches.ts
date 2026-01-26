@@ -228,6 +228,10 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
     : `<div class="predictions" data-predictions data-match-id="${match.id}" ${
         predicted ? "data-auto-open='true'" : ""
       }></div>`;
+  const factionAverageBlock =
+    options.admin || isPreview
+      ? ""
+      : `<div class="match-faction-average" data-match-faction-average data-match-id="${match.id}"></div>`;
 
   const adminLogoRow = options.admin
     ? `
@@ -263,6 +267,7 @@ function renderMatchCard(match: Match, options: MatchRenderOptions = {}): string
         <div class="match-average" data-match-average data-match-id="${match.id}"></div>
         ${closed ? "" : statusLine}
         ${form}
+        ${factionAverageBlock}
         ${predictionsBlock}
         ${closed ? statusLine : ""}
       </article>
