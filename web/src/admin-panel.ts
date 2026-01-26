@@ -7,6 +7,7 @@ import {
   postFactionPredictionsStats,
   postMatch,
   postMatchesAnnouncement,
+  postManualOdds,
   postOddsRefresh,
   postResult,
   postConfirmMatch
@@ -446,6 +447,49 @@ async function handlePendingAction(event: Event): Promise<void> {
     } catch (error) {
       setStatus(pendingStatus, "Не вдалося підтягнути коефіцієнти.");
       addLog("error", `Помилка при оновленні коефіцієнтів для матчу ${matchId}`, error);
+    }
+    return;
+  }
+
+  const manualOddsButton = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-save-odds]");
+  if (manualOddsButton) {
+    const matchId = Number.parseInt(manualOddsButton.dataset.adminSaveOdds ?? "", 10);
+    if (!Number.isFinite(matchId)) {
+      return;
+    }
+    const card = manualOddsButton.closest<HTMLElement>("[data-admin-pending-card]");
+    const homeInput = card?.querySelector<HTMLInputElement>("[data-admin-odds-home]");
+    const drawInput = card?.querySelector<HTMLInputElement>("[data-admin-odds-draw]");
+    const awayInput = card?.querySelector<HTMLInputElement>("[data-admin-odds-away]");
+    const homeOdd = Number.parseFloat(homeInput?.value ?? "");
+    const drawOdd = Number.parseFloat(drawInput?.value ?? "");
+    const awayOdd = Number.parseFloat(awayInput?.value ?? "");
+    if (!Number.isFinite(homeOdd) || !Number.isFinite(drawOdd) || !Number.isFinite(awayOdd)) {
+      setStatus(pendingStatus, "Вкажіть усі коефіцієнти.");
+      return;
+    }
+    setStatus(pendingStatus, "Збереження коефіцієнтів…");
+    try {
+      const token = getAdminToken();
+      if (!token) {
+        setStatus(pendingStatus, "Ви не авторизовані.");
+        return;
+      }
+      const { response, data } = await postManualOdds(
+        API_BASE,
+        { initData: "", match_id: matchId, home_odd: homeOdd, draw_odd: drawOdd, away_odd: awayOdd },
+        token
+      );
+      if (!response.ok || !data.ok) {
+        setStatus(pendingStatus, "Не вдалося зберегти коефіцієнти.");
+        addLog("error", `Не вдалося зберегти коефіцієнти для матчу ${matchId}. Status: ${response.status}, Error: ${data.error}`);
+        return;
+      }
+      setStatus(pendingStatus, "Коефіцієнти збережено ✅");
+      await loadPendingMatches();
+    } catch (error) {
+      setStatus(pendingStatus, "Не вдалося зберегти коефіцієнти.");
+      addLog("error", `Помилка при збереженні коефіцієнтів для матчу ${matchId}`, error);
     }
     return;
   }

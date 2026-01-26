@@ -171,6 +171,44 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.admin-odds-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-odds-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-odds-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.admin-odds-field input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 0.4rem 0.5rem;
+  color: inherit;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.admin-odds-field input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 139, 60, 0.25);
+}
+
 .admin-pending-title {
   margin: 0;
   font-weight: 600;

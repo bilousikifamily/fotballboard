@@ -21,3 +21,7 @@ create unique index if not exists club_api_map_api_team_id_unique on club_api_ma
 create index if not exists club_api_map_normalized_name_idx on club_api_map (normalized_name);
 
 alter table if exists matches add column if not exists start_digest_sent_at timestamptz;
+alter table if exists matches add column if not exists odds_manual_home double precision;
+alter table if exists matches add column if not exists odds_manual_draw double precision;
+alter table if exists matches add column if not exists odds_manual_away double precision;
+alter table if exists matches add column if not exists odds_manual_updated_at timestamptz;

@@ -83,6 +83,9 @@ export function renderPendingMatchesList(matches: Match[]): string {
   return matches
     .map((match) => {
       const preview = renderMatchCard(match, { preview: true, admin: true });
+      const manualHome = match.odds_manual_home ?? "";
+      const manualDraw = match.odds_manual_draw ?? "";
+      const manualAway = match.odds_manual_away ?? "";
       return `
         <div class="admin-pending-card" data-admin-pending-card data-match-id="${match.id}">
           ${preview}
@@ -92,6 +95,25 @@ export function renderPendingMatchesList(matches: Match[]): string {
             </button>
             <button class="button small-button" type="button" data-admin-confirm-match="${match.id}">
               ПІДТВЕРДИТИ
+            </button>
+          </div>
+          <div class="admin-odds-form" data-admin-odds-form>
+            <div class="admin-odds-inputs">
+              <label class="admin-odds-field">
+                <span>1</span>
+                <input type="number" min="1" step="0.01" inputmode="decimal" data-admin-odds-home value="${manualHome}" />
+              </label>
+              <label class="admin-odds-field">
+                <span>X</span>
+                <input type="number" min="1" step="0.01" inputmode="decimal" data-admin-odds-draw value="${manualDraw}" />
+              </label>
+              <label class="admin-odds-field">
+                <span>2</span>
+                <input type="number" min="1" step="0.01" inputmode="decimal" data-admin-odds-away value="${manualAway}" />
+              </label>
+            </div>
+            <button class="button secondary small-button" type="button" data-admin-save-odds="${match.id}">
+              ЗБЕРЕГТИ КОЕФІЦІЄНТИ
             </button>
           </div>
           <p class="muted small" data-admin-pending-status data-match-id="${match.id}"></p>

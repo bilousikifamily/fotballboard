@@ -7,6 +7,7 @@ import type {
   MatchWeatherResponse,
   MatchesResponse,
   OddsRefreshResponse,
+  ManualOddsResponse,
   PendingMatchesResponse,
   ResultResponse
 } from "../types";
@@ -92,6 +93,18 @@ export function postResult(
   adminSessionToken?: string
 ): Promise<{ response: Response; data: ResultResponse }> {
   return requestJson<ResultResponse>(`${apiBase}/api/matches/result`, {
+    method: "POST",
+    headers: authJsonHeaders(payload.initData, adminSessionToken),
+    body: JSON.stringify(payload)
+  });
+}
+
+export function postManualOdds(
+  apiBase: string,
+  payload: { initData: string; match_id: number; home_odd: number; draw_odd: number; away_odd: number },
+  adminSessionToken?: string
+): Promise<{ response: Response; data: ManualOddsResponse }> {
+  return requestJson<ManualOddsResponse>(`${apiBase}/api/matches/odds/manual`, {
     method: "POST",
     headers: authJsonHeaders(payload.initData, adminSessionToken),
     body: JSON.stringify(payload)

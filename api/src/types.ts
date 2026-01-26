@@ -434,6 +434,14 @@ export interface FactionPredictionsStatsPayload {
   initData?: string;
 }
 
+export interface ManualOddsPayload {
+  initData?: string;
+  match_id: number | string;
+  home_odd?: number | string;
+  draw_odd?: number | string;
+  away_odd?: number | string;
+}
+
 export interface DbMatch {
   id: number;
   home_team: string;
@@ -462,6 +470,10 @@ export interface DbMatch {
   api_fixture_id?: number | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
+  odds_manual_home?: number | null;
+  odds_manual_draw?: number | null;
+  odds_manual_away?: number | null;
+  odds_manual_updated_at?: string | null;
   has_prediction?: boolean;
 }
 

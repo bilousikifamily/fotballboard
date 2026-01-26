@@ -32,6 +32,7 @@ import type {
   MatchResultPayload,
   MatchResultPredictionStats,
   MatchConfirmPayload,
+  ManualOddsPayload,
   NicknamePayload,
   OddsDebugInfo,
   OddsDebugFixture,
@@ -1244,6 +1245,68 @@ export default {
         );
       }
       return jsonResponse({ ok: true, debug: oddsResult.debug }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/matches/odds/manual") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<ManualOddsPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const matchId = parseInteger(body.match_id);
+      if (matchId === null) {
+        return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+      }
+
+      const homeOdd = parseOddNumber(body.home_odd);
+      const drawOdd = parseOddNumber(body.draw_odd);
+      const awayOdd = parseOddNumber(body.away_odd);
+      if (!homeOdd || !drawOdd || !awayOdd) {
+        return jsonResponse({ ok: false, error: "bad_odds" }, 400, corsHeaders());
+      }
+
+      const update = {
+        odds_manual_home: homeOdd,
+        odds_manual_draw: drawOdd,
+        odds_manual_away: awayOdd,
+        odds_manual_updated_at: new Date().toISOString()
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from("matches")
+          .update(update)
+          .eq("id", matchId)
+          .select(
+            "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at, odds_manual_home, odds_manual_draw, odds_manual_away, odds_manual_updated_at"
+          )
+          .single();
+        if (error || !data) {
+          return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+        }
+        return jsonResponse({ ok: true, match: data as DbMatch }, 200, corsHeaders());
+      } catch (error) {
+        console.error("Failed to update manual odds", error);
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
     }
 
     if (url.pathname === "/api/clubs/sync") {
@@ -5748,7 +5811,7 @@ async function listMatches(supabase: SupabaseClient, date?: string): Promise<DbM
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at, odds_manual_home, odds_manual_draw, odds_manual_away, odds_manual_updated_at"
       )
       .in("status", ["scheduled", "started", "finished"])
       .order("kickoff_at", { ascending: true });
@@ -5778,7 +5841,7 @@ async function listAllMatches(supabase: SupabaseClient, date?: string): Promise<
     let query = supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at, odds_manual_home, odds_manual_draw, odds_manual_away, odds_manual_updated_at"
       )
       .order("kickoff_at", { ascending: true });
 
@@ -5827,7 +5890,7 @@ async function listPendingMatches(supabase: SupabaseClient): Promise<DbMatch[] |
     const { data, error } = await supabase
       .from("matches")
       .select(
-        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at"
+        "id, home_team, away_team, league_id, home_club_id, away_club_id, kickoff_at, status, home_score, away_score, venue_name, venue_city, venue_lat, venue_lon, tournament_name, tournament_stage, rain_probability, weather_fetched_at, weather_condition, weather_temp_c, weather_timezone, odds_json, odds_fetched_at, odds_manual_home, odds_manual_draw, odds_manual_away, odds_manual_updated_at"
       )
       .eq("status", "pending")
       .order("id", { ascending: false });
@@ -6015,6 +6078,12 @@ function extractOddsProbabilitiesFromMatch(
   match: DbMatch
 ): { home: number; draw: number; away: number } | null {
   if (!match.odds_json || !Array.isArray(match.odds_json) || !match.odds_json.length) {
+    const homeOdd = match.odds_manual_home;
+    const drawOdd = match.odds_manual_draw;
+    const awayOdd = match.odds_manual_away;
+    if (homeOdd && drawOdd && awayOdd) {
+      return toProbability(homeOdd, drawOdd, awayOdd);
+    }
     return null;
   }
 
@@ -6047,6 +6116,13 @@ function extractOddsProbabilitiesFromMatch(
         }
       }
     }
+  }
+
+  const homeOdd = match.odds_manual_home;
+  const drawOdd = match.odds_manual_draw;
+  const awayOdd = match.odds_manual_away;
+  if (homeOdd && drawOdd && awayOdd) {
+    return toProbability(homeOdd, drawOdd, awayOdd);
   }
 
   return null;

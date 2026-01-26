@@ -97,6 +97,10 @@ export type AnnouncementResponse =
   | { ok: true }
   | { ok: false; error: string };
 
+export type ManualOddsResponse =
+  | { ok: true; match: Match }
+  | { ok: false; error: string };
+
 export type FactionPredictionsStatsResponse =
   | { ok: true }
   | { ok: false; error: string };
@@ -295,6 +299,10 @@ export type Match = {
   weather_timezone?: string | null;
   odds_json?: unknown | null;
   odds_fetched_at?: string | null;
+  odds_manual_home?: number | null;
+  odds_manual_draw?: number | null;
+  odds_manual_away?: number | null;
+  odds_manual_updated_at?: string | null;
   has_prediction?: boolean;
   prediction_closes_at?: string | null;
 };

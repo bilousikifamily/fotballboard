@@ -30,7 +30,11 @@ export function getMatchWinnerProbabilities(
   homeName: string,
   awayName: string
 ): { home: number; draw: number; away: number } | null {
-  return extractOddsProbabilities(match.odds_json, homeName, awayName);
+  const oddsFromFeed = extractOddsProbabilities(match.odds_json, homeName, awayName);
+  if (oddsFromFeed) {
+    return oddsFromFeed;
+  }
+  return extractManualOddsProbabilities(match);
 }
 
 function extractOddsProbabilities(
@@ -73,6 +77,16 @@ function extractOddsProbabilities(
   }
 
   return null;
+}
+
+function extractManualOddsProbabilities(match: Match): { home: number; draw: number; away: number } | null {
+  const homeOdd = match.odds_manual_home ?? null;
+  const drawOdd = match.odds_manual_draw ?? null;
+  const awayOdd = match.odds_manual_away ?? null;
+  if (!homeOdd || !drawOdd || !awayOdd) {
+    return null;
+  }
+  return toProbability(homeOdd, drawOdd, awayOdd);
 }
 
 export function extractCorrectScoreProbability(
