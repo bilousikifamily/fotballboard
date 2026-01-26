@@ -11,7 +11,7 @@ const FACTION_PRIZE_MAP: Record<number, string> = {
   5: "/images/20.png"
 };
 const MAX_FACTION_CARDS = 6;
-const MAX_TOP_FACTION_CARDS = 3;
+const MAX_TOP_FACTION_CARDS = 5;
 
 const factionPrizeMap = new Map<string, string>();
 const factionRankCache = new Map<string, number>();
@@ -178,7 +178,7 @@ export function renderFactionMembersSection(entry: FactionEntry | null): string 
   const placeholderText = entry ? "Завантаження..." : "Фракцію ще не обрано.";
   return `
     <div class="faction-members-heading">
-      <h2>ТОП 3 ДЕПУТАТІВ ФРАКЦІЇ</h2>
+      <h2>ТОП 5 ДЕПУТАТІВ ФРАКЦІЇ</h2>
     </div>
     <section class="panel faction-members">
       <div class="faction-members-table" data-faction-members>
