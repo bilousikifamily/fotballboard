@@ -757,16 +757,20 @@ function attachListeners(): void {
     clearLogs();
   });
   logsRefreshButton?.addEventListener("click", () => {
-    void loadBotLogs(true);
+    addLog("info", "Запит bot-логів вручну…");
+    void loadBotLogs(true, true);
   });
 }
 
-async function loadBotLogs(initial = false): Promise<void> {
+async function loadBotLogs(initial = false, verbose = false): Promise<void> {
   if (!API_BASE) {
     return;
   }
   const token = getAdminToken();
   if (!token) {
+    if (verbose) {
+      addLog("warn", "Bot-логи: немає admin token.");
+    }
     return;
   }
   try {
@@ -780,6 +784,9 @@ async function loadBotLogs(initial = false): Promise<void> {
     }
     const logsToAdd = (data.logs ?? []).slice();
     if (!logsToAdd.length) {
+      if (verbose) {
+        addLog("info", "Bot-логи: нових записів немає.");
+      }
       return;
     }
     logsToAdd.forEach((entry) => {
@@ -791,6 +798,9 @@ async function loadBotLogs(initial = false): Promise<void> {
       const text = entry.text ?? "bot_log";
       addLog("error", `[bot] ${userLabel}${createdAt} ${text}`);
     });
+    if (verbose) {
+      addLog("info", `Bot-логи: завантажено ${logsToAdd.length} запис(ів).`);
+    }
   } catch (error) {
     addLog("error", "Помилка при завантаженні bot-логів", error);
   }
