@@ -310,11 +310,7 @@ async function showSubscriptionCard(
   const buttonText = "ПРИЄДНАТИСЬ";
   const caption = subscription.freeMonthUsed
     ? "Бажаєш долучитись до наступної сесії у ФУТБОЛЬНІЙ РАДІ?"
-    : [
-        "Перша сесія у ФУТБОЛЬНІЙ РАДІ — 0 ⭐",
-        `до ${freeSessionUntil} включно.`,
-        "Наступна сесія у ФУТБОЛЬНІЙ РАДІ — 100 ⭐"
-      ].join("\n");
+    : ["ПЕРША КАДЕНЦІЯ БЕЗКОШТОВНА.", "", "НАСТУПНА КАДЕНЦІЯ — 100⭐"].join("\n");
   const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
   const imageUrl = `${webappBaseUrl}${SUBSCRIPTION_CARD_IMAGE}`;
   const sendResult = await sendSubscriptionCard(env, message.chat.id, imageUrl, caption, {
@@ -598,10 +594,11 @@ async function grantFreeMonth(
     subscription_free_month_used: true
   });
   const expiresLabel = formatDate(nextExpiry);
+  const endLabel = formatKyivDayMonth(nextExpiry).toUpperCase();
   await sendMessage(
     env,
     chatId,
-    `Перший місяць безкоштовний ✅ Доступ до ${expiresLabel}. Наступного місяця — ${REGULAR_MONTH_PRICE} ⭐.`
+    `ВІТАЮ У ФУТБОЛЬНІЙ РАДІ!\nТВОЯ КАДЕНЦІЯ ЗАВЕРШУЄТЬСЯ ${endLabel}`
   );
   await insertBotLog(supabase, {
     text: "free_month_granted",
