@@ -1694,6 +1694,7 @@ export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(handlePredictionReminders(env));
     ctx.waitUntil(handleMatchStartDigests(env));
+    ctx.waitUntil(handleSubscriptionExpiryReminders(env));
   }
 };
 
@@ -1822,6 +1823,94 @@ async function insertBotDebugMessage(
     user_id: null,
     text: normalizedText
   });
+}
+
+async function handleSubscriptionExpiryReminders(env: Env): Promise<void> {
+  if (getKyivHour() !== 18) {
+    return;
+  }
+  const kyivDate = getKyivDateString();
+  const range = getKyivDayRange(kyivDate);
+  if (!range) {
+    return;
+  }
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Subscription reminders skipped: missing supabase");
+    return;
+  }
+
+  const { data: users, error } = await supabase
+    .from("users")
+    .select("id, subscription_expires_at")
+    .gte("subscription_expires_at", range.start)
+    .lte("subscription_expires_at", range.end);
+  if (error) {
+    console.error("Failed to load subscription reminders users", error);
+    return;
+  }
+
+  const userRows = (users as Array<{ id: number; subscription_expires_at: string | null }>) ?? [];
+  const userIds = userRows.map((row) => row.id).filter((id): id is number => typeof id === "number");
+  if (!userIds.length) {
+    return;
+  }
+
+  const reminded = await loadReminderUserIds(supabase, range, userIds);
+  const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
+  const imageUrl = `${webappBaseUrl}/images/subscription.png`;
+  const caption =
+    "ЗАВТРА РОЗПОЧИНАЄТЬСЯ НАСТУПНА КАДЕНЦІЯ.\nБАЖАЄШ ДОЛУЧИТИСЬ ДО ФУТБОЛЬНОЇ РАДИ?";
+
+  for (const userId of userIds) {
+    if (reminded.has(userId)) {
+      continue;
+    }
+    try {
+      await sendPhoto(env, userId, imageUrl, caption, {
+        inline_keyboard: [[{ text: "ПРИЄДНАТИСЬ", callback_data: "subscription_pay" }]]
+      });
+      await supabase.from("debug_updates").insert({
+        update_type: "subscription_reminder",
+        chat_id: userId,
+        thread_id: null,
+        message_id: null,
+        user_id: userId,
+        text: "reminder_sent",
+        created_at: new Date().toISOString()
+      });
+    } catch (sendError) {
+      console.error("Failed to send subscription reminder", { userId, sendError });
+    }
+  }
+}
+
+async function loadReminderUserIds(
+  supabase: SupabaseClient,
+  range: { start: string; end: string },
+  userIds: number[]
+): Promise<Set<number>> {
+  if (!userIds.length) {
+    return new Set();
+  }
+  const { data, error } = await supabase
+    .from("debug_updates")
+    .select("user_id")
+    .eq("update_type", "subscription_reminder")
+    .gte("created_at", range.start)
+    .lte("created_at", range.end)
+    .in("user_id", userIds);
+  if (error) {
+    console.error("Failed to load subscription reminder logs", error);
+    return new Set();
+  }
+  const reminded = new Set<number>();
+  (data as Array<{ user_id?: number | null }> | null)?.forEach((row) => {
+    if (typeof row.user_id === "number") {
+      reminded.add(row.user_id);
+    }
+  });
+  return reminded;
 }
 
 function resolveUpdateType(update: TelegramUpdate): string {
@@ -6109,6 +6198,16 @@ function getKyivDateString(date = new Date()): string {
     day: "2-digit"
   });
   return formatter.format(date);
+}
+
+function getKyivHour(date = new Date()): number {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Kyiv",
+    hour: "2-digit",
+    hour12: false
+  }).format(date);
+  const parsed = Number(hour);
+  return Number.isFinite(parsed) ? parsed : -1;
 }
 
 function isValidKyivDateString(value: string | null): value is string {
