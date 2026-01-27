@@ -490,7 +490,8 @@ async function handleSuccessfulPayment(
   });
 
   const expiresLabel = formatDate(nextExpiry);
-  await sendMessage(env, message.chat.id, `Оплату отримано ✅ Доступ активний до ${expiresLabel}.`);
+  const endLabel = formatKyivDayMonth(nextExpiry).toUpperCase();
+  await sendMessage(env, message.chat.id, `ТВОЯ КАДЕНЦІЯ ЗАВЕРШУЄТЬСЯ ${endLabel}`);
 }
 
 function buildSubscriptionPrompt(price: number): string {
@@ -598,11 +599,7 @@ async function grantFreeMonth(
   });
   const expiresLabel = formatDate(nextExpiry);
   const endLabel = formatKyivDayMonth(nextExpiry).toUpperCase();
-  await sendMessage(
-    env,
-    chatId,
-    `ВІТАЮ У ФУТБОЛЬНІЙ РАДІ!\nТВОЯ КАДЕНЦІЯ ЗАВЕРШУЄТЬСЯ ${endLabel}`
-  );
+  await sendMessage(env, chatId, `ТВОЯ КАДЕНЦІЯ ЗАВЕРШУЄТЬСЯ ${endLabel}`);
   await insertBotLog(supabase, {
     text: "free_month_granted",
     userId: user.id,
