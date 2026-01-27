@@ -3500,17 +3500,50 @@ function updateMatchFactionAverage(
     return;
   }
 
+  const match = matchesById.get(matchId);
+  const hasFinalScore =
+    match?.status === "finished" &&
+    typeof match.home_score === "number" &&
+    typeof match.away_score === "number";
+  const finalHome = match?.home_score ?? null;
+  const finalAway = match?.away_score ?? null;
   const rows = Array.from(factions.entries())
     .map(([factionId, factionPredictions]) => {
       const { homeAvg, awayAvg } = getAveragePrediction(factionPredictions);
+      const roundedHome = Math.round(homeAvg);
+      const roundedAway = Math.round(awayAvg);
       return {
         factionId,
         count: factionPredictions.length,
         homeAvg,
-        awayAvg
+        awayAvg,
+        roundedHome,
+        roundedAway
       };
     })
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => {
+      if (!hasFinalScore || finalHome === null || finalAway === null) {
+        return b.count - a.count;
+      }
+      const exactA = a.roundedHome === finalHome && a.roundedAway === finalAway;
+      const exactB = b.roundedHome === finalHome && b.roundedAway === finalAway;
+      const outcomeA = Math.sign(a.roundedHome - a.roundedAway);
+      const outcomeB = Math.sign(b.roundedHome - b.roundedAway);
+      const outcomeFinal = Math.sign(finalHome - finalAway);
+      const resultA = outcomeA === outcomeFinal;
+      const resultB = outcomeB === outcomeFinal;
+      const groupA = exactA ? 0 : resultA ? 1 : 2;
+      const groupB = exactB ? 0 : resultB ? 1 : 2;
+      if (groupA !== groupB) {
+        return groupA - groupB;
+      }
+      const diffA = Math.abs(a.roundedHome - finalHome) + Math.abs(a.roundedAway - finalAway);
+      const diffB = Math.abs(b.roundedHome - finalHome) + Math.abs(b.roundedAway - finalAway);
+      if (diffA !== diffB) {
+        return diffA - diffB;
+      }
+      return b.count - a.count;
+    })
     .map((entry) => {
       const isUnknown = entry.factionId === "unknown-faction";
       const logoMarkup = isUnknown
