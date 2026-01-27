@@ -380,6 +380,10 @@ async function loadSubscriptionInfo(
       .eq("id", user.id)
       .maybeSingle();
     if (error) {
+      const message = typeof error.message === "string" ? error.message : "";
+      if (message.includes("subscription_free_month_used")) {
+        return await loadSubscriptionInfoLegacy(supabase, user);
+      }
       console.error("Failed to load subscription info", error);
       return null;
     }
@@ -399,6 +403,38 @@ async function loadSubscriptionInfo(
     return { expiresAt, isActive, paidMonths, price, freeMonthUsed };
   } catch (error) {
     console.error("Failed to load subscription info", error);
+    return null;
+  }
+}
+
+async function loadSubscriptionInfoLegacy(
+  supabase: SupabaseClient,
+  user: TelegramUser
+): Promise<SubscriptionInfo | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("subscription_expires_at, subscription_paid_months")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (error) {
+      console.error("Failed to load subscription info legacy", error);
+      return null;
+    }
+
+    const expiresAtValue = data?.subscription_expires_at ?? null;
+    const expiresAt = expiresAtValue ? new Date(expiresAtValue) : null;
+    const paidMonths = Number.isFinite(data?.subscription_paid_months)
+      ? Number(data?.subscription_paid_months)
+      : 0;
+    const now = new Date();
+    const isActive = Boolean(expiresAt && expiresAt.getTime() > now.getTime());
+    const price = paidMonths > 0 ? REGULAR_MONTH_PRICE : FREE_MONTH_PRICE;
+    const freeMonthUsed = paidMonths > 0;
+
+    return { expiresAt, isActive, paidMonths, price, freeMonthUsed };
+  } catch (error) {
+    console.error("Failed to load subscription info legacy", error);
     return null;
   }
 }
