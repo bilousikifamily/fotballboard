@@ -1,6 +1,6 @@
 
 .panel.profile {
-  padding: 30px clamp(16px, 4vw, 20px);
+  padding: 30px 16px;
   gap: 10px;
   margin-bottom: 0;
   width: 100%;
@@ -29,12 +29,12 @@
 
 .profile-nickname {
   position: absolute;
-  top: -18px;
+  top: -25px;
   left: 50%;
   transform: translate(-50%, 0);
   margin: 0;
   padding: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -55,10 +55,10 @@
     0 0 0 1px rgba(0, 0, 0, 0.55) inset;
   backdrop-filter: blur(14px);
   text-transform: uppercase;
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-weight: 300;
+  font-family: "Montserrat", "Space Grotesk", system-ui, sans-serif;
+  font-weight: 100;
   letter-spacing: 0.14em;
-  font-size: 120%;
+  font-size: 140%;
   pointer-events: auto;
   position: relative;
   z-index: 3;
@@ -208,11 +208,9 @@
   z-index: 1;
 }
 .screen.screen--profile {
-  padding: clamp(20px, 5vw, 32px) clamp(12px, 3vw, 20px) var(--tabbar-offset);
+  padding: 32px 20px var(--tabbar-offset);
   gap: 0;
-  min-height: calc(100dvh - var(--tabbar-offset));
   height: auto;
-  max-height: none;
   overflow: visible;
   overscroll-behavior: contain;
   --prediction-dot-size: clamp(16px, 4.8vw, 22px);
@@ -230,8 +228,6 @@ body.profile-tab-active #app {
 }
 
 .screen.screen--profile .profile-screen__layout {
-  height: auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -244,13 +240,14 @@ body.profile-tab-active #app {
   display: grid;
   align-items: stretch;
   justify-items: stretch;
-  padding-inline: clamp(8px, 2.4vw, 16px);
+  padding-inline: 4px;
+
 }
 
 .profile-screen__row--results {
   align-items: flex-start;
   justify-items: stretch;
-  padding-top: clamp(18px, 6vw, 44px);
+  padding-top: 24px;
   padding-bottom: 0;
   overflow: visible;
 }
@@ -334,10 +331,10 @@ body.profile-tab-active #app {
 
 .profile-predictions {
   width: 100%;
-  margin: 8px 0 2px;
+  margin: 12px 0 4px;
   display: grid;
   justify-items: center;
-  padding: 0 0 8px;
+  padding: 0 8px 8px;
   overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
@@ -376,7 +373,7 @@ body.profile-tab-active #app {
   grid-auto-rows: var(--prediction-dot-size);
   justify-items: center;
   align-items: center;
-  padding: 0 4px;
+  padding: 0 0px;
   justify-content: start;
   align-content: start;
 }
