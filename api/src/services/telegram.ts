@@ -258,8 +258,11 @@ async function handleSubscriptionStatus(
 
   const expiresLabel = formatDate(subscription.expiresAt);
   const statusLabel = subscription.isActive ? "активна" : "прострочена";
-  const statusPrefix = subscription.isActive ? "Ваша каденція у ФУТБОЛЬНІЙ РАДІ завершується" : "Каденція завершилась";
-  await sendMessage(env, message.chat.id, `${statusPrefix} ${formatKyivDayMonth(subscription.expiresAt)}.`);
+  const endLabel = formatKyivDayMonth(subscription.expiresAt).toUpperCase();
+  const statusPrefix = subscription.isActive
+    ? "ТВОЯ КАДЕНЦІЯ ЗАВЕРШУЄТЬСЯ"
+    : "КАДЕНЦІЯ ЗАВЕРШИЛАСЬ";
+  await sendMessage(env, message.chat.id, `${statusPrefix} ${endLabel}`);
 }
 
 async function showSubscriptionCard(
