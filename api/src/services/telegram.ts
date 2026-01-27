@@ -321,16 +321,32 @@ async function showSubscriptionCard(
   ].join("\n");
   const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
   const imageUrl = `${webappBaseUrl}${SUBSCRIPTION_CARD_IMAGE}`;
-  await sendPhoto(env, message.chat.id, imageUrl, caption, {
+  const sendResult = await sendSubscriptionCard(env, message.chat.id, imageUrl, caption, {
     inline_keyboard: [[{ text: buttonText, callback_data: SUBSCRIPTION_CARD_CALLBACK }]]
   });
+  if (sendResult.ok) {
+    await insertBotLog(supabase, {
+      text: "pay_card_sent",
+      userId: message.from.id,
+      chatId: message.chat.id,
+      threadId: message.message_thread_id ?? null,
+      messageId: message.message_id ?? null
+    });
+    return;
+  }
+
   await insertBotLog(supabase, {
-    text: "pay_card_sent",
+    text: `pay_card_failed: status=${sendResult.status} body=${sendResult.body}`,
     userId: message.from.id,
     chatId: message.chat.id,
     threadId: message.message_thread_id ?? null,
     messageId: message.message_id ?? null
   });
+  await sendMessage(
+    env,
+    message.chat.id,
+    "Не вдалося надіслати картку з оплатою. Спробуйте ще раз або напишіть /pay."
+  );
 }
 
 async function handleCallbackQuery(
@@ -622,6 +638,34 @@ async function insertBotLog(
     });
   } catch (error) {
     console.error("Failed to insert bot log", error);
+  }
+}
+
+async function sendSubscriptionCard(
+  env: Env,
+  chatId: number | string,
+  photoUrl: string,
+  caption: string,
+  replyMarkup: TelegramInlineKeyboardMarkup
+): Promise<{ ok: boolean; status: number | null; body: string }> {
+  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`;
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    photo: photoUrl,
+    caption,
+    reply_markup: replyMarkup
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.text();
+    return { ok: response.ok, status: response.status, body };
+  } catch (error) {
+    return { ok: false, status: null, body: String(error) };
   }
 }
 
