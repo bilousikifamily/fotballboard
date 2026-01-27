@@ -18,7 +18,7 @@ const FREE_MONTH_PRICE = 0;
 const REGULAR_MONTH_PRICE = 100;
 const KYIV_TIMEZONE = "Europe/Kyiv";
 const SUBSCRIPTION_CARD_CALLBACK = "subscription_pay";
-const SUBSCRIPTION_CARD_IMAGE = "/subscription.png";
+const SUBSCRIPTION_CARD_IMAGE = "/images/subscription.png";
 
 export async function handleUpdate(
   update: TelegramUpdate,
