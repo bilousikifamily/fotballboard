@@ -67,6 +67,7 @@ const awaySelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-away]'
 const resultMatchSelect = resultForm?.querySelector<HTMLSelectElement>('[data-admin-result-match]') ?? null;
 const logsContent = document.querySelector<HTMLElement>("[data-admin-logs-content]");
 const logsClearButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-clear]");
+const logsRefreshButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-refresh]");
 
 const state = {
   matches: [] as Match[],
@@ -754,6 +755,9 @@ function attachListeners(): void {
   });
   logsClearButton?.addEventListener("click", () => {
     clearLogs();
+  });
+  logsRefreshButton?.addEventListener("click", () => {
+    void loadBotLogs(true);
   });
 }
 
