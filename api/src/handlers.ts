@@ -504,6 +504,52 @@ export default {
       return jsonResponse({ ok: true, token }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/admin/bot-logs") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const limit = parseLimit(url.searchParams.get("limit"), 50, 200);
+      const since = Number(url.searchParams.get("since") ?? "");
+
+      let query = supabase
+        .from("debug_updates")
+        .select("id, chat_id, thread_id, message_id, user_id, text, created_at")
+        .eq("update_type", "bot_log");
+
+      if (Number.isFinite(since)) {
+        query = query.gt("id", since).order("id", { ascending: true });
+      } else {
+        query = query.order("id", { ascending: false });
+      }
+
+      const { data, error } = await query.limit(limit);
+      if (error) {
+        console.error("Failed to fetch bot logs", error);
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, logs: data ?? [] }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/auth") {
       if (request.method === "OPTIONS") {
         return corsResponse();

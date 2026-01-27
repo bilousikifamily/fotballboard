@@ -22,6 +22,20 @@ export type AdminLoginResponse =
   | { ok: true; token: string }
   | { ok: false; error: string };
 
+export type BotLogEntry = {
+  id: number;
+  chat_id: number | null;
+  thread_id: number | null;
+  message_id: number | null;
+  user_id: number | null;
+  text: string | null;
+  created_at: string | null;
+};
+
+export type BotLogsResponse =
+  | { ok: true; logs: BotLogEntry[] }
+  | { ok: false; error: string };
+
 export type PendingMatchesResponse =
   | { ok: true; matches: Match[] }
   | { ok: false; error: string };

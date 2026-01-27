@@ -12,7 +12,7 @@ import {
   postResult,
   postConfirmMatch
 } from "./api/matches";
-import { postAdminLogin } from "./api/admin";
+import { fetchBotLogs, postAdminLogin } from "./api/admin";
 import { fetchLeaderboard } from "./api/leaderboard";
 import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderPendingMatchesList } from "./screens/matches";
@@ -86,6 +86,8 @@ interface LogEntry {
 
 const logs: LogEntry[] = [];
 const MAX_LOGS = 200;
+let botLogsPoller: number | null = null;
+let lastBotLogId = 0;
 
 function formatLogTime(timestamp: number): string {
   const date = new Date(timestamp);
@@ -755,6 +757,59 @@ function attachListeners(): void {
   });
 }
 
+async function loadBotLogs(initial = false): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  const token = getAdminToken();
+  if (!token) {
+    return;
+  }
+  try {
+    const { response, data } = await fetchBotLogs(API_BASE, token, {
+      since: lastBotLogId || undefined,
+      limit: initial ? 50 : 100
+    });
+    if (!response.ok || !data.ok) {
+      addLog("warn", "Не вдалося отримати bot-логи.", { response, data });
+      return;
+    }
+    const logsToAdd = (data.logs ?? []).slice();
+    if (!logsToAdd.length) {
+      return;
+    }
+    logsToAdd.forEach((entry) => {
+      if (entry.id > lastBotLogId) {
+        lastBotLogId = entry.id;
+      }
+      const createdAt = entry.created_at ? ` (${entry.created_at})` : "";
+      const userLabel = entry.user_id ? `user:${entry.user_id}` : "user:unknown";
+      const text = entry.text ?? "bot_log";
+      addLog("error", `[bot] ${userLabel}${createdAt} ${text}`);
+    });
+  } catch (error) {
+    addLog("error", "Помилка при завантаженні bot-логів", error);
+  }
+}
+
+function startBotLogPolling(): void {
+  if (botLogsPoller !== null) {
+    window.clearInterval(botLogsPoller);
+  }
+  void loadBotLogs(true);
+  botLogsPoller = window.setInterval(() => {
+    void loadBotLogs(false);
+  }, 10_000);
+}
+
+function stopBotLogPolling(): void {
+  if (botLogsPoller !== null) {
+    window.clearInterval(botLogsPoller);
+    botLogsPoller = null;
+  }
+  lastBotLogId = 0;
+}
+
 async function initializeAdminView(): Promise<void> {
   if (!API_BASE) {
     return;
@@ -785,6 +840,7 @@ async function handleLogin(event: Event): Promise<void> {
     adminSessionToken = data.token;
     loginError && (loginError.textContent = "");
     showAdmin();
+    startBotLogPolling();
     populateLeagueOptions();
     populateClubOptions(leagueSelect?.value ?? MATCH_LEAGUES[0].id);
     void initializeAdminView();
@@ -798,6 +854,7 @@ async function handleLogin(event: Event): Promise<void> {
 
 function handleLogout(): void {
   adminSessionToken = null;
+  stopBotLogPolling();
   state.leaderboardLoaded = false;
   state.leaderboard = [];
   state.matches = [];

@@ -60,6 +60,15 @@ export async function handleUpdate(
       await showSubscriptionCard(env, supabase, message);
     } catch (error) {
       console.error("Failed to handle /pay", error);
+      if (supabase && message.from?.id) {
+        await insertBotLog(supabase, {
+          text: `pay_error: ${String(error)}`,
+          userId: message.from.id,
+          chatId: message.chat?.id ?? null,
+          threadId: message.message_thread_id ?? null,
+          messageId: message.message_id ?? null
+        });
+      }
     }
     return;
   }
@@ -224,6 +233,15 @@ async function showSubscriptionCard(
       hasSupabase: Boolean(supabase),
       hasFrom: Boolean(message.from)
     });
+    if (supabase && message.from?.id) {
+      await insertBotLog(supabase, {
+        text: "pay_error: missing supabase or user info",
+        userId: message.from.id,
+        chatId: message.chat.id,
+        threadId: message.message_thread_id ?? null,
+        messageId: message.message_id ?? null
+      });
+    }
     await sendMessage(env, message.chat.id, "Оплата тимчасово недоступна, спробуйте пізніше.");
     return;
   }
@@ -233,6 +251,13 @@ async function showSubscriptionCard(
   if (!subscription) {
     console.error("Subscription card blocked: loadSubscriptionInfo returned null", {
       userId: message.from.id
+    });
+    await insertBotLog(supabase, {
+      text: "pay_error: loadSubscriptionInfo returned null",
+      userId: message.from.id,
+      chatId: message.chat.id,
+      threadId: message.message_thread_id ?? null,
+      messageId: message.message_id ?? null
     });
     await sendMessage(env, message.chat.id, "Не вдалося перевірити підписку. Спробуйте пізніше.");
     return;
@@ -467,6 +492,31 @@ async function grantFreeMonth(
     chatId,
     `Перший місяць безкоштовний ✅ Доступ до ${expiresLabel}. Наступного місяця — ${REGULAR_MONTH_PRICE} ⭐.`
   );
+}
+
+async function insertBotLog(
+  supabase: SupabaseClient,
+  payload: {
+    text: string;
+    userId: number;
+    chatId: number | null;
+    threadId: number | null;
+    messageId: number | null;
+  }
+): Promise<void> {
+  try {
+    await supabase.from("debug_updates").insert({
+      update_type: "bot_log",
+      chat_id: payload.chatId,
+      thread_id: payload.threadId,
+      message_id: payload.messageId,
+      user_id: payload.userId,
+      text: payload.text,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Failed to insert bot log", error);
+  }
 }
 
 async function upsertTelegramUser(
