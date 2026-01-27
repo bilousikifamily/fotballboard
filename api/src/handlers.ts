@@ -1635,6 +1635,8 @@ export default {
       const supabase = createSupabaseClient(env);
     if (supabase) {
       await insertDebugUpdate(supabase, update);
+    } else {
+      console.error("Supabase not configured; /pay will not work");
     }
     await enforceFactionChatPermissions(env, supabase, update);
     await handleUpdate(update, env, supabase);

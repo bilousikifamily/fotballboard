@@ -56,7 +56,11 @@ export async function handleUpdate(
   }
 
   if (command === "pay" || command === "subscribe") {
-    await showSubscriptionCard(env, supabase, message);
+    try {
+      await showSubscriptionCard(env, supabase, message);
+    } catch (error) {
+      console.error("Failed to handle /pay", error);
+    }
     return;
   }
 
@@ -216,6 +220,10 @@ async function showSubscriptionCard(
     return;
   }
   if (!supabase || !message.from) {
+    console.error("Subscription card blocked: missing supabase or message.from", {
+      hasSupabase: Boolean(supabase),
+      hasFrom: Boolean(message.from)
+    });
     await sendMessage(env, message.chat.id, "Оплата тимчасово недоступна, спробуйте пізніше.");
     return;
   }
@@ -223,6 +231,9 @@ async function showSubscriptionCard(
   await upsertTelegramUser(supabase, message.from);
   const subscription = await loadSubscriptionInfo(supabase, message.from);
   if (!subscription) {
+    console.error("Subscription card blocked: loadSubscriptionInfo returned null", {
+      userId: message.from.id
+    });
     await sendMessage(env, message.chat.id, "Не вдалося перевірити підписку. Спробуйте пізніше.");
     return;
   }
