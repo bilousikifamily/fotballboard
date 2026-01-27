@@ -258,7 +258,8 @@ async function handleSubscriptionStatus(
 
   const expiresLabel = formatDate(subscription.expiresAt);
   const statusLabel = subscription.isActive ? "активна" : "прострочена";
-  await sendMessage(env, message.chat.id, `Підписка ${statusLabel} до ${expiresLabel}.`);
+  const statusPrefix = subscription.isActive ? "Ваша каденція у ФУТБОЛЬНІЙ РАДІ завершується" : "Каденція завершилась";
+  await sendMessage(env, message.chat.id, `${statusPrefix} ${formatKyivDayMonth(subscription.expiresAt)}.`);
 }
 
 async function showSubscriptionCard(
@@ -304,21 +305,16 @@ async function showSubscriptionCard(
     return;
   }
 
-  const expiresLine = subscription.expiresAt
-    ? `Поточна підписка дійсна до ${formatDate(subscription.expiresAt)}.`
-    : "Підписка відсутня.";
-  const renewalLine = subscription.freeMonthUsed
-    ? "Щоб продовжити, оплатіть 100 ⭐ за наступний місяць."
-    : "Перший місяць безкоштовний, далі 100 ⭐ на місяць.";
-  const buttonText = subscription.freeMonthUsed
-    ? "Продовжити 100 ⭐ /pay"
-    : "Отримати перший місяць /pay";
-  const caption = [
-    "Підписка «Секретар Ради»",
-    expiresLine,
-    renewalLine,
-    "Натисни кнопку нижче — команда /pay запускає оплату."
-  ].join("\n");
+  const freeSessionUntil = formatKyivDayMonth(computeCurrentMonthExpiry());
+  const activeUntil = subscription.expiresAt ? formatKyivDayMonth(subscription.expiresAt) : null;
+  const buttonText = "ПРИЄДНАТИСЬ";
+  const caption = subscription.freeMonthUsed
+    ? "Бажаєш долучитись до наступної сесії у ФУТБОЛЬНІЙ РАДІ?"
+    : [
+        "Перша сесія у ФУТБОЛЬНІЙ РАДІ — 0 ⭐",
+        `до ${freeSessionUntil} включно.`,
+        "Наступна сесія у ФУТБОЛЬНІЙ РАДІ — 100 ⭐"
+      ].join("\n");
   const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
   const imageUrl = `${webappBaseUrl}${SUBSCRIPTION_CARD_IMAGE}`;
   const sendResult = await sendSubscriptionCard(env, message.chat.id, imageUrl, caption, {
@@ -596,7 +592,7 @@ async function grantFreeMonth(
   user: TelegramUser,
   chatId: number | string
 ): Promise<void> {
-  const nextExpiry = computeNextExpiry(null);
+  const nextExpiry = computeCurrentMonthExpiry();
   await upsertTelegramUser(supabase, user, {
     subscription_expires_at: nextExpiry.toISOString(),
     subscription_free_month_used: true
@@ -716,6 +712,12 @@ function endOfNextMonthInKyiv(base: Date): Date {
   return zonedTimeToUtc(nextYear, nextMonth, lastDay, 23, 59, 59, KYIV_TIMEZONE);
 }
 
+function computeCurrentMonthExpiry(base: Date = new Date()): Date {
+  const { year, month } = getKyivYearMonth(base);
+  const lastDay = daysInMonth(year, month);
+  return zonedTimeToUtc(year, month, lastDay, 23, 59, 59, KYIV_TIMEZONE);
+}
+
 function getKyivYearMonth(date: Date): { year: number; month: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: KYIV_TIMEZONE,
@@ -778,6 +780,14 @@ function getTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
 function formatDate(value: Date): string {
   const iso = value.toISOString();
   return iso.slice(0, 10);
+}
+
+function formatKyivDayMonth(value: Date): string {
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone: KYIV_TIMEZONE,
+    day: "numeric",
+    month: "long"
+  }).format(value);
 }
 
 function buildInvoicePayload(userId: number, price: number): string {
