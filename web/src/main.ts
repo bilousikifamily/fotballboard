@@ -116,7 +116,7 @@ const adminLayoutAverageCache = new Map<number, { homeAvg: number; awayAvg: numb
 const adminLayoutPredictionsCache = new Map<number, PredictionView[]>();
 const TOP_PREDICTIONS_LIMIT = 4;
 const FACTION_MEMBERS_LIMIT = 6;
-const FACTION_CHAT_PREVIEW_LIMIT = 2;
+const FACTION_CHAT_PREVIEW_LIMIT = 1;
 const GENERAL_FACTION_CHAT_URL = "https://t.me/football_rada";
 let factionChatPreviewRequestVersion = 0;
 const EUROPEAN_LEAGUES: Array<{ id: LeagueId; label: string; flag: string }> = [
@@ -1091,7 +1091,10 @@ function renderFactionChatPreviewMessages(messages: FactionChatPreviewMessage[])
   if (!messages.length) {
     return `<p class="muted small">Поки що повідомлень немає.</p>`;
   }
-  return messages.map((message, index) => renderFactionChatPreviewMessage(message, index)).join("");
+  return messages
+    .slice(0, 1)
+    .map((message, index) => renderFactionChatPreviewMessage(message, index))
+    .join("");
 }
 
 function renderFactionChatPreviewMessage(message: FactionChatPreviewMessage, index: number): string {

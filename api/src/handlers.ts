@@ -616,7 +616,7 @@ export default {
 
       const factionSlug = normalizeFactionChoice(factionClubId);
       if (!wasOnboarded && factionSlug) {
-        await notifyFactionChatNewDeputy(env, auth.user, factionSlug, { nickname });
+        await notifyFactionChatNewDeputy(env, supabase, auth.user, factionSlug, { nickname });
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -1756,6 +1756,26 @@ async function insertDebugAudit(
   }
 }
 
+async function insertBotDebugMessage(
+  supabase: SupabaseClient,
+  chatId: number | null,
+  threadId: number | null,
+  text: string
+): Promise<void> {
+  const normalizedText = text.trim();
+  if (!normalizedText || typeof chatId !== "number") {
+    return;
+  }
+  await insertDebugAudit(supabase, {
+    update_type: "message",
+    chat_id: chatId,
+    thread_id: typeof threadId === "number" ? threadId : null,
+    message_id: null,
+    user_id: null,
+    text: normalizedText
+  });
+}
+
 function resolveUpdateType(update: TelegramUpdate): string {
   if (update.message) {
     return "message";
@@ -1796,6 +1816,7 @@ function formatUserDisplay(user: TelegramUser): string {
 
 async function notifyFactionChatNewDeputy(
   env: Env,
+  supabase: SupabaseClient,
   user: TelegramUser,
   faction: FactionBranchSlug,
   options?: { nickname?: string | null }
@@ -1816,6 +1837,12 @@ async function notifyFactionChatNewDeputy(
     : nicknameCandidate || formatUserDisplay(user);
   const message = `У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n${mention}`;
   await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
+  await insertBotDebugMessage(
+    supabase,
+    typeof targetRef.chatId === "number" ? targetRef.chatId : null,
+    targetRef.threadId ?? null,
+    message
+  );
 }
 
 async function getUserClassicoChoice(
@@ -2087,7 +2114,11 @@ async function listFactionDebugMessages(
           return null;
         }
         const user = typeof row.user_id === "number" ? usersById.get(row.user_id) ?? null : null;
-        const author = formatStoredUserLabel(user, row.user_id ?? null);
+        const author = user
+          ? formatStoredUserLabel(user, row.user_id ?? null)
+          : row.user_id === null
+            ? "СЕКРЕТАР"
+            : formatStoredUserLabel(null, row.user_id ?? null);
         return {
           id: row.id,
           text: normalizedText,
@@ -2969,6 +3000,12 @@ async function sendMatchFactionPredictions(
   }
   const message = buildFactionPredictionsMessage(match, faction, predictions);
   await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
+  await insertBotDebugMessage(
+    supabase,
+    typeof chatRef.chatId === "number" ? chatRef.chatId : null,
+    chatRef.threadId ?? null,
+    message
+  );
   return { ok: true };
 }
 
@@ -6307,6 +6344,12 @@ async function handleMatchStartDigests(env: Env): Promise<void> {
       }
       const message = buildMatchStartDigestMessage(match, faction, factionPredictions);
       await sendMessage(env, target, message, undefined, undefined, chatRef.threadId ?? undefined);
+      await insertBotDebugMessage(
+        supabase,
+        typeof chatRef.chatId === "number" ? chatRef.chatId : null,
+        chatRef.threadId ?? null,
+        message
+      );
       anySent = true;
     }
 
@@ -6695,11 +6738,17 @@ async function sendFactionPredictionsStats(
     const chatTarget = ref.chatId ?? (ref.chatUsername ? `@${ref.chatUsername}` : null);
     if (chatTarget) {
       sendPromises.push(
-        sendMessage(env, chatTarget, message, undefined, undefined, ref.threadId ?? undefined).catch(
-          (error) => {
-            console.error(`Failed to send message to faction ${factionSlug}`, error);
-          }
-        )
+        (async () => {
+          await sendMessage(env, chatTarget, message, undefined, undefined, ref.threadId ?? undefined);
+          await insertBotDebugMessage(
+            supabase,
+            typeof ref.chatId === "number" ? ref.chatId : null,
+            ref.threadId ?? null,
+            message
+          );
+        })().catch((error) => {
+          console.error(`Failed to send message to faction ${factionSlug}`, error);
+        })
       );
     }
   }
