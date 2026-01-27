@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Env } from "../env";
 import type {
+  TelegramCallbackQuery,
   TelegramInlineKeyboardMarkup,
   TelegramLabeledPrice,
   TelegramMessage,
@@ -11,17 +12,24 @@ import type {
 } from "../types";
 
 const SUBSCRIPTION_TITLE = "Доступ до бота на 1 місяць";
-const SUBSCRIPTION_DESCRIPTION = "Перший місяць 1⭐, далі 100⭐.";
+const SUBSCRIPTION_DESCRIPTION = "Перший місяць безкоштовний, далі 100⭐.";
 const SUBSCRIPTION_CURRENCY = "XTR";
-const FIRST_MONTH_STARS = 1;
-const NEXT_MONTH_STARS = 100;
+const FREE_MONTH_PRICE = 0;
+const REGULAR_MONTH_PRICE = 100;
 const KYIV_TIMEZONE = "Europe/Kyiv";
+const SUBSCRIPTION_CARD_CALLBACK = "subscription_pay";
+const SUBSCRIPTION_CARD_IMAGE = "/subscription.png";
 
 export async function handleUpdate(
   update: TelegramUpdate,
   env: Env,
   supabase?: SupabaseClient | null
 ): Promise<void> {
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query, env, supabase);
+    return;
+  }
+
   if (update.pre_checkout_query) {
     await handlePreCheckout(update.pre_checkout_query, env, supabase);
     return;
@@ -48,7 +56,7 @@ export async function handleUpdate(
   }
 
   if (command === "pay" || command === "subscribe") {
-    await handleSubscriptionInvoice(env, supabase, message);
+    await showSubscriptionCard(env, supabase, message);
     return;
   }
 
@@ -153,6 +161,17 @@ async function handleSubscriptionInvoice(
     return;
   }
 
+  if (subscription.isActive) {
+    const label = subscription.expiresAt ? formatDate(subscription.expiresAt) : "невідомий";
+    await sendMessage(env, message.chat.id, `Підписка активна до ${label}.`);
+    return;
+  }
+
+  if (!subscription.freeMonthUsed) {
+    await grantFreeMonth(env, supabase, message.from, message.chat.id);
+    return;
+  }
+
   const payload = buildInvoicePayload(message.from.id, subscription.price);
   const prices: TelegramLabeledPrice[] = [{ label: "Підписка на 1 місяць", amount: subscription.price }];
   await sendInvoice(env, message.chat.id, {
@@ -186,6 +205,71 @@ async function handleSubscriptionStatus(
   const expiresLabel = formatDate(subscription.expiresAt);
   const statusLabel = subscription.isActive ? "активна" : "прострочена";
   await sendMessage(env, message.chat.id, `Підписка ${statusLabel} до ${expiresLabel}.`);
+}
+
+async function showSubscriptionCard(
+  env: Env,
+  supabase: SupabaseClient | null | undefined,
+  message: TelegramMessage
+): Promise<void> {
+  if (!message.chat?.id) {
+    return;
+  }
+  if (!supabase || !message.from) {
+    await sendMessage(env, message.chat.id, "Оплата тимчасово недоступна, спробуйте пізніше.");
+    return;
+  }
+
+  await upsertTelegramUser(supabase, message.from);
+  const subscription = await loadSubscriptionInfo(supabase, message.from);
+  if (!subscription) {
+    await sendMessage(env, message.chat.id, "Не вдалося перевірити підписку. Спробуйте пізніше.");
+    return;
+  }
+
+  const expiresLine = subscription.expiresAt
+    ? `Поточна підписка дійсна до ${formatDate(subscription.expiresAt)}.`
+    : "Підписка відсутня.";
+  const renewalLine = subscription.freeMonthUsed
+    ? "Щоб продовжити, оплатіть 100 ⭐ за наступний місяць."
+    : "Перший місяць безкоштовний, далі 100 ⭐ на місяць.";
+  const buttonText = subscription.freeMonthUsed
+    ? "Продовжити 100 ⭐ /pay"
+    : "Отримати перший місяць /pay";
+  const caption = [
+    "Підписка «Секретар Ради»",
+    expiresLine,
+    renewalLine,
+    "Натисни кнопку нижче — команда /pay запускає оплату."
+  ].join("\n");
+  const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
+  const imageUrl = `${webappBaseUrl}${SUBSCRIPTION_CARD_IMAGE}`;
+  await sendPhoto(env, message.chat.id, imageUrl, caption, {
+    inline_keyboard: [[{ text: buttonText, callback_data: SUBSCRIPTION_CARD_CALLBACK }]]
+  });
+}
+
+async function handleCallbackQuery(
+  callback: TelegramCallbackQuery,
+  env: Env,
+  supabase?: SupabaseClient | null
+): Promise<void> {
+  if (!callback.message || !callback.message.chat?.id) {
+    await answerCallbackQuery(env, callback.id, "Не вдалося виконати дію.");
+    return;
+  }
+
+  if (callback.data === SUBSCRIPTION_CARD_CALLBACK) {
+    const proxyMessage: TelegramMessage = {
+      ...callback.message,
+      from: callback.from
+    };
+    await handleSubscriptionInvoice(env, supabase, proxyMessage);
+    await answerCallbackQuery(env, callback.id);
+    return;
+  }
+
+  await answerCallbackQuery(env, callback.id);
 }
 
 async function handlePreCheckout(
@@ -255,7 +339,8 @@ async function handleSuccessfulPayment(
   const nextPaidMonths = subscription.paidMonths + 1;
   await upsertTelegramUser(supabase, user, {
     subscription_expires_at: nextExpiry.toISOString(),
-    subscription_paid_months: nextPaidMonths
+    subscription_paid_months: nextPaidMonths,
+    subscription_free_month_used: true
   });
 
   const expiresLabel = formatDate(nextExpiry);
@@ -263,10 +348,11 @@ async function handleSuccessfulPayment(
 }
 
 function buildSubscriptionPrompt(price: number): string {
-  const priceLabel = price === FIRST_MONTH_STARS ? "1 ⭐" : "100 ⭐";
+  const priceLabel =
+    price === FREE_MONTH_PRICE ? "Перший місяць безкоштовний, далі 100 ⭐." : `Вартість місяця: ${price} ⭐.`;
   return [
     "Доступ до бота доступний за підпискою.",
-    `Вартість місяця: ${priceLabel}.`,
+    priceLabel,
     "Для оплати використайте команду /pay."
   ].join("\n");
 }
@@ -276,6 +362,7 @@ type SubscriptionInfo = {
   isActive: boolean;
   paidMonths: number;
   price: number;
+  freeMonthUsed: boolean;
 };
 
 async function loadSubscriptionInfo(
@@ -289,7 +376,7 @@ async function loadSubscriptionInfo(
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("subscription_expires_at, subscription_paid_months")
+      .select("subscription_expires_at, subscription_paid_months, subscription_free_month_used")
       .eq("id", user.id)
       .maybeSingle();
     if (error) {
@@ -302,21 +389,47 @@ async function loadSubscriptionInfo(
     const paidMonths = Number.isFinite(data?.subscription_paid_months)
       ? Number(data?.subscription_paid_months)
       : 0;
+    const freeMonthRaw = data?.subscription_free_month_used;
+    const freeMonthUsed =
+      typeof freeMonthRaw === "boolean" ? freeMonthRaw : paidMonths > 0;
     const now = new Date();
     const isActive = Boolean(expiresAt && expiresAt.getTime() > now.getTime());
-    const price = paidMonths <= 0 ? FIRST_MONTH_STARS : NEXT_MONTH_STARS;
+    const price = freeMonthUsed ? REGULAR_MONTH_PRICE : FREE_MONTH_PRICE;
 
-    return { expiresAt, isActive, paidMonths, price };
+    return { expiresAt, isActive, paidMonths, price, freeMonthUsed };
   } catch (error) {
     console.error("Failed to load subscription info", error);
     return null;
   }
 }
 
+async function grantFreeMonth(
+  env: Env,
+  supabase: SupabaseClient,
+  user: TelegramUser,
+  chatId: number | string
+): Promise<void> {
+  const nextExpiry = computeNextExpiry(null);
+  await upsertTelegramUser(supabase, user, {
+    subscription_expires_at: nextExpiry.toISOString(),
+    subscription_free_month_used: true
+  });
+  const expiresLabel = formatDate(nextExpiry);
+  await sendMessage(
+    env,
+    chatId,
+    `Перший місяць безкоштовний ✅ Доступ до ${expiresLabel}. Наступного місяця — ${REGULAR_MONTH_PRICE} ⭐.`
+  );
+}
+
 async function upsertTelegramUser(
   supabase: SupabaseClient,
   user: TelegramUser,
-  extra?: { subscription_expires_at?: string; subscription_paid_months?: number }
+  extra?: {
+    subscription_expires_at?: string;
+    subscription_paid_months?: number;
+    subscription_free_month_used?: boolean;
+  }
 ): Promise<void> {
   const now = new Date().toISOString();
   const payload: Record<string, unknown> = {
@@ -331,6 +444,9 @@ async function upsertTelegramUser(
   }
   if (typeof extra?.subscription_paid_months === "number") {
     payload.subscription_paid_months = extra.subscription_paid_months;
+  }
+  if (typeof extra?.subscription_free_month_used === "boolean") {
+    payload.subscription_free_month_used = extra.subscription_free_month_used;
   }
 
   const { error } = await supabase.from("users").upsert(payload, { onConflict: "id" });
@@ -504,6 +620,22 @@ export async function answerPreCheckoutQuery(
   };
   if (!ok && errorMessage) {
     payload.error_message = errorMessage;
+  }
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function answerCallbackQuery(env: Env, queryId: string, text?: string): Promise<void> {
+  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/answerCallbackQuery`;
+  const payload: Record<string, unknown> = {
+    callback_query_id: queryId
+  };
+  if (text) {
+    payload.text = text;
   }
 
   await fetch(url, {

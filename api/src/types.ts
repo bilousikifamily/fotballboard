@@ -249,6 +249,7 @@ export interface TelegramUpdate {
   channel_post?: TelegramMessage;
   edited_channel_post?: TelegramMessage;
   pre_checkout_query?: TelegramPreCheckoutQuery;
+  callback_query?: TelegramCallbackQuery;
 }
 
 export interface TelegramMessage {
@@ -262,7 +263,14 @@ export interface TelegramMessage {
 }
 
 export interface TelegramInlineKeyboardMarkup {
-  inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>>;
+  inline_keyboard: TelegramInlineKeyboardButton[][];
+}
+
+export interface TelegramInlineKeyboardButton {
+  text: string;
+  callback_data?: string;
+  url?: string;
+  web_app?: { url: string };
 }
 
 export interface TelegramLabeledPrice {
@@ -310,6 +318,14 @@ export interface StoredUser {
   onboarding_completed_at?: string | null;
   subscription_expires_at?: string | null;
   subscription_paid_months?: number | null;
+  subscription_free_month_used?: boolean | null;
+}
+
+export interface TelegramCallbackQuery {
+  id: string;
+  from: TelegramUser;
+  message?: TelegramMessage;
+  data?: string;
 }
 
 export interface UserStats {
