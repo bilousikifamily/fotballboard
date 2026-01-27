@@ -31,6 +31,15 @@ export async function handleUpdate(
   }
 
   if (update.pre_checkout_query) {
+    if (supabase && update.pre_checkout_query.from?.id) {
+      await insertBotLog(supabase, {
+        text: "pre_checkout_received",
+        userId: update.pre_checkout_query.from.id,
+        chatId: null,
+        threadId: null,
+        messageId: null
+      });
+    }
     await handlePreCheckout(update.pre_checkout_query, env, supabase);
     return;
   }
@@ -41,6 +50,15 @@ export async function handleUpdate(
   }
 
   if (message.successful_payment) {
+    if (supabase && message.from?.id) {
+      await insertBotLog(supabase, {
+        text: "successful_payment_received",
+        userId: message.from.id,
+        chatId: message.chat?.id ?? null,
+        threadId: message.message_thread_id ?? null,
+        messageId: message.message_id ?? null
+      });
+    }
     await handleSuccessfulPayment(message, env, supabase);
     return;
   }
@@ -57,6 +75,15 @@ export async function handleUpdate(
 
   if (command === "pay" || command === "subscribe") {
     try {
+      if (supabase && message.from?.id) {
+        await insertBotLog(supabase, {
+          text: "pay_received",
+          userId: message.from.id,
+          chatId: message.chat?.id ?? null,
+          threadId: message.message_thread_id ?? null,
+          messageId: message.message_id ?? null
+        });
+      }
       await showSubscriptionCard(env, supabase, message);
     } catch (error) {
       console.error("Failed to handle /pay", error);
@@ -176,6 +203,13 @@ async function handleSubscriptionInvoice(
 
   if (subscription.isActive) {
     const label = subscription.expiresAt ? formatDate(subscription.expiresAt) : "невідомий";
+    await insertBotLog(supabase, {
+      text: `pay_active_until:${label}`,
+      userId: message.from.id,
+      chatId: message.chat.id,
+      threadId: message.message_thread_id ?? null,
+      messageId: message.message_id ?? null
+    });
     await sendMessage(env, message.chat.id, `Підписка активна до ${label}.`);
     return;
   }
@@ -193,6 +227,13 @@ async function handleSubscriptionInvoice(
     payload,
     currency: SUBSCRIPTION_CURRENCY,
     prices
+  });
+  await insertBotLog(supabase, {
+    text: `invoice_sent:${subscription.price}`,
+    userId: message.from.id,
+    chatId: message.chat.id,
+    threadId: message.message_thread_id ?? null,
+    messageId: message.message_id ?? null
   });
 }
 
@@ -283,6 +324,13 @@ async function showSubscriptionCard(
   await sendPhoto(env, message.chat.id, imageUrl, caption, {
     inline_keyboard: [[{ text: buttonText, callback_data: SUBSCRIPTION_CARD_CALLBACK }]]
   });
+  await insertBotLog(supabase, {
+    text: "pay_card_sent",
+    userId: message.from.id,
+    chatId: message.chat.id,
+    threadId: message.message_thread_id ?? null,
+    messageId: message.message_id ?? null
+  });
 }
 
 async function handleCallbackQuery(
@@ -296,6 +344,15 @@ async function handleCallbackQuery(
   }
 
   if (callback.data === SUBSCRIPTION_CARD_CALLBACK) {
+    if (supabase && callback.from?.id) {
+      await insertBotLog(supabase, {
+        text: "pay_button_clicked",
+        userId: callback.from.id,
+        chatId: callback.message.chat?.id ?? null,
+        threadId: callback.message.message_thread_id ?? null,
+        messageId: callback.message.message_id ?? null
+      });
+    }
     const proxyMessage: TelegramMessage = {
       ...callback.message,
       from: callback.from
@@ -320,18 +377,39 @@ async function handlePreCheckout(
 
   const payload = parseInvoicePayload(query.invoice_payload);
   if (!payload || payload.userId !== query.from.id) {
+    await insertBotLog(supabase, {
+      text: "pre_checkout_error: invalid_payload",
+      userId: query.from.id,
+      chatId: null,
+      threadId: null,
+      messageId: null
+    });
     await answerPreCheckoutQuery(env, query.id, false, "Невірний платіжний запит.");
     return;
   }
 
   const subscription = await loadSubscriptionInfo(supabase, query.from);
   if (!subscription) {
+    await insertBotLog(supabase, {
+      text: "pre_checkout_error: subscription_null",
+      userId: query.from.id,
+      chatId: null,
+      threadId: null,
+      messageId: null
+    });
     await answerPreCheckoutQuery(env, query.id, false, "Не вдалося перевірити підписку.");
     return;
   }
 
   const expectedAmount = subscription.price;
   if (query.currency !== SUBSCRIPTION_CURRENCY || query.total_amount !== expectedAmount) {
+    await insertBotLog(supabase, {
+      text: `pre_checkout_error: amount_mismatch expected=${expectedAmount} got=${query.total_amount ?? "null"}`,
+      userId: query.from.id,
+      chatId: null,
+      threadId: null,
+      messageId: null
+    });
     await answerPreCheckoutQuery(env, query.id, false, "Невірна сума платежу.");
     return;
   }
@@ -356,17 +434,38 @@ async function handleSuccessfulPayment(
 
   const payload = parseInvoicePayload(payment.invoice_payload);
   if (!payload || payload.userId !== user.id) {
+    await insertBotLog(supabase, {
+      text: "payment_error: invalid_payload",
+      userId: user.id,
+      chatId: message.chat.id,
+      threadId: message.message_thread_id ?? null,
+      messageId: message.message_id ?? null
+    });
     await sendMessage(env, message.chat.id, "Платіж отримано, але дані не співпали. Напишіть в підтримку.");
     return;
   }
 
   const subscription = await loadSubscriptionInfo(supabase, user);
   if (!subscription) {
+    await insertBotLog(supabase, {
+      text: "payment_error: subscription_null",
+      userId: user.id,
+      chatId: message.chat.id,
+      threadId: message.message_thread_id ?? null,
+      messageId: message.message_id ?? null
+    });
     await sendMessage(env, message.chat.id, "Платіж отримано, але підтвердити підписку не вдалося.");
     return;
   }
 
   if (payment.currency !== SUBSCRIPTION_CURRENCY || payment.total_amount !== subscription.price) {
+    await insertBotLog(supabase, {
+      text: `payment_error: amount_mismatch expected=${subscription.price} got=${payment.total_amount ?? "null"}`,
+      userId: user.id,
+      chatId: message.chat.id,
+      threadId: message.message_thread_id ?? null,
+      messageId: message.message_id ?? null
+    });
     await sendMessage(env, message.chat.id, "Платіж отримано, але сума не співпала. Напишіть в підтримку.");
     return;
   }
@@ -492,6 +591,13 @@ async function grantFreeMonth(
     chatId,
     `Перший місяць безкоштовний ✅ Доступ до ${expiresLabel}. Наступного місяця — ${REGULAR_MONTH_PRICE} ⭐.`
   );
+  await insertBotLog(supabase, {
+    text: "free_month_granted",
+    userId: user.id,
+    chatId: typeof chatId === "number" ? chatId : null,
+    threadId: null,
+    messageId: null
+  });
 }
 
 async function insertBotLog(
