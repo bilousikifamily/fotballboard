@@ -248,6 +248,7 @@ export interface TelegramUpdate {
   edited_message?: TelegramMessage;
   channel_post?: TelegramMessage;
   edited_channel_post?: TelegramMessage;
+  pre_checkout_query?: TelegramPreCheckoutQuery;
 }
 
 export interface TelegramMessage {
@@ -257,10 +258,32 @@ export interface TelegramMessage {
   from?: TelegramUser & { is_bot?: boolean };
   chat?: { id?: number; type?: string; title?: string; username?: string };
   message_thread_id?: number;
+  successful_payment?: TelegramSuccessfulPayment;
 }
 
 export interface TelegramInlineKeyboardMarkup {
   inline_keyboard: Array<Array<{ text: string; web_app: { url: string } }>>;
+}
+
+export interface TelegramLabeledPrice {
+  label: string;
+  amount: number;
+}
+
+export interface TelegramPreCheckoutQuery {
+  id: string;
+  from?: TelegramUser;
+  currency?: string;
+  total_amount?: number;
+  invoice_payload?: string;
+}
+
+export interface TelegramSuccessfulPayment {
+  currency?: string;
+  total_amount?: number;
+  invoice_payload?: string;
+  telegram_payment_charge_id?: string;
+  provider_payment_charge_id?: string;
 }
 
 export interface TelegramUser {
@@ -285,6 +308,8 @@ export interface StoredUser {
   last_seen_at?: string | null;
   faction_club_id?: string | null;
   onboarding_completed_at?: string | null;
+  subscription_expires_at?: string | null;
+  subscription_paid_months?: number | null;
 }
 
 export interface UserStats {

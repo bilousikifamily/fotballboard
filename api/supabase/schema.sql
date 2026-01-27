@@ -16,6 +16,9 @@ create table if not exists club_api_map (
   updated_at timestamptz not null default now()
 );
 
+alter table if exists users add column if not exists subscription_expires_at timestamptz;
+alter table if exists users add column if not exists subscription_paid_months int;
+
 create unique index if not exists club_api_map_slug_unique on club_api_map (slug);
 create unique index if not exists club_api_map_api_team_id_unique on club_api_map (api_team_id);
 create index if not exists club_api_map_normalized_name_idx on club_api_map (normalized_name);

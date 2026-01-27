@@ -1637,7 +1637,7 @@ export default {
       await insertDebugUpdate(supabase, update);
     }
     await enforceFactionChatPermissions(env, supabase, update);
-    await handleUpdate(update, env);
+    await handleUpdate(update, env, supabase);
       return new Response("ok");
     }
 
@@ -1777,6 +1777,9 @@ async function insertBotDebugMessage(
 }
 
 function resolveUpdateType(update: TelegramUpdate): string {
+  if (update.pre_checkout_query) {
+    return "pre_checkout_query";
+  }
   if (update.message) {
     return "message";
   }
