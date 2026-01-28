@@ -56,10 +56,11 @@ body {
 
 body.onboarding-active #app {
   width: 100%;
-  padding: 24px 16px 40px;
+  padding: 16px;
 }
 
 body.onboarding-active {
+  padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   height: 100dvh;
   overflow: hidden;
