@@ -2283,10 +2283,16 @@ async function listFactionDebugMessages(
 }
 
 function matchChatRef(ref: FactionChatRef | undefined | null, message: TelegramMessage): boolean {
-  if (!ref || typeof ref.chatId !== "number" || typeof message.chat?.id !== "number") {
+  if (!ref || !message.chat) {
     return false;
   }
-  if (ref.chatId !== message.chat.id) {
+  const chatIdMatches =
+    typeof ref.chatId === "number" && typeof message.chat.id === "number" && ref.chatId === message.chat.id;
+  const usernameMatches =
+    ref.chatUsername &&
+    message.chat.username &&
+    ref.chatUsername.toLowerCase() === message.chat.username.toLowerCase();
+  if (!chatIdMatches && !usernameMatches) {
     return false;
   }
   const threadId = message.message_thread_id ?? null;
@@ -2294,6 +2300,26 @@ function matchChatRef(ref: FactionChatRef | undefined | null, message: TelegramM
     return threadId === ref.threadId;
   }
   return threadId === null;
+}
+
+function matchChatRefAnyThread(ref: FactionChatRef | undefined | null, message: TelegramMessage): boolean {
+  if (!ref || !message.chat) {
+    return false;
+  }
+  const chatIdMatches =
+    typeof ref.chatId === "number" && typeof message.chat.id === "number" && ref.chatId === message.chat.id;
+  const usernameMatches =
+    ref.chatUsername &&
+    message.chat.username &&
+    ref.chatUsername.toLowerCase() === message.chat.username.toLowerCase();
+  if (!chatIdMatches && !usernameMatches) {
+    return false;
+  }
+  if (typeof ref.threadId !== "number") {
+    return true;
+  }
+  const threadId = message.message_thread_id ?? null;
+  return threadId === ref.threadId;
 }
 
 function getExcludedThreadRefs(env: Env): FactionChatRef[] {
@@ -2304,6 +2330,17 @@ function getExcludedThreadRefs(env: Env): FactionChatRef[] {
   return excludedThreads
     .split(",")
     .map((ref) => parseChatRef(ref.trim(), "excluded"))
+    .filter((ref): ref is FactionChatRef => ref !== null);
+}
+
+function getAllowedWriterRefs(env: Env): FactionChatRef[] {
+  const allowedWriters = env.FACTION_CHAT_ALLOWED_WRITERS?.trim();
+  if (!allowedWriters) {
+    return [];
+  }
+  return allowedWriters
+    .split(",")
+    .map((ref) => parseChatRef(ref.trim(), "allowed-writer"))
     .filter((ref): ref is FactionChatRef => ref !== null);
 }
 
@@ -2325,6 +2362,13 @@ async function enforceFactionChatPermissions(
   const excludedRefs = getExcludedThreadRefs(env);
   for (const excludedRef of excludedRefs) {
     if (matchChatRef(excludedRef, message)) {
+      return;
+    }
+  }
+
+  const allowedWriterRefs = getAllowedWriterRefs(env);
+  for (const allowedRef of allowedWriterRefs) {
+    if (matchChatRefAnyThread(allowedRef, message)) {
       return;
     }
   }
