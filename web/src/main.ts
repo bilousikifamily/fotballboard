@@ -562,12 +562,16 @@ function renderOnboarding(
     const header =
       state.step === 3
         ? `
-      <div class="onboarding-header">
+      <div class="onboarding-header onboarding-header--promo">
         <span class="onboarding-step">${stepTitle}</span>
-        <h1>
+        <div class="onboarding-price">
+          <span class="onboarding-price__label">Звичайна ціна</span>
+          <span class="onboarding-price__value">100 ⭐️</span>
+        </div>
+        <h1 class="onboarding-promo-title">
           ДО ${escapeHtml(monthEndLabel)}
           <br />
-          УЧАСТЬ У ФУТБОЛЬНІЙ РАДІ
+          НОВІ ДЕПУТАТИ
           <br />
           БЕЗКОШТОВНО
         </h1>

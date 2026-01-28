@@ -535,6 +535,41 @@ body.profile-tab-active #app {
   text-align: center;
 }
 
+.onboarding-header--promo {
+  gap: 10px;
+}
+
+.onboarding-price {
+  display: inline-grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+
+.onboarding-price__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.onboarding-price__value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.onboarding-promo-title {
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .onboarding-step {
   font-size: 0.75rem;
   text-transform: uppercase;
