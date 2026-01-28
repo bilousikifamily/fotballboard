@@ -3716,7 +3716,6 @@ function setupAdminLayoutVoteButton(matchId: number): void {
         return;
       }
 
-      button.textContent = "Збережено ✅";
       const match = matchesById.get(resolvedMatchId);
       if (match) {
         match.has_prediction = true;
@@ -3726,6 +3725,7 @@ function setupAdminLayoutVoteButton(matchId: number): void {
       adminLayoutAverageCache.delete(resolvedMatchId);
       updateAdminLayoutAverage(resolvedMatchId);
       applyAdminLayoutPredictionState(resolvedMatchId, true);
+      button.textContent = originalText ?? "Проголосувати";
     } catch {
       button.textContent = "Не вдалося зберегти прогноз.";
       button.disabled = false;

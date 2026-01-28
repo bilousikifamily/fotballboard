@@ -129,3 +129,4 @@ This table lists clubs found in the project with Ukrainian alternatives.
 | FA Cup (Additional) | Portsmouth | `portsmouth` | ПОРТСМУТ |
 | FA Cup (Additional) | Barnsley | `barnsley` | БАРНСЛІ |
 | Analytics (Other) | Leeds | `leeds` | ЛІДС |
+| Champions League | Benfica | `benfica` | БЕНФІКА |
