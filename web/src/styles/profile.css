@@ -557,6 +557,10 @@ body.profile-tab-active #app {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: calc(3 * 88px + 2 * 12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
 }
 
 .avatar-button {

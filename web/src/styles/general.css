@@ -61,6 +61,8 @@ body.onboarding-active #app {
 
 body.onboarding-active {
   padding-bottom: env(safe-area-inset-bottom);
+  height: 100dvh;
+  overflow: hidden;
 }
 
 #app.app-hidden {
@@ -151,6 +153,7 @@ body.intro-active {
 
 .layout.onboarding {
   min-height: 100dvh;
+  height: 100dvh;
   align-content: center;
   justify-items: center;
   width: 100%;
