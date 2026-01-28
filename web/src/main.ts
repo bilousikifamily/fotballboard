@@ -178,6 +178,8 @@ const NOTICE_RULES = [
 const QUERY_TAB_PARAM = new URLSearchParams(window.location.search).get("tab") ?? null;
 const DEV_BYPASS = import.meta.env.DEV && new URLSearchParams(window.location.search).get("dev") === "1";
 const DEV_ADMIN = import.meta.env.DEV && new URLSearchParams(window.location.search).get("admin") === "1";
+const DEV_ONBOARDING =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get("onboarding") === "1";
 
 const tg = window.Telegram?.WebApp;
 if (tg?.ready) {
@@ -189,7 +191,7 @@ if (tg?.ready) {
 
 let initData = tg?.initData || "";
 if (!initData) {
-  if (DEV_BYPASS) {
+  if (DEV_BYPASS || DEV_ONBOARDING) {
     queueMicrotask(bootstrapDev);
   } else {
     renderMessage("Open in Telegram");
@@ -215,7 +217,7 @@ function bootstrapDev(): void {
   const factionClubId = "dynamo-kyiv";
   const factionLeague = findClubLeague(factionClubId);
   currentOnboarding = {
-    completed: true,
+    completed: !DEV_ONBOARDING,
     faction_club_id: factionClubId,
     nickname: "Dev",
     avatar_choice: null
@@ -254,8 +256,13 @@ function bootstrapDev(): void {
     ]
   };
 
-  document.body.classList.remove("onboarding-active");
-  renderUser(currentUser, stats, isAdmin, currentDate, currentNickname, profile);
+  if (currentOnboarding.completed) {
+    document.body.classList.remove("onboarding-active");
+    renderUser(currentUser, stats, isAdmin, currentDate, currentNickname, profile);
+  } else {
+    document.body.classList.add("onboarding-active");
+    renderOnboarding(currentUser, stats, currentOnboarding);
+  }
 
   if (apiBase) {
     void loadMatches(currentDate);
@@ -774,6 +781,21 @@ async function submitOnboarding(
     if (status) {
       status.textContent = "Не вдалося зберегти налаштування.";
     }
+    return;
+  }
+
+  if (DEV_ONBOARDING) {
+    currentNickname = nickname;
+    currentAvatarChoice = getDefaultAvatarChoice(state);
+    currentOnboarding = {
+      faction_club_id: state.factionClubId,
+      nickname,
+      avatar_choice: currentAvatarChoice,
+      completed: true
+    };
+    document.body.classList.remove("onboarding-active");
+    renderUser(user, stats, isAdmin, currentDate, currentNickname, null);
+    await loadMatches(currentDate);
     return;
   }
 
