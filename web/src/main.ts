@@ -611,11 +611,7 @@ function renderOnboarding(
       state.step === 3 ? "panel onboarding-panel onboarding-panel--promo" : "panel onboarding-panel";
     const actions =
       state.step === 3
-        ? `
-      <div class="onboarding-actions">
-        <button class="button onboarding-cta" type="button" data-onboarding-join>ПРИЄДНАТИСЬ</button>
-      </div>
-    `
+        ? ""
         : `
       <div class="onboarding-actions">
         <button class="button ghost" type="button" data-onboarding-back ${
@@ -627,9 +623,17 @@ function renderOnboarding(
 
     const urgencyBadge =
       state.step === 3
-        ? `<div class="onboarding-urgency onboarding-urgency--above"><span class="onboarding-urgency-icon">⏳</span> ДО ${escapeHtml(
+        ? `<div class="onboarding-urgency onboarding-urgency--above">ДО ${escapeHtml(
             monthEndLabel
           )}</div>`
+        : "";
+    const promoCta =
+      state.step === 3
+        ? `
+      <div class="onboarding-actions onboarding-actions--below">
+        <button class="button onboarding-cta" type="button" data-onboarding-join>ПРИЄДНАТИСЬ</button>
+      </div>
+    `
         : "";
 
     app.innerHTML = `
@@ -640,6 +644,7 @@ function renderOnboarding(
           ${body}
           ${actions}
         </section>
+        ${promoCta}
       </main>
     `;
 
