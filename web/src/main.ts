@@ -556,25 +556,22 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const stepTitle = `КРОК ${state.step}`;
+    const stepTitle = state.step === 3 ? "ВАШ ЕКСКЛЮЗИВНИЙ БОНУС" : `КРОК ${state.step}`;
     const headerTitle = getOnboardingTitle(state.step);
     const monthEndLabel = formatKyivMonthEndLabel(getKyivDateString()).toUpperCase();
     const header =
       state.step === 3
         ? `
       <div class="onboarding-header onboarding-header--promo">
-        <span class="onboarding-step">${stepTitle}</span>
-        <div class="onboarding-price">
-          <span class="onboarding-price__label">Звичайна ціна</span>
-          <span class="onboarding-price__value">100 ⭐️</span>
-        </div>
-        <h1 class="onboarding-promo-title">
-          ДО ${escapeHtml(monthEndLabel)}
-          <br />
-          НОВІ ДЕПУТАТИ
-          <br />
-          БЕЗКОШТОВНО
-        </h1>
+        <span class="onboarding-step onboarding-step--promo">${stepTitle}</span>
+        <span class="onboarding-urgency">⏳ ДО ${escapeHtml(monthEndLabel)}</span>
+        <div class="onboarding-free">БЕЗКОШТОВНО</div>
+        <p class="onboarding-promo-copy">Заберіть нових депутатів у подарунок!</p>
+        <p class="onboarding-price-line">
+          <span class="onboarding-price-now">0 ⭐</span>
+          <span class="onboarding-price-sep">замість</span>
+          <span class="onboarding-price-old">100 ⭐</span>
+        </p>
       </div>
     `
         : `
@@ -617,22 +614,24 @@ function renderOnboarding(
       body = "";
     }
 
+    const panelClass =
+      state.step === 3 ? "panel onboarding-panel onboarding-panel--promo" : "panel onboarding-panel";
     const actions = `
       <div class="onboarding-actions">
-        <button class="button secondary" type="button" data-onboarding-back ${
+        <button class="button ghost" type="button" data-onboarding-back ${
           state.step === 1 ? "disabled" : ""
         }>Назад</button>
         ${
           state.step < 3
             ? `<button class="button" type="button" data-onboarding-next>Далі</button>`
-            : `<button class="button" type="button" data-onboarding-join>ПРИЄДНАТИСЬ</button>`
+            : `<button class="button onboarding-cta" type="button" data-onboarding-join>ЗАБРАТИ БЕЗКОШТОВНО</button>`
         }
       </div>
     `;
 
     app.innerHTML = `
       <main class="layout onboarding">
-        <section class="panel onboarding-panel">
+        <section class="${panelClass}">
           ${header}
           ${body}
           ${actions}

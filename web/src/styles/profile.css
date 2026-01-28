@@ -536,38 +536,132 @@ body.profile-tab-active #app {
 }
 
 .onboarding-header--promo {
-  gap: 10px;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
-.onboarding-price {
-  display: inline-grid;
-  gap: 4px;
-  justify-items: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+.onboarding-panel--promo {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--outline-dark) inset, 0 18px 40px rgba(0, 0, 0, 0.55);
 }
 
-.onboarding-price__label {
+.onboarding-panel--promo::before {
+  content: "";
+  position: absolute;
+  inset: -35% -20% auto;
+  height: 140%;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(242, 163, 89, 0.35), transparent 55%),
+    radial-gradient(circle at 85% 30%, rgba(255, 179, 71, 0.2), transparent 60%);
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.onboarding-panel--promo::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 22px;
+  border: 1px solid rgba(242, 163, 89, 0.35);
+  box-shadow: 0 0 24px rgba(242, 163, 89, 0.25);
+  pointer-events: none;
+}
+
+.onboarding-step--promo {
   font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.onboarding-urgency {
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(242, 163, 89, 0.18);
+  border: 1px solid rgba(242, 163, 89, 0.4);
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: #f2a359;
 }
 
-.onboarding-price__value {
-  font-size: 1.1rem;
+.onboarding-free {
+  font-size: clamp(2rem, 7vw, 2.8rem);
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f2a359;
+  text-shadow: 0 0 18px rgba(242, 163, 89, 0.45);
+  animation: freePulse 2.8s ease-in-out infinite;
+}
+
+.onboarding-promo-copy {
+  margin: 0;
+  font-size: 1rem;
   color: var(--ink);
 }
 
-.onboarding-promo-title {
+.onboarding-price-line {
   margin: 0;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.onboarding-price-now {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f2a359;
+}
+
+.onboarding-price-sep {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.onboarding-price-old {
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.button.ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.75);
+  box-shadow: none;
+}
+
+.button.ghost:active {
+  box-shadow: none;
+}
+
+.onboarding-cta {
+  box-shadow: 0 18px 32px rgba(255, 179, 71, 0.45);
+  background: linear-gradient(135deg, #f2a359, #ff7a1a);
+}
+
+@keyframes freePulse {
+  0%,
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 12px rgba(242, 163, 89, 0.35);
+  }
+  50% {
+    transform: scale(1.04);
+    text-shadow: 0 0 22px rgba(242, 163, 89, 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-free {
+    animation: none;
+  }
 }
 
 .onboarding-step {
