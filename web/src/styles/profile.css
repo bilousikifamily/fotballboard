@@ -588,6 +588,10 @@ body.profile-tab-active #app {
   color: #f2a359;
 }
 
+.onboarding-urgency--above {
+  margin-bottom: 10px;
+}
+
 .onboarding-free {
   font-size: clamp(2rem, 7vw, 2.8rem);
   font-weight: 700;
@@ -602,15 +606,6 @@ body.profile-tab-active #app {
   margin: 0;
   font-size: 1rem;
   color: var(--ink);
-}
-
-.onboarding-price-line {
-  margin: 0;
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  justify-content: center;
-  font-size: 0.95rem;
 }
 
 .onboarding-price-now {
@@ -628,6 +623,15 @@ body.profile-tab-active #app {
   color: rgba(255, 255, 255, 0.45);
   text-decoration: line-through;
   text-decoration-thickness: 2px;
+}
+
+.onboarding-price-footer {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  justify-content: center;
+  font-size: 0.95rem;
+  padding-top: 10px;
 }
 
 .button.ghost {

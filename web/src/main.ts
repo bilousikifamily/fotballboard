@@ -556,7 +556,7 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const stepTitle = state.step === 3 ? "ВАШ ЕКСКЛЮЗИВНИЙ БОНУС" : `КРОК ${state.step}`;
+    const stepTitle = state.step === 3 ? "БОНУС ДЛЯ НОВАЧКІВ" : `КРОК ${state.step}`;
     const headerTitle = getOnboardingTitle(state.step);
     const monthEndLabel = formatKyivMonthEndLabel(getKyivDateString()).toUpperCase();
     const header =
@@ -564,14 +564,8 @@ function renderOnboarding(
         ? `
       <div class="onboarding-header onboarding-header--promo">
         <span class="onboarding-step onboarding-step--promo">${stepTitle}</span>
-        <span class="onboarding-urgency">⏳ ДО ${escapeHtml(monthEndLabel)}</span>
         <div class="onboarding-free">БЕЗКОШТОВНО</div>
-        <p class="onboarding-promo-copy">Заберіть нових депутатів у подарунок!</p>
-        <p class="onboarding-price-line">
-          <span class="onboarding-price-now">0 ⭐</span>
-          <span class="onboarding-price-sep">замість</span>
-          <span class="onboarding-price-old">100 ⭐</span>
-        </p>
+        <p class="onboarding-promo-copy">УЧАСТЬ У ФУТБОЛЬНІЙ РАДІ</p>
       </div>
     `
         : `
@@ -616,26 +610,48 @@ function renderOnboarding(
 
     const panelClass =
       state.step === 3 ? "panel onboarding-panel onboarding-panel--promo" : "panel onboarding-panel";
-    const actions = `
+    const actions =
+      state.step === 3
+        ? `
+      <div class="onboarding-actions">
+        <button class="button onboarding-cta" type="button" data-onboarding-join>ПРИЄДНАТИСЬ</button>
+      </div>
+    `
+        : `
       <div class="onboarding-actions">
         <button class="button ghost" type="button" data-onboarding-back ${
           state.step === 1 ? "disabled" : ""
         }>Назад</button>
-        ${
-          state.step < 3
-            ? `<button class="button" type="button" data-onboarding-next>Далі</button>`
-            : `<button class="button onboarding-cta" type="button" data-onboarding-join>ЗАБРАТИ БЕЗКОШТОВНО</button>`
-        }
+        <button class="button" type="button" data-onboarding-next>Далі</button>
       </div>
     `;
 
+    const urgencyBadge =
+      state.step === 3
+        ? `<div class="onboarding-urgency onboarding-urgency--above">⏳ ДО ${escapeHtml(
+            monthEndLabel
+          )}</div>`
+        : "";
+    const priceFooter =
+      state.step === 3
+        ? `
+      <div class="onboarding-price-footer">
+        <span class="onboarding-price-now">0 ⭐</span>
+        <span class="onboarding-price-sep">замість</span>
+        <span class="onboarding-price-old">100 ⭐</span>
+      </div>
+    `
+        : "";
+
     app.innerHTML = `
       <main class="layout onboarding">
+        ${urgencyBadge}
         <section class="${panelClass}">
           ${header}
           ${body}
           ${actions}
         </section>
+        ${priceFooter}
       </main>
     `;
 
