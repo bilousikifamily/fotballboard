@@ -1098,7 +1098,8 @@ function renderFactionChatPreviewMessages(messages: FactionChatPreviewMessage[])
 }
 
 function renderFactionChatPreviewMessage(message: FactionChatPreviewMessage, index: number): string {
-  const safeText = escapeHtml((message.text ?? "").trim());
+  const lines = (message.text ?? "").trim().split(/\r?\n/);
+  const safeText = lines.map((line) => escapeHtml(line)).join("<br />");
   const nickname = message.nickname?.trim();
   const author = message.author?.trim();
   const authorLabel = escapeHtml(nickname || author || "Анонім");
