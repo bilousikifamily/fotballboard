@@ -556,7 +556,7 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const stepTitle = state.step === 3 ? "БОНУС ДЛЯ НОВАЧКІВ" : `КРОК ${state.step}`;
+    const stepTitle = state.step === 3 ? "ДЛЯ НОВАЧКІВ" : `КРОК ${state.step}`;
     const headerTitle = getOnboardingTitle(state.step);
     const monthEndLabel = formatKyivMonthEndLabel(getKyivDateString()).toUpperCase();
     const header =
@@ -565,7 +565,6 @@ function renderOnboarding(
       <div class="onboarding-header onboarding-header--promo">
         <span class="onboarding-step onboarding-step--promo">${stepTitle}</span>
         <div class="onboarding-free">БЕЗКОШТОВНО</div>
-        <p class="onboarding-promo-copy">УЧАСТЬ У ФУТБОЛЬНІЙ РАДІ</p>
       </div>
     `
         : `
@@ -628,19 +627,9 @@ function renderOnboarding(
 
     const urgencyBadge =
       state.step === 3
-        ? `<div class="onboarding-urgency onboarding-urgency--above">⏳ ДО ${escapeHtml(
+        ? `<div class="onboarding-urgency onboarding-urgency--above"><span class="onboarding-urgency-icon">⏳</span> ДО ${escapeHtml(
             monthEndLabel
           )}</div>`
-        : "";
-    const priceFooter =
-      state.step === 3
-        ? `
-      <div class="onboarding-price-footer">
-        <span class="onboarding-price-now">0 ⭐</span>
-        <span class="onboarding-price-sep">замість</span>
-        <span class="onboarding-price-old">100 ⭐</span>
-      </div>
-    `
         : "";
 
     app.innerHTML = `
@@ -651,7 +640,6 @@ function renderOnboarding(
           ${body}
           ${actions}
         </section>
-        ${priceFooter}
       </main>
     `;
 

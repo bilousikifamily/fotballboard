@@ -578,18 +578,27 @@ body.profile-tab-active #app {
 
 .onboarding-urgency {
   align-self: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(242, 163, 89, 0.18);
-  border: 1px solid rgba(242, 163, 89, 0.4);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #f2a359;
 }
 
 .onboarding-urgency--above {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.onboarding-urgency-icon {
+  display: inline-block;
+  animation: hourglassSpin 2s linear infinite;
 }
 
 .onboarding-free {
@@ -662,8 +671,20 @@ body.profile-tab-active #app {
   }
 }
 
+@keyframes hourglassSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .onboarding-free {
+    animation: none;
+  }
+  .onboarding-urgency-icon {
     animation: none;
   }
 }
