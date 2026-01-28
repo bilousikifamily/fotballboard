@@ -544,17 +544,31 @@ body.profile-tab-active #app {
 .onboarding-panel--promo {
   position: relative;
   overflow: hidden;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  background: var(--card);
+  border: 1px solid var(--outline-light);
+  box-shadow: 0 0 0 1px var(--outline-dark) inset, 0 18px 40px rgba(0, 0, 0, 0.55);
 }
 
 .onboarding-panel--promo::before {
-  display: none;
+  content: "";
+  position: absolute;
+  inset: -35% -20% auto;
+  height: 140%;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(242, 163, 89, 0.35), transparent 55%),
+    radial-gradient(circle at 85% 30%, rgba(255, 179, 71, 0.2), transparent 60%);
+  pointer-events: none;
+  opacity: 0.8;
 }
 
 .onboarding-panel--promo::after {
-  display: none;
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 22px;
+  border: 1px solid rgba(242, 163, 89, 0.35);
+  box-shadow: 0 0 24px rgba(242, 163, 89, 0.25);
+  pointer-events: none;
 }
 
 .onboarding-step--promo {
@@ -570,14 +584,14 @@ body.profile-tab-active #app {
   border-radius: 0;
   background: transparent;
   border: none;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #ffffff;
 }
 
 .onboarding-urgency--below {
-  margin-top: 24px;
+  margin-top: 12px;
   text-align: center;
 }
 
@@ -625,6 +639,11 @@ body.profile-tab-active #app {
 
 .onboarding-actions--below {
   margin-top: 24px;
+}
+
+.onboarding-actions--below .button {
+  width: min(360px, 100%);
+  border-radius: 12px;
 }
 
 .onboarding-promo-stack {

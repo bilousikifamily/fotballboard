@@ -556,7 +556,7 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const stepTitle = state.step === 3 ? "ДЛЯ НОВАЧКІВ" : `КРОК ${state.step}`;
+    const stepTitle = state.step === 3 ? "ПЕРШИЙ МІСЯЦЬ" : `КРОК ${state.step}`;
     const headerTitle = getOnboardingTitle(state.step);
     const monthEndLabel = formatKyivMonthEndLabel(getKyivDateString()).toUpperCase();
     const header =
