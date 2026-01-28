@@ -545,7 +545,8 @@ function renderOnboarding(
     step: 1,
     factionClubId: onboarding.faction_club_id ?? null,
     factionLeague: resolvedLeague,
-    nickname: onboarding.nickname ?? ""
+    nickname: onboarding.nickname ?? "",
+    logoScrollTop: 0
   };
 
   const renderStep = (statusMessage = ""): void => {
@@ -619,6 +620,14 @@ function renderOnboarding(
       </main>
     `;
 
+    const logoGrid = app.querySelector<HTMLElement>(".logo-grid");
+    if (logoGrid) {
+      logoGrid.scrollTop = state.logoScrollTop;
+      logoGrid.addEventListener("scroll", () => {
+        state.logoScrollTop = logoGrid.scrollTop;
+      });
+    }
+
     const handleNicknameNext = (): void => {
       const nicknameInput = app.querySelector<HTMLInputElement>("input[name=nickname]");
       state.nickname = nicknameInput?.value ?? "";
@@ -659,6 +668,9 @@ function renderOnboarding(
 
     app.querySelectorAll<HTMLButtonElement>("[data-faction-choice]").forEach((button) => {
       button.addEventListener("click", () => {
+        if (logoGrid) {
+          state.logoScrollTop = logoGrid.scrollTop;
+        }
         const clubId = button.dataset.factionChoice || null;
         state.factionClubId = clubId;
         if (clubId) {
