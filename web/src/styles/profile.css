@@ -630,6 +630,10 @@ body.profile-tab-active #app {
   text-align: center;
 }
 
+.onboarding-subtitle {
+  margin: -2px 0 0;
+}
+
 .league-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

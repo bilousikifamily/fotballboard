@@ -59,6 +59,10 @@ body.onboarding-active #app {
   padding: 24px 16px 40px;
 }
 
+body.onboarding-active {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 #app.app-hidden {
   opacity: 0;
   transform: translateY(18px);
@@ -146,7 +150,7 @@ body.intro-active {
 }
 
 .layout.onboarding {
-  min-height: calc(100dvh - 48px);
+  min-height: 100dvh;
   align-content: center;
   justify-items: center;
   width: 100%;

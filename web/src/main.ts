@@ -590,7 +590,7 @@ function renderOnboarding(
     } else {
       body = `
         <div class="onboarding-question center">
-          <p class="muted">ДО 31 СІЧНЯ - БЕЗКОШТОВНО</p>
+          <p class="muted onboarding-subtitle">ДО 31 СІЧНЯ</p>
         </div>
         <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
@@ -694,7 +694,7 @@ function getOnboardingTitle(step: number): string {
   if (step === 2) {
     return "НАПИШИ СВІЙ НІКНЕЙМ";
   }
-  return "УЧАСТЬ У ФУТБОЛЬНІЙ РАДІ";
+  return "БЕЗКОШТОВНА УЧАСТЬ";
 }
 
 async function submitOnboarding(
