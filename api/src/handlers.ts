@@ -667,6 +667,8 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
+      await maybeGrantFreeMonthOnOnboarding(supabase, auth.user.id);
+
       const factionSlug = normalizeFactionChoice(factionClubId);
       if (!wasOnboarded && factionSlug) {
         await notifyFactionChatNewDeputy(env, supabase, auth.user, factionSlug, { nickname });
@@ -1889,6 +1891,43 @@ async function handleSubscriptionExpiryReminders(env: Env): Promise<void> {
     } catch (sendError) {
       console.error("Failed to send subscription reminder", { userId, sendError });
     }
+  }
+}
+
+async function maybeGrantFreeMonthOnOnboarding(
+  supabase: SupabaseClient,
+  userId: number
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("subscription_expires_at, subscription_free_month_used")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("Failed to load subscription state for onboarding", error);
+    return;
+  }
+
+  const freeMonthUsed = data?.subscription_free_month_used === true;
+  if (freeMonthUsed) {
+    return;
+  }
+
+  const expiresAtValue = data?.subscription_expires_at ?? null;
+  const expiresAt = expiresAtValue ? new Date(expiresAtValue) : null;
+  const targetExpiry = computeCurrentMonthExpiry();
+  const nextExpiry =
+    expiresAt && expiresAt.getTime() > targetExpiry.getTime() ? expiresAt : targetExpiry;
+
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({
+      subscription_expires_at: nextExpiry.toISOString(),
+      subscription_free_month_used: true
+    })
+    .eq("id", userId);
+  if (updateError) {
+    console.error("Failed to grant free month on onboarding", updateError);
   }
 }
 
@@ -6297,6 +6336,41 @@ function getKyivStart(dateStr: string): Date {
   const base = new Date(`${dateStr}T00:00:00Z`);
   const offsetMs = getTimeZoneOffset(base, "Europe/Kyiv");
   return new Date(base.getTime() - offsetMs);
+}
+
+function computeCurrentMonthExpiry(base: Date = new Date()): Date {
+  const { year, month } = getKyivYearMonth(base);
+  const lastDay = daysInMonth(year, month);
+  return zonedTimeToUtc(year, month, lastDay, 23, 59, 59, "Europe/Kyiv");
+}
+
+function getKyivYearMonth(date: Date): { year: number; month: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit"
+  }).formatToParts(date);
+  const year = Number(parts.find((part) => part.type === "year")?.value ?? "0");
+  const month = Number(parts.find((part) => part.type === "month")?.value ?? "1");
+  return { year, month };
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function zonedTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  timeZone: string
+): Date {
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  const offsetMs = getTimeZoneOffset(utcDate, timeZone);
+  return new Date(utcDate.getTime() - offsetMs);
 }
 
 function getTimeZoneOffset(date: Date, timeZone: string): number {
