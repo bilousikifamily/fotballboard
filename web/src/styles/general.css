@@ -349,6 +349,7 @@ body.intro-active {
 
 .onboarding-form .field input {
   font-size: 1.275rem;
+  text-align: center;
 }
 
 .field select {
