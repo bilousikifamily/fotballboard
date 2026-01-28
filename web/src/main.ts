@@ -621,12 +621,25 @@ function renderOnboarding(
       </div>
     `;
 
-    const urgencyBadge =
+    const promoWrapper =
       state.step === 3
-        ? `<div class="onboarding-urgency onboarding-urgency--above">ДО ${escapeHtml(
-            monthEndLabel
-          )}</div>`
-        : "";
+        ? `
+      <div class="onboarding-promo-stack">
+        <img class="onboarding-rada" src="/images/rada.png" alt="" />
+        <section class="${panelClass}">
+          ${header}
+          ${body}
+          ${actions}
+        </section>
+      </div>
+    `
+        : `
+      <section class="${panelClass}">
+        ${header}
+        ${body}
+        ${actions}
+      </section>
+    `;
     const promoCta =
       state.step === 3
         ? `
@@ -635,16 +648,18 @@ function renderOnboarding(
       </div>
     `
         : "";
+    const urgencyBadge =
+      state.step === 3
+        ? `<div class="onboarding-urgency onboarding-urgency--below">ДО ${escapeHtml(
+            monthEndLabel
+          )}</div>`
+        : "";
 
     app.innerHTML = `
       <main class="layout onboarding">
-        ${urgencyBadge}
-        <section class="${panelClass}">
-          ${header}
-          ${body}
-          ${actions}
-        </section>
+        ${promoWrapper}
         ${promoCta}
+        ${urgencyBadge}
       </main>
     `;
 

@@ -576,12 +576,9 @@ body.profile-tab-active #app {
   color: #ffffff;
 }
 
-.onboarding-urgency--above {
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
+.onboarding-urgency--below {
+  margin-top: 24px;
+  text-align: center;
 }
 
 .onboarding-free {
@@ -628,6 +625,25 @@ body.profile-tab-active #app {
 
 .onboarding-actions--below {
   margin-top: 24px;
+}
+
+.onboarding-promo-stack {
+  position: relative;
+  margin: 24px 0;
+  width: 100%;
+  display: grid;
+  justify-items: center;
+}
+
+.onboarding-rada {
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  transform: translate(-50%, -85%);
+  width: 80%;
+  height: auto;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .button.ghost {
