@@ -549,7 +549,7 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const stepTitle = `Крок ${state.step} з 2`;
+    const stepTitle = `Крок ${state.step} з 3`;
     const headerTitle = getOnboardingTitle(state.step);
     const header = `
       <div class="onboarding-header">
@@ -576,7 +576,7 @@ function renderOnboarding(
         </div>
         <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
-    } else {
+    } else if (state.step === 2) {
       body = `
         <form class="onboarding-form" data-onboarding-form>
           <label class="field">
@@ -584,9 +584,15 @@ function renderOnboarding(
               state.nickname
             )}" required />
           </label>
-          <button class="button" type="submit">Зберегти</button>
           <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
         </form>
+      `;
+    } else {
+      body = `
+        <div class="onboarding-question center">
+          <p class="muted">ДО 31 СІЧНЯ - БЕЗКОШТОВНО</p>
+        </div>
+        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
       `;
     }
 
@@ -596,9 +602,9 @@ function renderOnboarding(
           state.step === 1 ? "disabled" : ""
         }>Назад</button>
         ${
-          state.step === 1
+          state.step < 3
             ? `<button class="button" type="button" data-onboarding-next>Далі</button>`
-            : ""
+            : `<button class="button" type="button" data-onboarding-join>ПРИЄДНАТИСЬ</button>`
         }
       </div>
     `;
@@ -613,11 +619,26 @@ function renderOnboarding(
       </main>
     `;
 
+    const handleNicknameNext = (): void => {
+      const nicknameInput = app.querySelector<HTMLInputElement>("input[name=nickname]");
+      state.nickname = nicknameInput?.value ?? "";
+      if (state.nickname.trim().length < 2) {
+        renderStep("Нікнейм має містити мінімум 2 символи.");
+        return;
+      }
+      state.step = 3;
+      renderStep();
+    };
+
     const nextButton = app.querySelector<HTMLButtonElement>("[data-onboarding-next]");
     if (nextButton) {
       nextButton.addEventListener("click", () => {
         if (state.step === 1 && !state.factionClubId) {
           renderStep("Оберіть фракцію, щоб продовжити.");
+          return;
+        }
+        if (state.step === 2) {
+          handleNicknameNext();
           return;
         }
         state.step = 2;
@@ -651,8 +672,13 @@ function renderOnboarding(
     if (form) {
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        const nicknameInput = form.querySelector<HTMLInputElement>("input[name=nickname]");
-        state.nickname = nicknameInput?.value ?? "";
+        handleNicknameNext();
+      });
+    }
+
+    const joinButton = app.querySelector<HTMLButtonElement>("[data-onboarding-join]");
+    if (joinButton) {
+      joinButton.addEventListener("click", () => {
         void submitOnboarding(state, user, stats);
       });
     }
@@ -662,7 +688,13 @@ function renderOnboarding(
 }
 
 function getOnboardingTitle(step: number): string {
-  return step === 1 ? "ЯКУ ФРАКЦІЮ ОБИРАЄШ?" : "НАПИШИ СВІЙ НІКНЕЙМ";
+  if (step === 1) {
+    return "ЯКУ ФРАКЦІЮ ОБИРАЄШ?";
+  }
+  if (step === 2) {
+    return "НАПИШИ СВІЙ НІКНЕЙМ";
+  }
+  return "УЧАСТЬ У ФУТБОЛЬНІЙ РАДІ";
 }
 
 async function submitOnboarding(
