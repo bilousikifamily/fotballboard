@@ -79,7 +79,15 @@ const UEFA_LOGO_LEAGUE_MAP: Record<MatchLeagueId, LogoLeagueId> = {
 };
 
 const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
-  "uefa-champions-league": new Set(["sporting", "benfica", "pafos", "slavia-praga", "bodo-glimt", "psv"]),
+  "uefa-champions-league": new Set([
+    "sporting",
+    "benfica",
+    "pafos",
+    "slavia-praga",
+    "bodo-glimt",
+    "psv",
+    "karabakh"
+  ]),
   "uefa-europa-league": new Set(["fenerbahce", "young-boys"]),
   "uefa-europa-conference-league": new Set()
 };
