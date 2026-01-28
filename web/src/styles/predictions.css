@@ -255,6 +255,12 @@
   margin: 0;
 }
 
+.prediction-form [data-prediction-status] {
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
 .prediction-form.is-hidden {
   display: none;
 }
