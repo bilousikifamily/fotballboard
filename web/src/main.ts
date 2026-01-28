@@ -42,7 +42,13 @@ import { findClubLeague, formatClubName, getAvatarLogoPath, getClubLogoPath, get
 import { normalizeTeamSlugValue } from "./features/teamSlugs";
 import { extractCorrectScoreProbability, formatProbability, getMatchWinnerProbabilities } from "./features/odds";
 import { formatCountdown, getMatchPredictionCloseAtMs } from "./features/predictionTime";
-import { addKyivDays, formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
+import {
+  addKyivDays,
+  formatKyivDateLabel,
+  formatKyivDateTime,
+  formatKyivMonthEndLabel,
+  getKyivDateString
+} from "./formatters/dates";
 import { formatPredictionName, formatTelegramName } from "./formatters/names";
 import {
   formatTimeInZone,
@@ -550,9 +556,24 @@ function renderOnboarding(
   };
 
   const renderStep = (statusMessage = ""): void => {
-    const stepTitle = `Крок ${state.step} з 3`;
+    const stepTitle = `КРОК ${state.step}`;
     const headerTitle = getOnboardingTitle(state.step);
-    const header = `
+    const monthEndLabel = formatKyivMonthEndLabel(getKyivDateString()).toUpperCase();
+    const header =
+      state.step === 3
+        ? `
+      <div class="onboarding-header">
+        <span class="onboarding-step">${stepTitle}</span>
+        <h1>
+          ДО ${escapeHtml(monthEndLabel)}
+          <br />
+          УЧАСТЬ У ФУТБОЛЬНІЙ РАДІ
+          <br />
+          БЕЗКОШТОВНО
+        </h1>
+      </div>
+    `
+        : `
       <div class="onboarding-header">
         <span class="onboarding-step">${stepTitle}</span>
         <h1>${escapeHtml(headerTitle)}</h1>
@@ -589,12 +610,7 @@ function renderOnboarding(
         </form>
       `;
     } else {
-      body = `
-        <div class="onboarding-question center">
-          <p class="muted onboarding-subtitle">ДО 31 СІЧНЯ</p>
-        </div>
-        <p class="muted small" data-onboarding-status>${escapeHtml(statusMessage)}</p>
-      `;
+      body = "";
     }
 
     const actions = `

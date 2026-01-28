@@ -24,6 +24,21 @@ export function formatKyivDateLabel(dateString: string): string {
   }).format(date);
 }
 
+export function formatKyivMonthEndLabel(dateString: string): string {
+  const [yearRaw, monthRaw] = dateString.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  if (!year || !month) {
+    return dateString;
+  }
+  const date = new Date(Date.UTC(year, month, 0, 12));
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone: "Europe/Kyiv",
+    day: "numeric",
+    month: "long"
+  }).format(date);
+}
+
 export function addKyivDays(dateString: string, delta: number): string {
   const [yearRaw, monthRaw, dayRaw] = dateString.split("-");
   const year = Number(yearRaw);
