@@ -728,6 +728,27 @@ body.profile-tab-active #app {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  position: relative;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
 .avatar-button {
@@ -774,7 +795,7 @@ body.profile-tab-active #app {
 
 .logo-choice.is-selected {
   border-color: rgba(255, 122, 26, 0.85);
-  box-shadow: 0 0 0 1px var(--outline-dark) inset, 0 12px 26px rgba(255, 122, 26, 0.25);
+  background: linear-gradient(135deg, rgba(255, 179, 71, 0.35), rgba(255, 122, 26, 0.35));
   transform: translateY(-1px);
 }
 
