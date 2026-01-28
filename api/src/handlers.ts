@@ -224,6 +224,13 @@ const ANALITIKA_TEAMS = [
   { slug: "real-madrid", name: "Real Madrid" }
 ];
 
+const TEAM_NAME_ALIASES: Record<string, string[]> = {
+  "newcastle": ["Newcastle", "Newcastle United"],
+  "newcastle united": ["Newcastle", "Newcastle United"],
+  "leeds": ["Leeds", "Leeds United"],
+  "leeds united": ["Leeds", "Leeds United"]
+};
+
 const CLASSICO_CHAT_ENV: Record<ClassicoFaction, keyof Env> = {
   real_madrid: "FACTION_CHAT_REAL",
   barcelona: "FACTION_CHAT_BARCA"
@@ -2451,10 +2458,28 @@ async function listTeamMatchStats(
   limit?: number | null
 ): Promise<DbTeamMatchStat[] | null> {
   try {
+    const nameCandidates = resolveTeamNameAliases(teamName);
+    type DbTeamMatchRow = {
+      id: string;
+      match_date: string;
+      home_team_name: string;
+      away_team_name: string;
+      home_goals?: number | string | null;
+      away_goals?: number | string | null;
+      home_avg_rating?: number | string | null;
+      away_avg_rating?: number | string | null;
+    };
     let query = supabase
       .from("team_match_stats")
-      .select("id, team_name, opponent_name, match_date, is_home, team_goals, opponent_goals, avg_rating")
-      .eq("team_name", teamName)
+      .select(
+        "id, match_date, home_team_name, away_team_name, home_goals, away_goals, home_avg_rating, away_avg_rating"
+      )
+      .or(
+        [
+          `home_team_name.in.(${nameCandidates.map((item) => `"${item.replace(/"/g, '\\"')}"`).join(",")})`,
+          `away_team_name.in.(${nameCandidates.map((item) => `"${item.replace(/"/g, '\\"')}"`).join(",")})`
+        ].join(",")
+      )
       .order("match_date", { ascending: false });
     if (typeof limit === "number") {
       query = query.limit(limit);
@@ -2464,7 +2489,22 @@ async function listTeamMatchStats(
       console.error("Failed to list team_match_stats", error);
       return null;
     }
-    return (data as DbTeamMatchStat[]) ?? [];
+    const rows = (data as DbTeamMatchRow[]) ?? [];
+    const normalizedCandidates = new Set(nameCandidates.map((name) => name.trim().toLowerCase()));
+    const items = rows.map((row) => {
+      const isHome = normalizedCandidates.has(row.home_team_name.trim().toLowerCase());
+      return {
+        id: row.id,
+        team_name: isHome ? row.home_team_name : row.away_team_name,
+        opponent_name: isHome ? row.away_team_name : row.home_team_name,
+        match_date: row.match_date,
+        is_home: isHome,
+        team_goals: isHome ? row.home_goals : row.away_goals,
+        opponent_goals: isHome ? row.away_goals : row.home_goals,
+        avg_rating: isHome ? row.home_avg_rating : row.away_avg_rating
+      } satisfies DbTeamMatchStat;
+    });
+    return items;
   } catch (error) {
     console.error("Failed to list team_match_stats", error);
     return null;
@@ -5534,72 +5574,52 @@ async function upsertTeamMatchStats(
 ): Promise<boolean> {
   try {
     const matchDate = match.kickoff_at;
-    const rows = [
-      {
-        team_name: match.home_team,
-        opponent_name: match.away_team,
-        is_home: true,
-        team_goals: homeScore,
-        opponent_goals: awayScore,
-        avg_rating: homeRating
-      },
-      {
-        team_name: match.away_team,
-        opponent_name: match.home_team,
-        is_home: false,
-        team_goals: awayScore,
-        opponent_goals: homeScore,
-        avg_rating: awayRating
-      }
-    ];
-
-    for (const row of rows) {
-      const { data, error } = await supabase
-        .from("team_match_stats")
-        .select("id")
-        .eq("team_name", row.team_name)
-        .eq("opponent_name", row.opponent_name)
-        .eq("match_date", matchDate)
-        .eq("is_home", row.is_home)
-        .limit(1);
-      if (error) {
-        console.error("Failed to check team_match_stats", error);
-        return false;
-      }
-      const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
-      if (existingId) {
-        const { error: updateError } = await supabase
-          .from("team_match_stats")
-          .update({
-            team_goals: row.team_goals,
-            opponent_goals: row.opponent_goals,
-            avg_rating: row.avg_rating
-          })
-          .eq("id", existingId);
-        if (updateError) {
-          console.error("Failed to update team_match_stats", updateError);
-          return false;
-        }
-        continue;
-      }
-      const { error: insertError } = await supabase
-        .from("team_match_stats")
-        .insert({
-          id: crypto.randomUUID(),
-          match_date: matchDate,
-          team_name: row.team_name,
-          opponent_name: row.opponent_name,
-          is_home: row.is_home,
-          team_goals: row.team_goals,
-          opponent_goals: row.opponent_goals,
-          avg_rating: row.avg_rating
-        });
-      if (insertError) {
-        console.error("Failed to insert team_match_stats", insertError);
-        return false;
-      }
+    const homeName = resolveAnalitikaTeamName(match.home_team, match.home_club_id ?? null);
+    const awayName = resolveAnalitikaTeamName(match.away_team, match.away_club_id ?? null);
+    const { data, error } = await supabase
+      .from("team_match_stats")
+      .select("id")
+      .eq("home_team_name", homeName)
+      .eq("away_team_name", awayName)
+      .eq("match_date", matchDate)
+      .limit(1);
+    if (error) {
+      console.error("Failed to check team_match_stats", error);
+      return false;
     }
-
+    const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
+    const payload = {
+      match_date: matchDate,
+      home_team_name: homeName,
+      away_team_name: awayName,
+      home_goals: homeScore,
+      away_goals: awayScore,
+      home_avg_rating: homeRating,
+      away_avg_rating: awayRating,
+      updated_at: new Date().toISOString()
+    };
+    if (existingId) {
+      const { error: updateError } = await supabase
+        .from("team_match_stats")
+        .update(payload)
+        .eq("id", existingId);
+      if (updateError) {
+        console.error("Failed to update team_match_stats", updateError);
+        return false;
+      }
+      return true;
+    }
+    const { error: insertError } = await supabase
+      .from("team_match_stats")
+      .insert({
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        ...payload
+      });
+    if (insertError) {
+      console.error("Failed to insert team_match_stats", insertError);
+      return false;
+    }
     return true;
   } catch (error) {
     console.error("Failed to save team_match_stats", error);
@@ -6960,4 +6980,30 @@ function resolveTeamMatchStatsTeam(teamSlug: string | null): { slug: string; nam
     return null;
   }
   return ANALITIKA_TEAMS.find((team) => team.slug === teamSlug) ?? null;
+}
+
+function resolveAnalitikaTeamName(teamName: string, clubId?: string | null): string {
+  const slug = clubId?.trim();
+  if (slug) {
+    const entry = ANALITIKA_TEAMS.find((team) => team.slug === slug);
+    if (entry) {
+      return entry.name;
+    }
+  }
+  return teamName;
+}
+
+function resolveTeamNameAliases(teamName: string): string[] {
+  const normalized = teamName.trim().toLowerCase();
+  const aliases = TEAM_NAME_ALIASES[normalized];
+  if (!aliases) {
+    return [teamName];
+  }
+  const unique = new Set<string>();
+  [teamName, ...aliases].forEach((name) => {
+    if (name && name.trim()) {
+      unique.add(name);
+    }
+  });
+  return Array.from(unique);
 }

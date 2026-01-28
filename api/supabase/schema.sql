@@ -16,6 +16,19 @@ create table if not exists club_api_map (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists team_match_stats (
+  id uuid primary key,
+  match_date timestamptz not null,
+  home_team_name text not null,
+  away_team_name text not null,
+  home_goals int4,
+  away_goals int4,
+  home_avg_rating numeric,
+  away_avg_rating numeric,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table if exists users add column if not exists subscription_expires_at timestamptz;
 alter table if exists users add column if not exists subscription_paid_months int;
 alter table if exists users add column if not exists subscription_free_month_used boolean default false;
@@ -23,6 +36,10 @@ alter table if exists users add column if not exists subscription_free_month_use
 create unique index if not exists club_api_map_slug_unique on club_api_map (slug);
 create unique index if not exists club_api_map_api_team_id_unique on club_api_map (api_team_id);
 create index if not exists club_api_map_normalized_name_idx on club_api_map (normalized_name);
+
+create index if not exists team_match_stats_match_date_idx on team_match_stats (match_date);
+create index if not exists team_match_stats_home_team_name_idx on team_match_stats (home_team_name);
+create index if not exists team_match_stats_away_team_name_idx on team_match_stats (away_team_name);
 
 alter table if exists matches add column if not exists start_digest_sent_at timestamptz;
 alter table if exists matches add column if not exists odds_manual_home double precision;
