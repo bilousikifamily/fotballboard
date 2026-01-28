@@ -258,6 +258,7 @@ export interface TelegramMessage {
   entities?: Array<{ type?: string; offset?: number; length?: number }>;
   from?: TelegramUser & { is_bot?: boolean };
   chat?: { id?: number; type?: string; title?: string; username?: string };
+  sender_chat?: { id?: number; type?: string; title?: string; username?: string };
   message_thread_id?: number;
   successful_payment?: TelegramSuccessfulPayment;
 }

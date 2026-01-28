@@ -2322,6 +2322,18 @@ function matchChatRefAnyThread(ref: FactionChatRef | undefined | null, message: 
   return threadId === ref.threadId;
 }
 
+function matchChatRefByChat(
+  ref: FactionChatRef | undefined | null,
+  chat: { id?: number; username?: string } | null | undefined
+): boolean {
+  if (!ref || !chat) {
+    return false;
+  }
+  const chatIdMatches = typeof ref.chatId === "number" && typeof chat.id === "number" && ref.chatId === chat.id;
+  const usernameMatches =
+    ref.chatUsername && chat.username && ref.chatUsername.toLowerCase() === chat.username.toLowerCase();
+  return chatIdMatches || usernameMatches;
+}
 function getExcludedThreadRefs(env: Env): FactionChatRef[] {
   const excludedThreads = env.FACTION_CHAT_EXCLUDED_THREADS?.trim();
   if (!excludedThreads) {
@@ -2368,6 +2380,9 @@ async function enforceFactionChatPermissions(
 
   const allowedWriterRefs = getAllowedWriterRefs(env);
   for (const allowedRef of allowedWriterRefs) {
+    if (matchChatRefByChat(allowedRef, message.sender_chat)) {
+      return;
+    }
     if (matchChatRefAnyThread(allowedRef, message)) {
       return;
     }
