@@ -86,7 +86,11 @@ const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
     "slavia-praga",
     "bodo-glimt",
     "psv",
-    "karabakh"
+    "karabakh",
+    "porto",
+    "rangers",
+    "feyenoord",
+    "panathinaikos"
   ]),
   "uefa-europa-league": new Set(["fenerbahce", "young-boys"]),
   "uefa-europa-conference-league": new Set()

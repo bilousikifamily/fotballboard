@@ -126,5 +126,9 @@ export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "wolfsburg": "ВОЛЬФСБУРГ",
   "wolves": "ВУЛВЗ",
   "benfica": "БЕНФІКА",
+  "feyenoord": "ФЕЙЄНОРД",
+  "panathinaikos": "ПАНАТІНАЙКОС",
+  "porto": "ПОРТУ",
+  "rangers": "РЕЙНДЖЕРС",
   "zorya-luhansk": "ЗОРЯ",
 };
