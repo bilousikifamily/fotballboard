@@ -5600,7 +5600,7 @@ async function applyMatchResult(
   );
   if (!statsOk) {
     console.error("Failed to update team_match_stats; continuing without stats update.");
-    await logDebugUpdate(supabase, `team_match_stats_failed match_id=${matchId}`);
+    await logDebugUpdate(supabase, "team_match_stats_failed", { matchId });
   }
 
   const { data: predictions, error: predError } = await supabase
@@ -5751,7 +5751,10 @@ async function upsertTeamMatchStatsV2(
       .limit(1);
     if (error) {
       console.error("Failed to check team_match_stats", error);
-      await logDebugUpdate(supabase, `team_match_stats_check_failed match_id=${match.id} error=${String(error)}`);
+      await logDebugUpdate(supabase, "team_match_stats_check_failed", {
+        matchId: match.id,
+        error: formatSupabaseError(error)
+      });
       return false;
     }
     const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
@@ -5772,7 +5775,10 @@ async function upsertTeamMatchStatsV2(
         .eq("id", existingId);
       if (updateError) {
         console.error("Failed to update team_match_stats", updateError);
-        await logDebugUpdate(supabase, `team_match_stats_update_failed match_id=${match.id} error=${String(updateError)}`);
+        await logDebugUpdate(supabase, "team_match_stats_update_failed", {
+          matchId: match.id,
+          error: formatSupabaseError(updateError)
+        });
         return false;
       }
       return true;
@@ -5786,13 +5792,19 @@ async function upsertTeamMatchStatsV2(
       });
     if (insertError) {
       console.error("Failed to insert team_match_stats", insertError);
-      await logDebugUpdate(supabase, `team_match_stats_insert_failed match_id=${match.id} error=${String(insertError)}`);
+      await logDebugUpdate(supabase, "team_match_stats_insert_failed", {
+        matchId: match.id,
+        error: formatSupabaseError(insertError)
+      });
       return false;
     }
     return true;
   } catch (error) {
     console.error("Failed to save team_match_stats", error);
-    await logDebugUpdate(supabase, `team_match_stats_exception match_id=${match.id} error=${String(error)}`);
+    await logDebugUpdate(supabase, "team_match_stats_exception", {
+      matchId: match.id,
+      error: formatSupabaseError(error)
+    });
     return false;
   }
 }
@@ -5837,10 +5849,10 @@ async function upsertTeamMatchStatsLegacy(
         .limit(1);
       if (error) {
         console.error("Failed to check legacy team_match_stats", error);
-        await logDebugUpdate(
-          supabase,
-          `team_match_stats_legacy_check_failed match_id=${match.id} error=${String(error)}`
-        );
+        await logDebugUpdate(supabase, "team_match_stats_legacy_check_failed", {
+          matchId: match.id,
+          error: formatSupabaseError(error)
+        });
         return false;
       }
       const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
@@ -5855,10 +5867,10 @@ async function upsertTeamMatchStatsLegacy(
           .eq("id", existingId);
         if (updateError) {
           console.error("Failed to update legacy team_match_stats", updateError);
-          await logDebugUpdate(
-            supabase,
-            `team_match_stats_legacy_update_failed match_id=${match.id} error=${String(updateError)}`
-          );
+          await logDebugUpdate(supabase, "team_match_stats_legacy_update_failed", {
+            matchId: match.id,
+            error: formatSupabaseError(updateError)
+          });
           return false;
         }
         continue;
@@ -5877,23 +5889,72 @@ async function upsertTeamMatchStatsLegacy(
         });
       if (insertError) {
         console.error("Failed to insert legacy team_match_stats", insertError);
-        await logDebugUpdate(
-          supabase,
-          `team_match_stats_legacy_insert_failed match_id=${match.id} error=${String(insertError)}`
-        );
+        await logDebugUpdate(supabase, "team_match_stats_legacy_insert_failed", {
+          matchId: match.id,
+          error: formatSupabaseError(insertError)
+        });
         return false;
       }
     }
     return true;
   } catch (error) {
     console.error("Failed to save legacy team_match_stats", error);
-    await logDebugUpdate(supabase, `team_match_stats_legacy_exception match_id=${match.id} error=${String(error)}`);
+    await logDebugUpdate(supabase, "team_match_stats_legacy_exception", {
+      matchId: match.id,
+      error: formatSupabaseError(error)
+    });
     return false;
   }
 }
 
-async function logDebugUpdate(supabase: SupabaseClient, text: string): Promise<void> {
+function formatSupabaseError(error: unknown): string {
+  if (!error) {
+    return "";
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+  const payload = error as { code?: string; message?: string; details?: string; hint?: string };
+  const parts: string[] = [];
+  if (payload.code) {
+    parts.push(`code=${payload.code}`);
+  }
+  if (payload.message) {
+    parts.push(`message=${payload.message}`);
+  }
+  if (payload.details) {
+    parts.push(`details=${payload.details}`);
+  }
+  if (payload.hint) {
+    parts.push(`hint=${payload.hint}`);
+  }
+  if (parts.length > 0) {
+    return parts.join(" ");
+  }
   try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+async function logDebugUpdate(
+  supabase: SupabaseClient,
+  event: string,
+  payload: { matchId?: number; error?: string } = {}
+): Promise<void> {
+  try {
+    const parts: string[] = [event];
+    if (typeof payload.matchId === "number") {
+      parts.push(`match_id=${payload.matchId}`);
+    }
+    if (payload.error) {
+      parts.push(`error=${payload.error}`);
+    }
+    const text = parts.join(" ");
     await supabase.from("debug_updates").insert({
       update_type: "bot_log",
       chat_id: null,
