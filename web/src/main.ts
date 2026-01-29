@@ -1804,6 +1804,7 @@ function renderUser(
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
       toggleAdd.addEventListener("click", () => {
+        setDefaultKickoffAt(form);
         form.classList.toggle("is-open");
       });
       form.addEventListener("submit", (event) => {
@@ -2406,6 +2407,7 @@ async function submitMatch(form: HTMLFormElement): Promise<void> {
     }
 
     form.reset();
+    setDefaultKickoffAt(form);
     form.classList.remove("is-open");
     if (status) {
       status.textContent = "Матч додано. Очікує підтвердження ✅";
@@ -3161,6 +3163,17 @@ function setupAdminMatchForm(form: HTMLFormElement): void {
     }
     setClubOptions(leagueId);
   });
+
+  setDefaultKickoffAt(form);
+}
+
+function setDefaultKickoffAt(form: HTMLFormElement): void {
+  const input = form.querySelector<HTMLInputElement>('input[name="kickoff_at"]');
+  if (!input) {
+    return;
+  }
+  const date = getKyivDateString();
+  input.value = `${date}T22:00`;
 }
 
 function renderAdminMatchOptions(matches: Match[]): void {
