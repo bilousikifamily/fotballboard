@@ -2559,6 +2559,10 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
       return;
     }
 
+    // Invalidate analitika cache so "last 5 matches" reflects the new result.
+    analitikaTeamCache.clear();
+    analitikaTeamInFlight.clear();
+
     form.reset();
     form.classList.remove("is-open");
     if (status) {

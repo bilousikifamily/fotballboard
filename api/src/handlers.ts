@@ -5600,6 +5600,7 @@ async function applyMatchResult(
   );
   if (!statsOk) {
     console.error("Failed to update team_match_stats; continuing without stats update.");
+    await logDebugUpdate(supabase, `team_match_stats_failed match_id=${matchId}`);
   }
 
   const { data: predictions, error: predError } = await supabase
@@ -5750,6 +5751,7 @@ async function upsertTeamMatchStatsV2(
       .limit(1);
     if (error) {
       console.error("Failed to check team_match_stats", error);
+      await logDebugUpdate(supabase, `team_match_stats_check_failed match_id=${match.id} error=${String(error)}`);
       return false;
     }
     const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
@@ -5770,6 +5772,7 @@ async function upsertTeamMatchStatsV2(
         .eq("id", existingId);
       if (updateError) {
         console.error("Failed to update team_match_stats", updateError);
+        await logDebugUpdate(supabase, `team_match_stats_update_failed match_id=${match.id} error=${String(updateError)}`);
         return false;
       }
       return true;
@@ -5783,11 +5786,13 @@ async function upsertTeamMatchStatsV2(
       });
     if (insertError) {
       console.error("Failed to insert team_match_stats", insertError);
+      await logDebugUpdate(supabase, `team_match_stats_insert_failed match_id=${match.id} error=${String(insertError)}`);
       return false;
     }
     return true;
   } catch (error) {
     console.error("Failed to save team_match_stats", error);
+    await logDebugUpdate(supabase, `team_match_stats_exception match_id=${match.id} error=${String(error)}`);
     return false;
   }
 }
@@ -5832,6 +5837,10 @@ async function upsertTeamMatchStatsLegacy(
         .limit(1);
       if (error) {
         console.error("Failed to check legacy team_match_stats", error);
+        await logDebugUpdate(
+          supabase,
+          `team_match_stats_legacy_check_failed match_id=${match.id} error=${String(error)}`
+        );
         return false;
       }
       const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
@@ -5846,6 +5855,10 @@ async function upsertTeamMatchStatsLegacy(
           .eq("id", existingId);
         if (updateError) {
           console.error("Failed to update legacy team_match_stats", updateError);
+          await logDebugUpdate(
+            supabase,
+            `team_match_stats_legacy_update_failed match_id=${match.id} error=${String(updateError)}`
+          );
           return false;
         }
         continue;
@@ -5864,13 +5877,34 @@ async function upsertTeamMatchStatsLegacy(
         });
       if (insertError) {
         console.error("Failed to insert legacy team_match_stats", insertError);
+        await logDebugUpdate(
+          supabase,
+          `team_match_stats_legacy_insert_failed match_id=${match.id} error=${String(insertError)}`
+        );
         return false;
       }
     }
     return true;
   } catch (error) {
     console.error("Failed to save legacy team_match_stats", error);
+    await logDebugUpdate(supabase, `team_match_stats_legacy_exception match_id=${match.id} error=${String(error)}`);
     return false;
+  }
+}
+
+async function logDebugUpdate(supabase: SupabaseClient, text: string): Promise<void> {
+  try {
+    await supabase.from("debug_updates").insert({
+      update_type: "bot_log",
+      chat_id: null,
+      thread_id: null,
+      message_id: null,
+      user_id: null,
+      text,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Failed to write debug_updates log", error);
   }
 }
 
