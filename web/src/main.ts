@@ -3941,7 +3941,7 @@ function setupAdminLayoutVoteButton(matchId: number): void {
     }
     if (
       typeof window !== "undefined" &&
-      !window.confirm(`підтвердіть прогноз\n${home}:${away}`)
+      !window.confirm(`ВАШ ПРОГНОЗ — ${home}:${away}`)
     ) {
       return;
     }
