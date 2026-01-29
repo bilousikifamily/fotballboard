@@ -244,6 +244,18 @@ function setupLogging(): void {
   });
 }
 
+function setDefaultKickoffAt(): void {
+  if (!addForm) {
+    return;
+  }
+  const input = addForm.querySelector<HTMLInputElement>('input[name="kickoff_at"]');
+  if (!input) {
+    return;
+  }
+  const date = getKyivDateString();
+  input.value = `${date}T22:00`;
+}
+
 function showLogin(): void {
   loginPanel?.classList.remove("is-hidden");
   adminPanel?.classList.add("is-hidden");
@@ -857,6 +869,7 @@ async function handleLogin(event: Event): Promise<void> {
     startBotLogPolling();
     populateLeagueOptions();
     populateClubOptions(leagueSelect?.value ?? MATCH_LEAGUES[0].id);
+    setDefaultKickoffAt();
     void initializeAdminView();
   } catch (error) {
     loginError && (loginError.textContent = "Не вдалося виконати вхід.");
