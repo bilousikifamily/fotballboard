@@ -32,6 +32,14 @@
   display: grid;
 }
 
+.admin-logs-panel {
+  display: none;
+}
+
+.admin-logs-panel.is-open {
+  display: block;
+}
+
 .admin-users-list {
   display: grid;
   gap: 8px;

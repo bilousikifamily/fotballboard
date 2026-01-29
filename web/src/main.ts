@@ -2,6 +2,7 @@ import "./style.css";
 import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "./data/clubs";
 import type {
   AvatarOption,
+  BotLogEntry,
   ClubSyncResponse,
   FactionEntry,
   FactionChatPreviewMessage,
@@ -15,6 +16,7 @@ import type {
   TeamMatchStat,
   UserStats
 } from "./types";
+import { fetchBotLogs } from "./api/admin";
 import { fetchAuth } from "./api/auth";
 import { fetchAnalitikaTeam as fetchAnalitikaTeamApi } from "./api/analitika";
 import { fetchLeaderboard } from "./api/leaderboard";
@@ -113,6 +115,9 @@ let adminLayoutVoteMatchId: number | null = null;
 let factionMembersRequestVersion = 0;
 let noticeRuleIndex = 0;
 let predictionCountdownId: number | null = null;
+let botLogsLoaded = false;
+let lastBotLogId = 0;
+const botLogs: BotLogEntry[] = [];
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
 const analitikaTeamInFlight = new Map<string, Promise<TeamMatchStat[] | null>>();
 const predictionsLoaded = new Set<number>();
@@ -1368,6 +1373,7 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-users>КОРИСТУВАЧІ</button>
+          <button class="button secondary" type="button" data-admin-toggle-logs>ЛОГИ БОТА</button>
           <button class="button secondary" type="button" data-admin-toggle-debug>DEBUG</button>
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
         </div>
@@ -1439,6 +1445,16 @@ function renderUser(
           <p class="muted small">Аналітика користувачів</p>
           <div data-admin-users-list></div>
           <p class="muted small" data-admin-users-status></p>
+        </div>
+        <div class="admin-logs-panel" data-admin-logs>
+          <section class="admin-logs">
+            <div class="admin-logs__header">
+              <h2 class="admin-logs__title">Логи бота</h2>
+              <button class="button secondary small" type="button" data-admin-logs-refresh>Оновити</button>
+            </div>
+            <div class="admin-logs__content" data-admin-logs-content></div>
+            <p class="muted small" data-admin-logs-status></p>
+          </section>
         </div>
       </section>
     `
@@ -1773,6 +1789,7 @@ function renderUser(
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
     const toggleUsers = app.querySelector<HTMLButtonElement>("[data-admin-toggle-users]");
+    const toggleLogs = app.querySelector<HTMLButtonElement>("[data-admin-toggle-logs]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
     const pendingList = app.querySelector<HTMLElement>("[data-admin-pending-list]");
@@ -1782,6 +1799,8 @@ function renderUser(
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
     const debugPanel = app.querySelector<HTMLElement>("[data-admin-debug]");
     const usersPanel = app.querySelector<HTMLElement>("[data-admin-users]");
+    const logsPanel = app.querySelector<HTMLElement>("[data-admin-logs]");
+    const logsRefresh = app.querySelector<HTMLButtonElement>("[data-admin-logs-refresh]");
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
       toggleAdd.addEventListener("click", () => {
@@ -1816,6 +1835,22 @@ function renderUser(
     if (toggleUsers && usersPanel) {
       toggleUsers.addEventListener("click", () => {
         usersPanel.classList.toggle("is-open");
+      });
+    }
+
+    if (toggleLogs && logsPanel) {
+      toggleLogs.addEventListener("click", () => {
+        const nextState = !logsPanel.classList.contains("is-open");
+        logsPanel.classList.toggle("is-open", nextState);
+        if (nextState && !botLogsLoaded) {
+          void loadBotLogs();
+        }
+      });
+    }
+
+    if (logsRefresh) {
+      logsRefresh.addEventListener("click", () => {
+        void loadBotLogs(true);
       });
     }
 
@@ -2091,6 +2126,91 @@ async function loadAdminUserSessions(): Promise<void> {
   } catch {
     if (status) {
       status.textContent = "Не вдалося завантажити користувачів.";
+    }
+  }
+}
+
+function renderBotLogs(entries: BotLogEntry[]): void {
+  const container = app.querySelector<HTMLElement>("[data-admin-logs-content]");
+  if (!container) {
+    return;
+  }
+
+  if (entries.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const ordered = entries.slice().sort((a, b) => a.id - b.id);
+  container.innerHTML = ordered
+    .map((entry) => {
+      const time = entry.created_at ? formatKyivDateTime(entry.created_at) : "—";
+      const meta = `id:${entry.id} user:${entry.user_id ?? "—"} chat:${entry.chat_id ?? "—"}`;
+      const message = `${meta} ${entry.text ?? ""}`.trim();
+      return `<div class="admin-log-entry admin-log-entry--log">
+        <span class="admin-log-entry__time">[${escapeHtml(time)}]</span>
+        <span>${escapeHtml(message)}</span>
+      </div>`;
+    })
+    .join("");
+  container.scrollTop = container.scrollHeight;
+}
+
+async function loadBotLogs(force = false): Promise<void> {
+  if (!apiBase || !isAdmin) {
+    return;
+  }
+
+  const status = app.querySelector<HTMLElement>("[data-admin-logs-status]");
+  const token = getStoredAdminToken();
+  if (!token) {
+    if (status) {
+      status.textContent = "Ви не авторизовані.";
+    }
+    return;
+  }
+
+  if (status) {
+    status.textContent = "Завантаження...";
+  }
+
+  try {
+    const params = force || lastBotLogId === 0 ? { limit: 100 } : { since: lastBotLogId, limit: 100 };
+    const { response, data } = await fetchBotLogs(apiBase, token, params);
+    if (!response.ok || !data.ok) {
+      if (status) {
+        status.textContent = "Не вдалося завантажити логи.";
+      }
+      return;
+    }
+
+    const incoming = data.logs ?? [];
+    if (force || lastBotLogId === 0) {
+      botLogs.length = 0;
+      botLogs.push(...incoming);
+    } else {
+      botLogs.push(...incoming);
+    }
+
+    for (const entry of incoming) {
+      if (entry.id > lastBotLogId) {
+        lastBotLogId = entry.id;
+      }
+    }
+
+    if (botLogs.length > 300) {
+      botLogs.splice(0, botLogs.length - 300);
+    }
+
+    botLogsLoaded = true;
+    renderBotLogs(botLogs);
+
+    if (status) {
+      status.textContent = "";
+    }
+  } catch {
+    if (status) {
+      status.textContent = "Не вдалося завантажити логи.";
     }
   }
 }
