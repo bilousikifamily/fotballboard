@@ -71,7 +71,15 @@ import {
   logFixturesFallback,
   logFixturesSearch
 } from "./services/apiFootball";
-import { deleteMessage, getUpdateMessage, handleUpdate, sendMessage, sendPhoto } from "./services/telegram";
+import {
+  deleteMessage,
+  getUpdateMessage,
+  handleUpdate,
+  sendMessage,
+  sendMessageWithResult,
+  sendPhoto,
+  sendPhotoWithResult
+} from "./services/telegram";
 import { formatClubName } from "./utils/clubs";
 import { createAdminJwt, verifyAdminJwt } from "./services/adminSession";
 import { TEAM_SLUG_ALIASES } from "../../shared/teamSlugAliases";
@@ -5626,7 +5634,10 @@ async function applyMatchResult(
       if (delta === 0) {
         continue;
       }
-      const nextPoints = (user.points_total ?? 0) + delta;
+      const rawPoints = user.points_total;
+      const parsedPoints = typeof rawPoints === "number" ? rawPoints : Number(rawPoints);
+      const currentPoints = Number.isFinite(parsedPoints) ? parsedPoints : STARTING_POINTS;
+      const nextPoints = currentPoints + delta;
       const { error } = await supabase
         .from("users")
         .update({ points_total: nextPoints, updated_at: new Date().toISOString() })
@@ -6488,11 +6499,12 @@ async function notifyUsersAboutMatchResult(
   env: Env,
   notifications: MatchResultNotification[]
 ): Promise<void> {
+  const supabase = createSupabaseClient(env);
   for (const notification of notifications) {
     const imageFile = getMatchResultImageFile(notification.delta);
     const caption = buildMatchResultCaption(notification) || formatMatchResultLine(notification);
     if (imageFile) {
-      await sendPhoto(
+      const result = await sendPhotoWithResult(
         env,
         notification.user_id,
         buildWebappImageUrl(env, imageFile),
@@ -6508,9 +6520,43 @@ async function notifyUsersAboutMatchResult(
           ]
         }
       );
+      if (!result.ok) {
+        await logBotDeliveryFailure(supabase, notification.user_id, "match_result_photo", result);
+      }
       continue;
     }
-    await sendMessage(env, notification.user_id, caption);
+    const result = await sendMessageWithResult(env, notification.user_id, caption);
+    if (!result.ok) {
+      await logBotDeliveryFailure(supabase, notification.user_id, "match_result_text", result);
+    }
+  }
+}
+
+async function logBotDeliveryFailure(
+  supabase: SupabaseClient | null,
+  userId: number,
+  context: string,
+  result: { ok: boolean; status: number | null; body: string }
+): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+  const statusLabel = result.status === null ? "network_error" : String(result.status);
+  const rawBody = result.body || "";
+  const clippedBody = rawBody.length > 500 ? `${rawBody.slice(0, 500)}…` : rawBody;
+  const text = `${context} status=${statusLabel} body=${clippedBody}`;
+  try {
+    await supabase.from("debug_updates").insert({
+      update_type: "bot_log",
+      chat_id: userId,
+      thread_id: null,
+      message_id: null,
+      user_id: userId,
+      text,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Failed to log bot delivery failure", error);
   }
 }
 

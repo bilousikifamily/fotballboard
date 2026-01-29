@@ -810,26 +810,7 @@ export async function sendMessage(
   parseMode?: "HTML" | "MarkdownV2",
   messageThreadId?: number
 ): Promise<void> {
-  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
-  const payload: Record<string, unknown> = {
-    chat_id: chatId,
-    text
-  };
-  if (replyMarkup) {
-    payload.reply_markup = replyMarkup;
-  }
-  if (parseMode) {
-    payload.parse_mode = parseMode;
-  }
-  if (typeof messageThreadId === "number") {
-    payload.message_thread_id = messageThreadId;
-  }
-
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  await sendMessageWithResult(env, chatId, text, replyMarkup, parseMode, messageThreadId);
 }
 
 export async function sendInvoice(
@@ -908,6 +889,54 @@ export async function sendPhoto(
   parseMode?: "HTML" | "MarkdownV2",
   messageThreadId?: number
 ): Promise<void> {
+  await sendPhotoWithResult(env, chatId, photoUrl, caption, replyMarkup, parseMode, messageThreadId);
+}
+
+export async function sendMessageWithResult(
+  env: Env,
+  chatId: number | string,
+  text: string,
+  replyMarkup?: TelegramInlineKeyboardMarkup,
+  parseMode?: "HTML" | "MarkdownV2",
+  messageThreadId?: number
+): Promise<{ ok: boolean; status: number | null; body: string }> {
+  const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text
+  };
+  if (replyMarkup) {
+    payload.reply_markup = replyMarkup;
+  }
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
+  if (typeof messageThreadId === "number") {
+    payload.message_thread_id = messageThreadId;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.text();
+    return { ok: response.ok, status: response.status, body };
+  } catch (error) {
+    return { ok: false, status: null, body: String(error) };
+  }
+}
+
+export async function sendPhotoWithResult(
+  env: Env,
+  chatId: number | string,
+  photoUrl: string,
+  caption?: string,
+  replyMarkup?: TelegramInlineKeyboardMarkup,
+  parseMode?: "HTML" | "MarkdownV2",
+  messageThreadId?: number
+): Promise<{ ok: boolean; status: number | null; body: string }> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`;
   const payload: Record<string, unknown> = {
     chat_id: chatId,
@@ -926,11 +955,17 @@ export async function sendPhoto(
     payload.message_thread_id = messageThreadId;
   }
 
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.text();
+    return { ok: response.ok, status: response.status, body };
+  } catch (error) {
+    return { ok: false, status: null, body: String(error) };
+  }
 }
 
 export async function deleteMessage(env: Env, chatId: number | string, messageId: number): Promise<void> {
