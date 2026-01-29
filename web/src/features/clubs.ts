@@ -99,7 +99,11 @@ const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
 const UEFA_LOGO_SLUG_OVERRIDES: Partial<Record<MatchLeagueId, Record<string, LogoLeagueId>>> = {
   "uefa-europa-league": {
     "fenerbahce": "champions-league",
-    "young-boys": "champions-league"
+    "young-boys": "champions-league",
+    "porto": "champions-league",
+    "rangers": "champions-league",
+    "feyenoord": "champions-league",
+    "panathinaikos": "champions-league"
   }
 };
 
