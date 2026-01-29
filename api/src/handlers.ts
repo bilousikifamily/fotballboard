@@ -2592,8 +2592,8 @@ async function listTeamMatchStats(
     }
     const { data, error } = await query;
     if (error) {
-      console.error("Failed to list team_match_stats", error);
-      return null;
+      console.warn("Failed to list v2 team_match_stats, trying legacy schema", error);
+      return await listTeamMatchStatsLegacy(supabase, teamName, limit);
     }
     const rows = (data as DbTeamMatchRow[]) ?? [];
     const normalizedCandidates = new Set(nameCandidates.map((name) => name.trim().toLowerCase()));
@@ -2612,7 +2612,34 @@ async function listTeamMatchStats(
     });
     return items;
   } catch (error) {
-    console.error("Failed to list team_match_stats", error);
+    console.warn("Failed to list v2 team_match_stats, trying legacy schema", error);
+    return await listTeamMatchStatsLegacy(supabase, teamName, limit);
+  }
+}
+
+async function listTeamMatchStatsLegacy(
+  supabase: SupabaseClient,
+  teamName: string,
+  limit?: number | null
+): Promise<DbTeamMatchStat[] | null> {
+  try {
+    const nameCandidates = resolveTeamNameAliases(teamName);
+    let query = supabase
+      .from("team_match_stats")
+      .select("id, team_name, opponent_name, match_date, is_home, team_goals, opponent_goals, avg_rating")
+      .in("team_name", nameCandidates)
+      .order("match_date", { ascending: false });
+    if (typeof limit === "number") {
+      query = query.limit(limit);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to list legacy team_match_stats", error);
+      return null;
+    }
+    return (data as DbTeamMatchStat[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list legacy team_match_stats", error);
     return null;
   }
 }
@@ -5572,7 +5599,7 @@ async function applyMatchResult(
     awayRating
   );
   if (!statsOk) {
-    return { ok: false, notifications: [] };
+    console.error("Failed to update team_match_stats; continuing without stats update.");
   }
 
   const { data: predictions, error: predError } = await supabase
@@ -5681,6 +5708,35 @@ async function upsertTeamMatchStats(
   homeRating: number,
   awayRating: number
 ): Promise<boolean> {
+  const v2Ok = await upsertTeamMatchStatsV2(
+    supabase,
+    match,
+    homeScore,
+    awayScore,
+    homeRating,
+    awayRating
+  );
+  if (v2Ok) {
+    return true;
+  }
+  return await upsertTeamMatchStatsLegacy(
+    supabase,
+    match,
+    homeScore,
+    awayScore,
+    homeRating,
+    awayRating
+  );
+}
+
+async function upsertTeamMatchStatsV2(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  homeScore: number,
+  awayScore: number,
+  homeRating: number,
+  awayRating: number
+): Promise<boolean> {
   try {
     const matchDate = match.kickoff_at;
     const homeName = resolveAnalitikaTeamName(match.home_team, match.home_club_id ?? null);
@@ -5732,6 +5788,88 @@ async function upsertTeamMatchStats(
     return true;
   } catch (error) {
     console.error("Failed to save team_match_stats", error);
+    return false;
+  }
+}
+
+async function upsertTeamMatchStatsLegacy(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  homeScore: number,
+  awayScore: number,
+  homeRating: number,
+  awayRating: number
+): Promise<boolean> {
+  try {
+    const matchDate = match.kickoff_at;
+    const rows = [
+      {
+        team_name: match.home_team,
+        opponent_name: match.away_team,
+        is_home: true,
+        team_goals: homeScore,
+        opponent_goals: awayScore,
+        avg_rating: homeRating
+      },
+      {
+        team_name: match.away_team,
+        opponent_name: match.home_team,
+        is_home: false,
+        team_goals: awayScore,
+        opponent_goals: homeScore,
+        avg_rating: awayRating
+      }
+    ];
+
+    for (const row of rows) {
+      const { data, error } = await supabase
+        .from("team_match_stats")
+        .select("id")
+        .eq("team_name", row.team_name)
+        .eq("opponent_name", row.opponent_name)
+        .eq("match_date", matchDate)
+        .eq("is_home", row.is_home)
+        .limit(1);
+      if (error) {
+        console.error("Failed to check legacy team_match_stats", error);
+        return false;
+      }
+      const existingId = (data as Array<{ id?: string }> | null)?.[0]?.id ?? null;
+      if (existingId) {
+        const { error: updateError } = await supabase
+          .from("team_match_stats")
+          .update({
+            team_goals: row.team_goals,
+            opponent_goals: row.opponent_goals,
+            avg_rating: row.avg_rating
+          })
+          .eq("id", existingId);
+        if (updateError) {
+          console.error("Failed to update legacy team_match_stats", updateError);
+          return false;
+        }
+        continue;
+      }
+      const { error: insertError } = await supabase
+        .from("team_match_stats")
+        .insert({
+          id: crypto.randomUUID(),
+          match_date: matchDate,
+          team_name: row.team_name,
+          opponent_name: row.opponent_name,
+          is_home: row.is_home,
+          team_goals: row.team_goals,
+          opponent_goals: row.opponent_goals,
+          avg_rating: row.avg_rating
+        });
+      if (insertError) {
+        console.error("Failed to insert legacy team_match_stats", insertError);
+        return false;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to save legacy team_match_stats", error);
     return false;
   }
 }
