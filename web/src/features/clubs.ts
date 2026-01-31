@@ -91,7 +91,8 @@ const UEFA_LOGO_SLUGS: Record<MatchLeagueId, ReadonlySet<string>> = {
     "rangers",
     "feyenoord",
     "panathinaikos",
-    "kairat-almaty"
+    "kairat-almaty",
+    "kopenhagen"
   ]),
   "uefa-europa-league": new Set(["fenerbahce", "young-boys"]),
   "uefa-europa-conference-league": new Set()
@@ -130,7 +131,8 @@ const CLUB_LOGO_FILE_OVERRIDES: Partial<Record<LogoLeagueId, Record<string, stri
   },
   "champions-league": {
     "slavia-praga": "slavia",
-    "kairat-almaty": "kairat"
+    "kairat-almaty": "kairat",
+    "kopenhagen": "copenhagen"
   }
 };
 
