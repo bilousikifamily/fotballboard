@@ -74,6 +74,7 @@ export const EU_CLUBS: Record<LeagueId, string[]> = {
     "barcelona",
     "celta",
     "deportivo",
+    "elche",
     "espanyol",
     "guadalajara",
     "getafe",

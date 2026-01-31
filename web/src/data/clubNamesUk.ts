@@ -36,6 +36,7 @@ export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "eintracht-frankfurt": "АЙНТРАХТ",
   "empoli": "ЕМПОЛІ",
   "espanyol": "ЕСПАНЬЙОЛ",
+  "elche": "ЕЛЬЧЕ",
   "everton": "ЕВЕРТОН",
   "fc-heidenheim": "ГАЙДЕНГАЙМ",
   "fiorentina": "ФІОРЕНТИНА",
