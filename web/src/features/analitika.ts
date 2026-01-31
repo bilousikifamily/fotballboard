@@ -300,7 +300,8 @@ const CLUB_NAME_ALIASES: Record<string, string> = {
   "psv": "psv",
   "psv eindhoven": "psv",
   "psv eindhoven fc": "psv",
-  "philips sport vereniging": "psv"
+  "philips sport vereniging": "psv",
+  "copenhagen": "kopenhagen"
 };
 
 type ClubLogoEntry = { slug: string; logoLeagueId: AllLeagueId };
