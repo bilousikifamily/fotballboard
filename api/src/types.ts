@@ -549,6 +549,7 @@ export interface DbPrediction {
   home_pred: number;
   away_pred: number;
   points?: number | null;
+  season_month?: string | null;
 }
 
 export interface PredictionRow {
@@ -558,6 +559,7 @@ export interface PredictionRow {
   away_pred: number;
   points?: number | null;
   created_at?: string | null;
+  season_month?: string | null;
   users?: {
     id: number;
     username?: string | null;

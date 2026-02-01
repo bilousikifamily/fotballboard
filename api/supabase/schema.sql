@@ -46,3 +46,9 @@ alter table if exists matches add column if not exists odds_manual_home double p
 alter table if exists matches add column if not exists odds_manual_draw double precision;
 alter table if exists matches add column if not exists odds_manual_away double precision;
 alter table if exists matches add column if not exists odds_manual_updated_at timestamptz;
+
+alter table if exists predictions add column if not exists season_month text;
+alter table if exists missed_predictions add column if not exists season_month text;
+
+create index if not exists predictions_season_month_idx on predictions (season_month);
+create index if not exists missed_predictions_season_month_idx on missed_predictions (season_month);

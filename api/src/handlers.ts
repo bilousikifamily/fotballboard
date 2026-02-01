@@ -598,7 +598,8 @@ export default {
         if (supabase) {
           isAdmin = await checkAdmin(supabase, valid.user.id);
           stats = await getUserStats(supabase, valid.user.id);
-          profileStats = await getProfileStats(supabase, valid.user.id);
+          const seasonMonth = resolveSeasonMonthForNow(env);
+          profileStats = await getProfileStats(supabase, valid.user.id, seasonMonth);
           onboarding = await getUserOnboarding(supabase, valid.user.id);
         }
       }
@@ -1530,7 +1531,9 @@ export default {
         return jsonResponse({ ok: false, error: "already_predicted" }, 409, corsHeaders());
       }
 
-      const prediction = await insertPrediction(supabase, auth.user.id, matchId, body);
+      const timezone = getApiFootballTimezone(env) ?? "Europe/Kyiv";
+      const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timezone);
+      const prediction = await insertPrediction(supabase, auth.user.id, matchId, body, seasonMonth);
       if (!prediction) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -1574,7 +1577,8 @@ export default {
         return jsonResponse({ ok: false, error: "bad_rating" }, 400, corsHeaders());
       }
 
-      const result = await applyMatchResult(supabase, matchId, homeScore, awayScore, homeRating, awayRating);
+      const timezone = getApiFootballTimezone(env) ?? "Europe/Kyiv";
+      const result = await applyMatchResult(supabase, matchId, homeScore, awayScore, homeRating, awayRating, timezone);
       if (!result.ok) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -2905,11 +2909,15 @@ async function getUserStats(supabase: SupabaseClient, userId: number): Promise<U
   }
 }
 
-async function getPredictionStats(supabase: SupabaseClient, userId: number): Promise<PredictionStats> {
-  const total = await countPredictions(supabase, userId);
-  const hits = await countPredictions(supabase, userId, true);
+async function getPredictionStats(
+  supabase: SupabaseClient,
+  userId: number,
+  seasonMonth: string | null
+): Promise<PredictionStats> {
+  const total = await countPredictions(supabase, userId, false, seasonMonth);
+  const hits = await countPredictions(supabase, userId, true, seasonMonth);
   const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
-  const lastResults = await listRecentPredictionResults(supabase, userId);
+  const lastResults = await listRecentPredictionResults(supabase, userId, seasonMonth);
   let streak = 0;
   for (const entry of lastResults) {
     if (!entry.hit) {
@@ -2929,7 +2937,8 @@ async function getPredictionStats(supabase: SupabaseClient, userId: number): Pro
 async function countPredictions(
   supabase: SupabaseClient,
   userId: number,
-  hitsOnly = false
+  hitsOnly = false,
+  seasonMonth: string | null = null
 ): Promise<number> {
   try {
     let query = supabase
@@ -2940,6 +2949,9 @@ async function countPredictions(
     if (hitsOnly) {
       query = query.gt("points", 0);
     }
+    if (seasonMonth) {
+      query = query.eq("season_month", seasonMonth);
+    }
     const { count } = await query;
     return typeof count === "number" ? count : 0;
   } catch (error) {
@@ -2948,20 +2960,31 @@ async function countPredictions(
   }
 }
 
-async function listRecentPredictionResults(supabase: SupabaseClient, userId: number): Promise<PredictionResult[]> {
+async function listRecentPredictionResults(
+  supabase: SupabaseClient,
+  userId: number,
+  seasonMonth: string | null
+): Promise<PredictionResult[]> {
   try {
-    const [predictionsResult, missedResult] = await Promise.all([
-      supabase
-        .from("predictions")
-        .select("id, match_id, points, matches!inner(kickoff_at, status)")
-        .eq("user_id", userId)
-        .eq("matches.status", "finished"),
-      supabase
-        .from("missed_predictions")
-        .select("id, match_id, matches!inner(kickoff_at, status)")
-        .eq("user_id", userId)
-        .eq("matches.status", "finished")
-    ]);
+    let predictionsQuery = supabase
+      .from("predictions")
+      .select("id, match_id, points, matches!inner(kickoff_at, status)")
+      .eq("user_id", userId)
+      .eq("matches.status", "finished");
+    if (seasonMonth) {
+      predictionsQuery = predictionsQuery.eq("season_month", seasonMonth);
+    }
+
+    let missedQuery = supabase
+      .from("missed_predictions")
+      .select("id, match_id, matches!inner(kickoff_at, status)")
+      .eq("user_id", userId)
+      .eq("matches.status", "finished");
+    if (seasonMonth) {
+      missedQuery = missedQuery.eq("season_month", seasonMonth);
+    }
+
+    const [predictionsResult, missedResult] = await Promise.all([predictionsQuery, missedQuery]);
 
     if (predictionsResult.error || missedResult.error) {
       return [];
@@ -3091,9 +3114,13 @@ async function getMemberRankInFaction(
   }
 }
 
-async function getProfileStats(supabase: SupabaseClient, userId: number): Promise<ProfileStats> {
+async function getProfileStats(
+  supabase: SupabaseClient,
+  userId: number,
+  seasonMonth: string | null
+): Promise<ProfileStats> {
   const [prediction, factions] = await Promise.all([
-    getPredictionStats(supabase, userId),
+    getPredictionStats(supabase, userId, seasonMonth),
     getFactionStats(supabase, userId)
   ]);
   return { prediction, factions };
@@ -3714,6 +3741,43 @@ function resolveSeasonForDate(date: Date, timeZone: string): number {
     return date.getUTCFullYear();
   }
   return month >= 7 ? year : year - 1;
+}
+
+function getSeasonMonthForDate(date: Date, timeZone: string): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit"
+    }).formatToParts(date);
+    const values: Record<string, string> = {};
+    for (const part of parts) {
+      if (part.type !== "literal") {
+        values[part.type] = part.value;
+      }
+    }
+    const year = values.year;
+    const month = values.month;
+    if (!year || !month) {
+      return null;
+    }
+    return `${year}-${month}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveSeasonMonthForMatch(kickoffAt: string, timeZone: string): string | null {
+  const kickoffDate = new Date(kickoffAt);
+  if (Number.isNaN(kickoffDate.getTime())) {
+    return null;
+  }
+  return getSeasonMonthForDate(kickoffDate, timeZone);
+}
+
+function resolveSeasonMonthForNow(env: Env): string | null {
+  const timezone = getApiFootballTimezone(env) ?? "Europe/Kyiv";
+  return getSeasonMonthForDate(new Date(), timezone);
 }
 
 function formatDateString(date: Date, timeZone: string): string {
@@ -5530,7 +5594,8 @@ async function insertPrediction(
   supabase: SupabaseClient,
   userId: number,
   matchId: number,
-  payload: PredictionPayload
+  payload: PredictionPayload,
+  seasonMonth: string | null
 ): Promise<DbPrediction | null> {
   const home = parseInteger(payload.home_pred);
   const away = parseInteger(payload.away_pred);
@@ -5546,6 +5611,7 @@ async function insertPrediction(
         match_id: matchId,
         home_pred: home,
         away_pred: away,
+        season_month: seasonMonth ?? null,
         updated_at: new Date().toISOString()
       })
       .select("id, user_id, match_id, home_pred, away_pred, points")
@@ -5569,7 +5635,8 @@ async function applyMatchResult(
   homeScore: number,
   awayScore: number,
   homeRating: number,
-  awayRating: number
+  awayRating: number,
+  timeZone: string
 ): Promise<MatchResultOutcome> {
   const match = await getMatch(supabase, matchId);
   if (!match) {
@@ -5688,13 +5755,15 @@ async function applyMatchResult(
     }
   }
 
+  const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
   const penaltyNotifications = await applyMissingPredictionPenalties(
     supabase,
     match,
     predictedUserIds,
     homeScore,
     awayScore,
-    predictionStats
+    predictionStats,
+    seasonMonth
   );
   notifications.push(...penaltyNotifications);
 
@@ -5975,7 +6044,8 @@ async function applyMissingPredictionPenalties(
   predictedUserIds: Set<number>,
   homeScore: number,
   awayScore: number,
-  predictionStats: MatchResultPredictionStats
+  predictionStats: MatchResultPredictionStats,
+  seasonMonth: string | null
 ): Promise<MatchResultNotification[]> {
   try {
     const { data: users, error: usersError } = await supabase
@@ -6024,7 +6094,7 @@ async function applyMissingPredictionPenalties(
 
       const { error: insertError } = await supabase
         .from("missed_predictions")
-        .insert({ user_id: user.id, match_id: match.id });
+        .insert({ user_id: user.id, match_id: match.id, season_month: seasonMonth ?? null });
       if (insertError) {
         console.error("Failed to store missing prediction penalty", insertError);
         continue;
