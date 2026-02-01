@@ -2033,7 +2033,7 @@ async function notifyFactionChatNewDeputy(
   const mention = username && nicknameCandidate
     ? `@${username} - ${nicknameCandidate}`
     : nicknameCandidate || formatUserDisplay(user);
-  const message = `У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n${mention}`;
+  const message = `У ФРАКЦІЮ ПРИЄДНАВСЯ НОВИЙ ДЕПУТАТ:\n${mention}`;
   await sendMessage(env, chatTarget, message, undefined, undefined, targetRef.threadId ?? undefined);
   await insertBotDebugMessage(
     supabase,

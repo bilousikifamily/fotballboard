@@ -55,7 +55,7 @@
 
 - Тип: текст.
 - Текст:
-  "У НАШІЙ ФРАКЦІЇ НОВИЙ ДЕПУТАТ:\n{MENTION}"
+  "У ФРАКЦІЮ ПРИЄДНАВСЯ НОВИЙ ДЕПУТАТ:\n{MENTION}"
 - `MENTION`: `@username` або nickname, або `first last (@username)`.
 - Джерело: `api/src/handlers.ts` (`notifyFactionChatNewDeputy`).
 
