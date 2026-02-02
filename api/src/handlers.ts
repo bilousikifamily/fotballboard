@@ -90,8 +90,9 @@ const PREDICTION_CUTOFF_MS = 0;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 5 * 60 * 1000;
 const CHANNEL_WEBAPP_CHAT = "@football_rada";
-const CHANNEL_WEBAPP_IMAGE = "for_chanel.png";
+const CHANNEL_WEBAPP_IMAGE = "for_chanel1.png";
 const CHANNEL_WEBAPP_BUTTON_TEXT = "ВІДКРИТИ";
+const CHANNEL_WEBAPP_BUTTON_URL = "https://t.me/football_rada_bot";
 const MATCH_START_DIGEST_DELAY_MS = 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
@@ -1692,7 +1693,7 @@ export default {
         buildWebappImageUrl(env, CHANNEL_WEBAPP_IMAGE),
         caption,
         {
-          inline_keyboard: [[{ text: CHANNEL_WEBAPP_BUTTON_TEXT, url: env.WEBAPP_URL }]]
+          inline_keyboard: [[{ text: CHANNEL_WEBAPP_BUTTON_TEXT, url: CHANNEL_WEBAPP_BUTTON_URL }]]
         }
       );
       if (!result.ok) {
