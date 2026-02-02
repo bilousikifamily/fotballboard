@@ -1692,7 +1692,7 @@ export default {
         buildWebappImageUrl(env, CHANNEL_WEBAPP_IMAGE),
         caption,
         {
-          inline_keyboard: [[{ text: CHANNEL_WEBAPP_BUTTON_TEXT, web_app: { url: env.WEBAPP_URL } }]]
+          inline_keyboard: [[{ text: CHANNEL_WEBAPP_BUTTON_TEXT, url: env.WEBAPP_URL }]]
         }
       );
       if (!result.ok) {

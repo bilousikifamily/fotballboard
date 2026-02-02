@@ -755,7 +755,9 @@ async function handleChannelWebapp(): Promise<void> {
   try {
     const { response, data } = await postChannelWebapp(API_BASE, { caption: caption || undefined }, token);
     if (!response.ok || !data.ok) {
-      const errorMsg = `Не вдалося опублікувати в канал. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
+      const errorDetails = data && "status" in data ? ` tg:${data.status ?? "?"}` : "";
+      const errorBody = data && "body" in data && data.body ? ` ${data.body}` : "";
+      const errorMsg = `Не вдалося опублікувати в канал. Status: ${response.status}, Error: ${data.error ?? "unknown"}${errorDetails}${errorBody}`;
       setStatus(channelWebappStatus, "Не вдалося опублікувати в канал.");
       addLog("error", errorMsg, { response, data });
       return;
