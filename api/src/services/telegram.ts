@@ -106,24 +106,6 @@ export async function handleUpdate(
   }
 
   if (command === "start" || command === "app" || command === "webapp") {
-    if (supabase) {
-      const subscription = await loadSubscriptionInfo(supabase, message.from);
-      if (!subscription) {
-        await sendMessage(env, message.chat.id, "Не вдалося перевірити підписку. Спробуйте пізніше.");
-        return;
-      }
-      if (!subscription.isActive) {
-        await sendMessage(
-          env,
-          message.chat.id,
-          buildSubscriptionPrompt(subscription.price),
-          undefined,
-          undefined,
-          message.message_thread_id
-        );
-        return;
-      }
-    }
     const webappBaseUrl = env.WEBAPP_URL.replace(/\/+$/, "");
     const imageUrl = `${webappBaseUrl}/images/beginig_fraction1.png`;
     await sendPhoto(
