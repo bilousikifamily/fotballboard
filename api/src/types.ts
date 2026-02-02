@@ -472,6 +472,11 @@ export interface AnnouncementPayload {
   initData?: string;
 }
 
+export interface ChannelWebappPayload {
+  initData?: string;
+  caption?: string;
+}
+
 export interface FactionPredictionsStatsPayload {
   initData?: string;
 }

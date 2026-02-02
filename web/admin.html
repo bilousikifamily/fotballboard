@@ -48,6 +48,7 @@
             <button class="button secondary" type="button" data-admin-action="add-match">ДОДАТИ МАТЧ</button>
             <button class="button secondary" type="button" data-admin-action="result">ВВЕСТИ РЕЗУЛЬТАТИ</button>
             <button class="button secondary" type="button" data-admin-action="announce">ПОВІДОМИТИ В БОТІ</button>
+            <button class="button secondary" type="button" data-admin-action="channel-webapp">ПОСТ В КАНАЛ</button>
             <button class="button secondary" type="button" data-admin-action="predictions-stats">ПОВІДОМИТИ ПРО УСПІШНІСТЬ</button>
             <button class="button secondary" type="button" data-admin-action="users">КОРИСТУВАЧІ</button>
           </div>
@@ -96,6 +97,15 @@
             <div class="admin-form is-hidden" data-admin-panel-content="announce">
               <button class="button primary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
               <p class="muted small" data-admin-announce-status></p>
+            </div>
+
+            <div class="admin-form is-hidden" data-admin-panel-content="channel-webapp">
+              <label class="field">
+                <span>Текст повідомлення (опційно)</span>
+                <textarea rows="4" data-admin-channel-caption placeholder="Текст для каналу @football_rada"></textarea>
+              </label>
+              <button class="button primary" type="button" data-admin-channel-webapp>ОПУБЛІКУВАТИ В КАНАЛІ</button>
+              <p class="muted small" data-admin-channel-webapp-status></p>
             </div>
 
             <div class="admin-form is-hidden" data-admin-panel-content="predictions-stats">

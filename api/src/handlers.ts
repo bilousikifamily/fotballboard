@@ -10,6 +10,7 @@ import type {
   AnalitikaUpsert,
   AnnouncementPayload,
   AvatarPayload,
+  ChannelWebappPayload,
   ClubApiMapRow,
   ClubSyncPayload,
   CreateMatchPayload,
@@ -88,6 +89,9 @@ const STARTING_POINTS = 100;
 const PREDICTION_CUTOFF_MS = 0;
 const PREDICTION_REMINDER_BEFORE_CLOSE_MS = 60 * 60 * 1000;
 const PREDICTION_REMINDER_WINDOW_MS = 5 * 60 * 1000;
+const CHANNEL_WEBAPP_CHAT = "@football_rada";
+const CHANNEL_WEBAPP_IMAGE = "for_chanel.png";
+const CHANNEL_WEBAPP_BUTTON_TEXT = "ВІДКРИТИ";
 const MATCH_START_DIGEST_DELAY_MS = 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
@@ -1651,6 +1655,51 @@ export default {
           {
             inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappAdminLayoutUrl(env) } }]]
           }
+        );
+      }
+
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/admin/channel-webapp") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const body = await readJson<ChannelWebappPayload>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request, body.initData);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const caption = body.caption?.trim() || undefined;
+      const result = await sendPhotoWithResult(
+        env,
+        CHANNEL_WEBAPP_CHAT,
+        buildWebappImageUrl(env, CHANNEL_WEBAPP_IMAGE),
+        caption,
+        {
+          inline_keyboard: [[{ text: CHANNEL_WEBAPP_BUTTON_TEXT, web_app: { url: env.WEBAPP_URL } }]]
+        }
+      );
+      if (!result.ok) {
+        return jsonResponse(
+          { ok: false, error: "telegram_error", status: result.status, body: result.body },
+          502,
+          corsHeaders()
         );
       }
 

@@ -1,5 +1,5 @@
-import type { AdminLoginResponse, BotLogsResponse } from "../types";
-import { requestJson } from "./client";
+import type { AdminLoginResponse, BotLogsResponse, ChannelWebappResponse } from "../types";
+import { authJsonHeaders, requestJson } from "./client";
 
 export function postAdminLogin(
   apiBase: string,
@@ -27,5 +27,17 @@ export function fetchBotLogs(
   return requestJson<BotLogsResponse>(url.toString(), {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export function postChannelWebapp(
+  apiBase: string,
+  payload: { caption?: string },
+  adminSessionToken?: string
+): Promise<{ response: Response; data: ChannelWebappResponse }> {
+  return requestJson<ChannelWebappResponse>(`${apiBase}/api/admin/channel-webapp`, {
+    method: "POST",
+    headers: authJsonHeaders(undefined, adminSessionToken),
+    body: JSON.stringify(payload)
   });
 }

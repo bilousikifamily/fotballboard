@@ -12,7 +12,7 @@ import {
   postResult,
   postConfirmMatch
 } from "./api/matches";
-import { fetchBotLogs, postAdminLogin } from "./api/admin";
+import { fetchBotLogs, postAdminLogin, postChannelWebapp } from "./api/admin";
 import { fetchLeaderboard } from "./api/leaderboard";
 import { renderAdminUserSessions } from "./screens/adminUsers";
 import { renderPendingMatchesList } from "./screens/matches";
@@ -53,10 +53,12 @@ const addForm = document.querySelector<HTMLFormElement>("[data-admin-add-form]")
 const resultForm = document.querySelector<HTMLFormElement>("[data-admin-result-form]");
 const announceButton = document.querySelector<HTMLButtonElement>("[data-admin-announce]");
 const predictionsStatsButton = document.querySelector<HTMLButtonElement>("[data-admin-predictions-stats]");
+const channelWebappButton = document.querySelector<HTMLButtonElement>("[data-admin-channel-webapp]");
 const addStatus = document.querySelector<HTMLElement>("[data-admin-add-status]");
 const resultStatus = document.querySelector<HTMLElement>("[data-admin-result-status]");
 const announceStatus = document.querySelector<HTMLElement>("[data-admin-announce-status]");
 const predictionsStatsStatus = document.querySelector<HTMLElement>("[data-admin-predictions-stats-status]");
+const channelWebappStatus = document.querySelector<HTMLElement>("[data-admin-channel-webapp-status]");
 const pendingList = document.querySelector<HTMLElement>("[data-admin-pending-list]");
 const pendingStatus = document.querySelector<HTMLElement>("[data-admin-pending-status]");
 const usersList = document.querySelector<HTMLElement>("[data-admin-users-list]");
@@ -68,6 +70,7 @@ const resultMatchSelect = resultForm?.querySelector<HTMLSelectElement>('[data-ad
 const logsContent = document.querySelector<HTMLElement>("[data-admin-logs-content]");
 const logsClearButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-clear]");
 const logsRefreshButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-refresh]");
+const channelWebappCaption = document.querySelector<HTMLTextAreaElement>("[data-admin-channel-caption]");
 
 const state = {
   matches: [] as Match[],
@@ -737,6 +740,34 @@ async function handlePredictionsStats(): Promise<void> {
   }
 }
 
+async function handleChannelWebapp(): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  const token = getAdminToken();
+  if (!token) {
+    setStatus(channelWebappStatus, "Потрібен адмін-доступ.");
+    return;
+  }
+  const caption = channelWebappCaption?.value.trim() ?? "";
+  setStatus(channelWebappStatus, "Публікація в канал…");
+  addLog("info", "Публікація WebApp у канал");
+  try {
+    const { response, data } = await postChannelWebapp(API_BASE, { caption: caption || undefined }, token);
+    if (!response.ok || !data.ok) {
+      const errorMsg = `Не вдалося опублікувати в канал. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
+      setStatus(channelWebappStatus, "Не вдалося опублікувати в канал.");
+      addLog("error", errorMsg, { response, data });
+      return;
+    }
+    setStatus(channelWebappStatus, "Опубліковано ✅");
+    addLog("info", "Повідомлення опубліковано в каналі");
+  } catch (error) {
+    setStatus(channelWebappStatus, "Не вдалося опублікувати в канал.");
+    addLog("error", "Помилка при публікації в канал", error);
+  }
+}
+
 function attachListeners(): void {
   actionButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -758,6 +789,9 @@ function attachListeners(): void {
   resultForm?.addEventListener("submit", handleResult);
   announceButton?.addEventListener("click", () => {
     void handleAnnouncement();
+  });
+  channelWebappButton?.addEventListener("click", () => {
+    void handleChannelWebapp();
   });
   predictionsStatsButton?.addEventListener("click", () => {
     void handlePredictionsStats();
