@@ -69,8 +69,7 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
   }
 
   const formatAverage = (value: number): string => {
-    const rounded = Number(value.toFixed(1));
-    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    return value.toFixed(1);
   };
 
   const rows = matches

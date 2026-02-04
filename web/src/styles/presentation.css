@@ -66,8 +66,7 @@ a {
 .pill {
   padding: 0.1rem 0.7rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   text-transform: uppercase;
   letter-spacing: 0.25em;
 }
@@ -268,19 +267,26 @@ a {
 
 .admin-users-list {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .admin-stats-date-switcher {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 4px;
 }
 
 .admin-stats-date-switcher .button {
   min-width: 42px;
   padding: 0.55rem 0.8rem;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+.admin-stats-date-switcher .button:disabled {
+  opacity: 0.35;
 }
 
 .admin-user-row {
@@ -321,8 +327,7 @@ a {
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  min-height: 188px;
-  padding: 18px 18px 54px;
+  padding: 4px 12px 24px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -333,35 +338,36 @@ a {
   grid-template-columns: minmax(0, auto) minmax(72px, auto) minmax(0, auto);
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 0px;
   width: 100%;
 }
 
 .admin-match-accuracy-card__logos .admin-match-accuracy-card__logo-item {
-  width: 66px;
-  height: 66px;
+  width: 100px;
+  height: 100px;
   display: grid;
   place-items: center;
 }
 
 .admin-match-accuracy-card__logos .match-logo,
 .admin-match-accuracy-card__logos .match-logo-fallback {
-  width: 66px;
-  height: 66px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
 }
 
 .admin-match-accuracy-card__center {
   display: grid;
   justify-items: center;
-  gap: 4px;
+  gap: 0px;
+  margin-bottom: -8px;
 }
 
 .admin-match-accuracy-card__score {
   min-width: 88px;
   text-align: center;
   font-weight: 800;
-  font-size: 1.8rem;
+  font-size: 2.5rem;
   letter-spacing: 0.04em;
 }
 
@@ -370,6 +376,7 @@ a {
   font-size: 0.92rem;
   color: rgba(245, 246, 250, 0.86);
   line-height: 1.25;
+  margin-top: -8px;
 }
 
 .admin-match-accuracy-card__progress {
@@ -378,8 +385,8 @@ a {
   right: 0;
   bottom: 0;
   height: 26px;
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
   border-bottom-left-radius: 14px;
   border-bottom-right-radius: 14px;
   background: rgba(255, 255, 255, 0.1);

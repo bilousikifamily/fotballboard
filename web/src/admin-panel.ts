@@ -631,10 +631,10 @@ function updateAccuracyDateNavigationState(): void {
   const safeIndex = index >= 0 ? index : 0;
   usersMatchStatsDateLabel.textContent = formatKyivDateLabel(dates[safeIndex]);
   if (usersMatchStatsDatePrev) {
-    usersMatchStatsDatePrev.disabled = safeIndex <= 0;
+    usersMatchStatsDatePrev.disabled = safeIndex >= dates.length - 1;
   }
   if (usersMatchStatsDateNext) {
-    usersMatchStatsDateNext.disabled = safeIndex >= dates.length - 1;
+    usersMatchStatsDateNext.disabled = safeIndex <= 0;
   }
 }
 
@@ -963,10 +963,10 @@ function attachListeners(): void {
     void loadBotLogs(true, true);
   });
   usersMatchStatsDatePrev?.addEventListener("click", () => {
-    moveAccuracyDate(-1);
+    moveAccuracyDate(1);
   });
   usersMatchStatsDateNext?.addEventListener("click", () => {
-    moveAccuracyDate(1);
+    moveAccuracyDate(-1);
   });
 }
 
