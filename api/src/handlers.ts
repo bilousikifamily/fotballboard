@@ -600,7 +600,9 @@ export default {
       }
 
       const limit = parseLimit(url.searchParams.get("limit"), 120, 300) ?? 120;
-      const stats = await getPredictionAccuracyStats(supabase, limit);
+      const monthParam = url.searchParams.get("month");
+      const month = isValidKyivMonthString(monthParam) ? monthParam : null;
+      const stats = await getPredictionAccuracyStats(supabase, limit, month);
       if (!stats) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
@@ -2240,15 +2242,27 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
 
 async function getPredictionAccuracyStats(
   supabase: SupabaseClient,
-  limit: number
+  limit: number,
+  month: string | null = null
 ): Promise<{ matches: AdminPredictionAccuracyMatch[]; users: AdminPredictionAccuracyUser[] } | null> {
   try {
-    const { data: matchesData, error: matchesError } = await supabase
+    let query = supabase
       .from("matches")
       .select("id, home_team, away_team, league_id, home_club_id, away_club_id, home_score, away_score, kickoff_at")
       .eq("status", "finished")
-      .order("kickoff_at", { ascending: false })
-      .limit(limit);
+      .order("kickoff_at", { ascending: false });
+
+    if (month) {
+      const monthRange = getKyivMonthRange(month);
+      if (!monthRange) {
+        return { matches: [], users: [] };
+      }
+      query = query.gte("kickoff_at", monthRange.start).lte("kickoff_at", monthRange.end).limit(1000);
+    } else {
+      query = query.limit(limit);
+    }
+
+    const { data: matchesData, error: matchesError } = await query;
 
     if (matchesError) {
       console.error("Failed to fetch finished matches for prediction accuracy", matchesError);
@@ -6951,10 +6965,30 @@ function isValidKyivDateString(value: string | null): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function isValidKyivMonthString(value: string | null): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
+}
+
 function getKyivStart(dateStr: string): Date {
   const base = new Date(`${dateStr}T00:00:00Z`);
   const offsetMs = getTimeZoneOffset(base, "Europe/Kyiv");
   return new Date(base.getTime() - offsetMs);
+}
+
+function getKyivMonthRange(monthStr: string): { start: string; end: string } | null {
+  if (!isValidKyivMonthString(monthStr)) {
+    return null;
+  }
+  const [yearRaw, monthRaw] = monthStr.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  if (!year || !month) {
+    return null;
+  }
+  const lastDay = daysInMonth(year, month);
+  const start = zonedTimeToUtc(year, month, 1, 0, 0, 0, "Europe/Kyiv");
+  const end = zonedTimeToUtc(year, month, lastDay, 23, 59, 59, "Europe/Kyiv");
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 function computeCurrentMonthExpiry(base: Date = new Date()): Date {

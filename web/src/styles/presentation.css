@@ -256,7 +256,7 @@ a {
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
-  max-height: 420px;
+  max-height: 800px;
   overflow: auto;
 }
 
@@ -267,7 +267,7 @@ a {
 
 .admin-users-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .admin-stats-date-switcher {
@@ -294,7 +294,7 @@ a {
   grid-template-columns: 36px 1fr auto;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);

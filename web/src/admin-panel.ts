@@ -16,7 +16,7 @@ import { fetchBotLogs, fetchPredictionAccuracy, postAdminLogin, postChannelWebap
 import { fetchLeaderboard } from "./api/leaderboard";
 import { renderAdminMatchAccuracy, renderAdminPlayerAccuracy, renderAdminUserSessions } from "./screens/adminUsers";
 import { renderPendingMatchesList } from "./screens/matches";
-import { formatKyivDateLabel, formatKyivDateTime, getKyivDateString } from "./formatters/dates";
+import { formatKyivDateLabel, formatKyivDateTime, formatKyivMonthLabel, getKyivDateString } from "./formatters/dates";
 import { toKyivISOString } from "./utils/time";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
@@ -72,6 +72,9 @@ const usersPlayerStatsStatus = document.querySelector<HTMLElement>("[data-admin-
 const usersMatchStatsDateLabel = document.querySelector<HTMLElement>("[data-admin-match-stats-date-label]");
 const usersMatchStatsDatePrev = document.querySelector<HTMLButtonElement>("[data-admin-match-stats-date-prev]");
 const usersMatchStatsDateNext = document.querySelector<HTMLButtonElement>("[data-admin-match-stats-date-next]");
+const usersPlayerStatsMonthLabel = document.querySelector<HTMLElement>("[data-admin-player-stats-month-label]");
+const usersPlayerStatsMonthPrev = document.querySelector<HTMLButtonElement>("[data-admin-player-stats-month-prev]");
+const usersPlayerStatsMonthNext = document.querySelector<HTMLButtonElement>("[data-admin-player-stats-month-next]");
 const leagueSelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-league]') ?? null;
 const homeSelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-home]') ?? null;
 const awaySelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-away]') ?? null;
@@ -90,7 +93,10 @@ const state = {
   accuracyUsers: [] as PredictionAccuracyUser[],
   accuracyLoaded: false,
   accuracyDates: [] as string[],
-  selectedAccuracyDate: null as string | null
+  selectedAccuracyDate: null as string | null,
+  accuracyMonths: [] as string[],
+  selectedAccuracyMonth: null as string | null,
+  accuracyUsersByMonth: {} as Record<string, PredictionAccuracyUser[]>
 };
 
 type LogLevel = "error" | "warn" | "info" | "log";
@@ -615,6 +621,10 @@ function getMatchKyivDate(match: PredictionAccuracyMatch): string {
   return getKyivDateString(new Date(match.kickoff_at));
 }
 
+function getMatchKyivMonth(match: PredictionAccuracyMatch): string {
+  return getMatchKyivDate(match).slice(0, 7);
+}
+
 function updateAccuracyDateNavigationState(): void {
   const dates = state.accuracyDates;
   const selected = state.selectedAccuracyDate;
@@ -651,6 +661,74 @@ function moveAccuracyDate(delta: number): void {
   renderPredictionAccuracyPanels();
 }
 
+function updatePlayerMonthNavigationState(): void {
+  const months = state.accuracyMonths;
+  const selected = state.selectedAccuracyMonth;
+  if (!usersPlayerStatsMonthLabel) {
+    return;
+  }
+  if (!months.length || !selected) {
+    usersPlayerStatsMonthLabel.textContent = "Немає місяців";
+    if (usersPlayerStatsMonthPrev) usersPlayerStatsMonthPrev.disabled = true;
+    if (usersPlayerStatsMonthNext) usersPlayerStatsMonthNext.disabled = true;
+    return;
+  }
+  const index = months.indexOf(selected);
+  const safeIndex = index >= 0 ? index : 0;
+  usersPlayerStatsMonthLabel.textContent = formatKyivMonthLabel(months[safeIndex]);
+  if (usersPlayerStatsMonthPrev) {
+    usersPlayerStatsMonthPrev.disabled = safeIndex >= months.length - 1;
+  }
+  if (usersPlayerStatsMonthNext) {
+    usersPlayerStatsMonthNext.disabled = safeIndex <= 0;
+  }
+}
+
+async function loadPredictionAccuracyUsersForMonth(month: string, force = false): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  if (state.accuracyUsersByMonth[month] && !force) {
+    return;
+  }
+  setStatus(usersPlayerStatsStatus, "Завантаження статистики по гравцях…");
+  try {
+    const token = getAdminToken();
+    if (!token) {
+      setStatus(usersPlayerStatsStatus, "Ви не авторизовані.");
+      return;
+    }
+    const { response, data } = await fetchPredictionAccuracy(API_BASE, token, { limit: 300, month });
+    if (!response.ok || !data.ok) {
+      setStatus(usersPlayerStatsStatus, "Не вдалося завантажити статистику.");
+      return;
+    }
+    state.accuracyUsersByMonth[month] = data.users;
+    if (state.selectedAccuracyMonth === month && usersPlayerStatsList) {
+      usersPlayerStatsList.innerHTML = renderAdminPlayerAccuracy(data.users);
+    }
+    setStatus(usersPlayerStatsStatus, "");
+  } catch {
+    setStatus(usersPlayerStatsStatus, "Не вдалося завантажити статистику.");
+  }
+}
+
+function moveAccuracyMonth(delta: number): void {
+  if (!state.accuracyMonths.length || !state.selectedAccuracyMonth) {
+    return;
+  }
+  const currentIndex = state.accuracyMonths.indexOf(state.selectedAccuracyMonth);
+  const nextIndex = Math.max(0, Math.min(state.accuracyMonths.length - 1, currentIndex + delta));
+  if (nextIndex === currentIndex) {
+    return;
+  }
+  state.selectedAccuracyMonth = state.accuracyMonths[nextIndex];
+  renderPredictionAccuracyPanels();
+  if (state.selectedAccuracyMonth) {
+    void loadPredictionAccuracyUsersForMonth(state.selectedAccuracyMonth);
+  }
+}
+
 function renderPredictionAccuracyPanels(): void {
   const selectedDate = state.selectedAccuracyDate;
   const filteredMatches = selectedDate
@@ -660,9 +738,16 @@ function renderPredictionAccuracyPanels(): void {
     usersMatchStatsList.innerHTML = renderAdminMatchAccuracy(filteredMatches);
   }
   if (usersPlayerStatsList) {
-    usersPlayerStatsList.innerHTML = renderAdminPlayerAccuracy(state.accuracyUsers);
+    const selectedMonth = state.selectedAccuracyMonth;
+    const monthUsers = selectedMonth ? state.accuracyUsersByMonth[selectedMonth] : null;
+    if (selectedMonth && !monthUsers) {
+      usersPlayerStatsList.innerHTML = `<p class="muted small">Завантаження статистики по гравцях…</p>`;
+    } else {
+      usersPlayerStatsList.innerHTML = renderAdminPlayerAccuracy(monthUsers ?? state.accuracyUsers);
+    }
   }
   updateAccuracyDateNavigationState();
+  updatePlayerMonthNavigationState();
 }
 
 async function loadPredictionAccuracy(force = false): Promise<void> {
@@ -693,9 +778,20 @@ async function loadPredictionAccuracy(force = false): Promise<void> {
     state.accuracyDates = Array.from(new Set(data.matches.map((match) => getMatchKyivDate(match)))).sort((a, b) =>
       b.localeCompare(a)
     );
+    state.accuracyMonths = Array.from(new Set(data.matches.map((match) => getMatchKyivMonth(match)))).sort((a, b) =>
+      b.localeCompare(a)
+    );
     state.selectedAccuracyDate = state.accuracyDates[0] ?? null;
+    state.selectedAccuracyMonth = state.accuracyMonths[0] ?? null;
+    state.accuracyUsersByMonth = {};
+    if (state.selectedAccuracyMonth) {
+      state.accuracyUsersByMonth[state.selectedAccuracyMonth] = data.users;
+    }
     state.accuracyLoaded = true;
     renderPredictionAccuracyPanels();
+    if (state.selectedAccuracyMonth) {
+      void loadPredictionAccuracyUsersForMonth(state.selectedAccuracyMonth);
+    }
     setStatus(usersMatchStatsStatus, "");
     setStatus(usersPlayerStatsStatus, "");
   } catch {
@@ -968,6 +1064,12 @@ function attachListeners(): void {
   usersMatchStatsDateNext?.addEventListener("click", () => {
     moveAccuracyDate(-1);
   });
+  usersPlayerStatsMonthPrev?.addEventListener("click", () => {
+    moveAccuracyMonth(1);
+  });
+  usersPlayerStatsMonthNext?.addEventListener("click", () => {
+    moveAccuracyMonth(-1);
+  });
 }
 
 async function loadBotLogs(initial = false, verbose = false): Promise<void> {
@@ -1085,6 +1187,9 @@ function handleLogout(): void {
   state.accuracyUsers = [];
   state.accuracyDates = [];
   state.selectedAccuracyDate = null;
+  state.accuracyMonths = [];
+  state.selectedAccuracyMonth = null;
+  state.accuracyUsersByMonth = {};
   state.matches = [];
   state.pending = [];
   setStatus(pendingStatus, "");

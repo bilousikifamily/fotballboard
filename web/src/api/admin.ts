@@ -45,11 +45,14 @@ export function postChannelWebapp(
 export function fetchPredictionAccuracy(
   apiBase: string,
   token: string,
-  params: { limit?: number } = {}
+  params: { limit?: number; month?: string } = {}
 ): Promise<{ response: Response; data: PredictionAccuracyResponse }> {
   const url = new URL(`${apiBase}/api/admin/prediction-accuracy`);
   if (typeof params.limit === "number") {
     url.searchParams.set("limit", String(params.limit));
+  }
+  if (typeof params.month === "string" && params.month.trim()) {
+    url.searchParams.set("month", params.month.trim());
   }
   return requestJson<PredictionAccuracyResponse>(url.toString(), {
     method: "GET",
