@@ -92,26 +92,31 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
       const { homeName, awayName, homeLogo, awayLogo, homeLogoFallback, awayLogoFallback } = getMatchTeamInfo(matchForLogos);
       const homeLogoMarkup = renderTeamLogo(homeName, homeLogo, homeLogoFallback);
       const awayLogoMarkup = renderTeamLogo(awayName, awayLogo, awayLogoFallback);
-      const kickoffLabel = formatKyivDateShort(match.kickoff_at);
-      const avgScoreLabel = `${formatAverage(match.avg_home_pred)}:${formatAverage(match.avg_away_pred)}`;
+      const avgScoreLabel = `${formatAverage(match.avg_home_pred)} : ${formatAverage(match.avg_away_pred)}`;
       const resultLabel =
         typeof match.home_score === "number" && typeof match.away_score === "number"
           ? `${match.home_score}:${match.away_score}`
           : "—:—";
       const scoreLabel = `${match.hits}/${match.total_predictions}`;
+      const accuracyPercent = Number.isFinite(match.accuracy_pct) ? Math.max(0, Math.min(100, match.accuracy_pct)) : 0;
       return `
         <div class="admin-match-accuracy-card">
           <div class="admin-match-accuracy-card__logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
             <div class="admin-match-accuracy-card__logo-item">
               ${homeLogoMarkup}
             </div>
-            <div class="admin-match-accuracy-card__score">${escapeHtml(resultLabel)}</div>
+            <div class="admin-match-accuracy-card__center">
+              <div class="admin-match-accuracy-card__score">${escapeHtml(resultLabel)}</div>
+              <div class="admin-match-accuracy-card__average">${escapeHtml(avgScoreLabel)}</div>
+            </div>
             <div class="admin-match-accuracy-card__logo-item">
               ${awayLogoMarkup}
             </div>
           </div>
-          <div class="admin-match-accuracy-card__average">Середній рахунок: ${escapeHtml(avgScoreLabel)}</div>
-          <div class="admin-match-accuracy-card__meta">${escapeHtml(kickoffLabel)} · ${match.accuracy_pct}% · ${escapeHtml(scoreLabel)}</div>
+          <div class="admin-match-accuracy-card__progress" role="img" aria-label="Влучність ${accuracyPercent}% (${escapeHtml(scoreLabel)})">
+            <div class="admin-match-accuracy-card__progress-fill" style="width:${accuracyPercent}%"></div>
+            <span class="admin-match-accuracy-card__progress-label">${accuracyPercent}% (${escapeHtml(scoreLabel)})</span>
+          </div>
         </div>
       `;
     })

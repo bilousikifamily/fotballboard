@@ -319,7 +319,7 @@ a {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 12px;
   min-height: 156px;
   padding: 16px 18px;
   border-radius: 14px;
@@ -350,6 +350,12 @@ a {
   object-fit: contain;
 }
 
+.admin-match-accuracy-card__center {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
 .admin-match-accuracy-card__score {
   min-width: 88px;
   text-align: center;
@@ -365,14 +371,37 @@ a {
   line-height: 1.25;
 }
 
-.admin-match-accuracy-card__meta {
-  text-align: center;
-  font-size: 0.8rem;
-  color: rgba(245, 246, 250, 0.7);
-  line-height: 1.25;
-  white-space: nowrap;
+.admin-match-accuracy-card__progress {
+  position: relative;
+  width: min(560px, 100%);
+  align-self: center;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.admin-match-accuracy-card__progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(255, 139, 60, 0.85), rgba(255, 189, 128, 0.95));
+}
+
+.admin-match-accuracy-card__progress-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #f5f6fa;
 }
 
 .table-avatar {
