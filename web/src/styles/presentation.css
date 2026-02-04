@@ -316,12 +316,13 @@ a {
 }
 
 .admin-match-accuracy-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  min-height: 156px;
-  padding: 16px 18px;
+  min-height: 188px;
+  padding: 18px 18px 54px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -337,16 +338,16 @@ a {
 }
 
 .admin-match-accuracy-card__logos .admin-match-accuracy-card__logo-item {
-  width: 50px;
-  height: 50px;
+  width: 66px;
+  height: 66px;
   display: grid;
   place-items: center;
 }
 
 .admin-match-accuracy-card__logos .match-logo,
 .admin-match-accuracy-card__logos .match-logo-fallback {
-  width: 50px;
-  height: 50px;
+  width: 66px;
+  height: 66px;
   object-fit: contain;
 }
 
@@ -360,7 +361,7 @@ a {
   min-width: 88px;
   text-align: center;
   font-weight: 800;
-  font-size: 1.45rem;
+  font-size: 1.8rem;
   letter-spacing: 0.04em;
 }
 
@@ -372,13 +373,17 @@ a {
 }
 
 .admin-match-accuracy-card__progress {
-  position: relative;
-  width: min(560px, 100%);
-  align-self: center;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   height: 26px;
-  border-radius: 999px;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
   overflow: hidden;
 }
 
