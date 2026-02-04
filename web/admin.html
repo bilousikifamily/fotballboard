@@ -44,13 +44,22 @@
             </div>
           </header>
 
+          <div class="admin-filters" data-admin-filters>
+            <button class="button secondary is-active" type="button" data-admin-filter="matches">МАТЧІ</button>
+            <button class="button secondary" type="button" data-admin-filter="users">КОРИСТУВАЧІ</button>
+          </div>
+
           <div class="admin-controls" data-admin-action-buttons>
-            <button class="button secondary" type="button" data-admin-action="add-match">ДОДАТИ МАТЧ</button>
-            <button class="button secondary" type="button" data-admin-action="result">ВВЕСТИ РЕЗУЛЬТАТИ</button>
-            <button class="button secondary" type="button" data-admin-action="announce">ПОВІДОМИТИ В БОТІ</button>
-            <button class="button secondary" type="button" data-admin-action="channel-webapp">ПОСТ В КАНАЛ</button>
-            <button class="button secondary" type="button" data-admin-action="predictions-stats">ПОВІДОМИТИ ПРО УСПІШНІСТЬ</button>
-            <button class="button secondary" type="button" data-admin-action="users">КОРИСТУВАЧІ</button>
+            <div class="admin-actions-group is-visible" data-admin-actions-group="matches">
+              <button class="button secondary" type="button" data-admin-action="add-match">ДОДАТИ МАТЧ</button>
+              <button class="button secondary" type="button" data-admin-action="result">ВВЕСТИ РЕЗУЛЬТАТИ</button>
+              <button class="button secondary" type="button" data-admin-action="announce">ПОВІДОМИТИ В БОТІ</button>
+              <button class="button secondary" type="button" data-admin-action="channel-webapp">ПОСТ В КАНАЛ</button>
+              <button class="button secondary" type="button" data-admin-action="predictions-stats">ПОВІДОМИТИ ПРО УСПІШНІСТЬ</button>
+            </div>
+            <div class="admin-actions-group" data-admin-actions-group="users">
+              <button class="button secondary" type="button" data-admin-action="users">КОРИСТУВАЧІ</button>
+            </div>
           </div>
 
           <div class="admin-action-panels">

@@ -104,14 +104,42 @@ a {
   letter-spacing: 0.2em;
 }
 
+.admin-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.admin-filters .button {
+  width: 100%;
+  justify-content: center;
+  padding: 0.8rem 1.2rem;
+  font-size: 0.95rem;
+}
+
+.admin-filters .button.is-active {
+  background: linear-gradient(135deg, var(--accent), #ffbd80);
+  color: #050404;
+  box-shadow: 0 10px 30px rgba(255, 189, 128, 0.28);
+}
+
 .admin-controls {
-  display: flex;
+  width: 100%;
+}
+
+.admin-actions-group {
+  display: none;
   flex-direction: column;
   gap: 12px;
   width: 100%;
 }
 
-.admin-controls .button {
+.admin-actions-group.is-visible {
+  display: flex;
+}
+
+.admin-actions-group .button {
   width: 100%;
   justify-content: center;
   padding: 1rem 1.4rem;

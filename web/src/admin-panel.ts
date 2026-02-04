@@ -47,7 +47,9 @@ const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
 const loginError = document.querySelector<HTMLElement>("[data-login-error]");
 const logoutButton = document.querySelector<HTMLButtonElement>("[data-logout]");
 const buildBadge = document.querySelector<HTMLElement>("[data-admin-build]");
+const filterButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-admin-filter]"));
 const actionButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-admin-action]"));
+const actionGroups = Array.from(document.querySelectorAll<HTMLElement>("[data-admin-actions-group]"));
 const panelContents = Array.from(document.querySelectorAll<HTMLElement>("[data-admin-panel-content]"));
 const addForm = document.querySelector<HTMLFormElement>("[data-admin-add-form]");
 const resultForm = document.querySelector<HTMLFormElement>("[data-admin-result-form]");
@@ -92,6 +94,8 @@ const logs: LogEntry[] = [];
 const MAX_LOGS = 200;
 let botLogsPoller: number | null = null;
 let lastBotLogId = 0;
+let currentAdminFilter: "matches" | "users" = "matches";
+let currentActivePanel = "add-match";
 
 function formatLogTime(timestamp: number): string {
   const date = new Date(timestamp);
@@ -267,6 +271,7 @@ function showLogin(): void {
 function showAdmin(): void {
   loginPanel?.classList.add("is-hidden");
   adminPanel?.classList.remove("is-hidden");
+  setAdminFilter("matches");
   updateActivePanel("add-match");
 }
 
@@ -284,6 +289,7 @@ function updateBuildBadge(): void {
 }
 
 function updateActivePanel(action: string): void {
+  currentActivePanel = action;
   panelContents.forEach((panel) => {
     const target = panel.dataset.adminPanelContent ?? "";
     panel.classList.toggle("is-hidden", target !== action);
@@ -292,6 +298,34 @@ function updateActivePanel(action: string): void {
     const target = button.dataset.adminAction ?? "";
     button.classList.toggle("is-active", target === action);
   });
+}
+
+function setAdminFilter(filter: "matches" | "users"): void {
+  currentAdminFilter = filter;
+  filterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.adminFilter === filter);
+  });
+  actionGroups.forEach((group) => {
+    group.classList.toggle("is-visible", group.dataset.adminActionsGroup === filter);
+  });
+
+  if (filter === "users") {
+    updateActivePanel("users");
+    if (!state.leaderboardLoaded) {
+      void loadLeaderboard();
+    }
+    return;
+  }
+  if (currentActivePanel === "users") {
+    updateActivePanel("add-match");
+  }
+}
+
+function isActionAvailableForCurrentFilter(action: string): boolean {
+  if (currentAdminFilter === "users") {
+    return action === "users";
+  }
+  return action !== "users";
 }
 
 function setStatus(element: HTMLElement | null, message: string): void {
@@ -771,9 +805,21 @@ async function handleChannelWebapp(): Promise<void> {
 }
 
 function attachListeners(): void {
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const filter = button.dataset.adminFilter;
+      if (filter === "matches" || filter === "users") {
+        setAdminFilter(filter);
+      }
+    });
+  });
+
   actionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const action = button.dataset.adminAction ?? "";
+      if (!isActionAvailableForCurrentFilter(action)) {
+        return;
+      }
       if (action === "users" && !state.leaderboardLoaded) {
         void loadLeaderboard();
       }
