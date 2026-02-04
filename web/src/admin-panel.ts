@@ -743,7 +743,7 @@ function renderPredictionAccuracyPanels(): void {
     if (selectedMonth && !monthUsers) {
       usersPlayerStatsList.innerHTML = `<p class="muted small">Завантаження статистики по гравцях…</p>`;
     } else {
-      usersPlayerStatsList.innerHTML = renderAdminPlayerAccuracy(monthUsers ?? state.accuracyUsers);
+      usersPlayerStatsList.innerHTML = renderAdminPlayerAccuracy(monthUsers ?? []);
     }
   }
   updateAccuracyDateNavigationState();
@@ -784,9 +784,6 @@ async function loadPredictionAccuracy(force = false): Promise<void> {
     state.selectedAccuracyDate = state.accuracyDates[0] ?? null;
     state.selectedAccuracyMonth = state.accuracyMonths[0] ?? null;
     state.accuracyUsersByMonth = {};
-    if (state.selectedAccuracyMonth) {
-      state.accuracyUsersByMonth[state.selectedAccuracyMonth] = data.users;
-    }
     state.accuracyLoaded = true;
     renderPredictionAccuracyPanels();
     if (state.selectedAccuracyMonth) {
