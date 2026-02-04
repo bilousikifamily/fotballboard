@@ -261,9 +261,26 @@ a {
   overflow: auto;
 }
 
+.admin-users--match-stats {
+  max-height: none;
+  overflow: visible;
+}
+
 .admin-users-list {
   display: grid;
   gap: 8px;
+}
+
+.admin-stats-date-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.admin-stats-date-switcher .button {
+  min-width: 42px;
+  padding: 0.55rem 0.8rem;
 }
 
 .admin-user-row {
@@ -299,12 +316,12 @@ a {
 }
 
 .admin-match-accuracy-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 14px;
-  min-height: 104px;
-  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 156px;
+  padding: 16px 18px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -313,24 +330,39 @@ a {
 .admin-match-accuracy-card__logos {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 16px;
 }
 
 .admin-match-accuracy-card__logos .admin-match-logo-item {
-  width: 34px;
-  height: 34px;
+  width: 50px;
+  height: 50px;
 }
 
 .admin-match-accuracy-card__logos .match-logo,
 .admin-match-accuracy-card__logos .match-logo-fallback {
-  width: 34px;
-  height: 34px;
+  width: 50px;
+  height: 50px;
 }
 
-.admin-match-accuracy-card__info {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
+.admin-match-accuracy-card__score {
+  min-width: 88px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: 0.04em;
+}
+
+.admin-match-accuracy-card__average {
+  text-align: center;
+  font-size: 0.92rem;
+  color: rgba(245, 246, 250, 0.86);
+}
+
+.admin-match-accuracy-card__meta {
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(245, 246, 250, 0.7);
 }
 
 .table-avatar {

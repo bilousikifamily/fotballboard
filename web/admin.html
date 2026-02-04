@@ -129,7 +129,12 @@
               <p class="muted small" data-admin-users-status></p>
             </div>
 
-            <div class="admin-users is-hidden" data-admin-panel-content="users-match-stats">
+            <div class="admin-users admin-users--match-stats is-hidden" data-admin-panel-content="users-match-stats">
+              <div class="admin-stats-date-switcher" data-admin-match-stats-date-switcher>
+                <button class="button secondary" type="button" data-admin-match-stats-date-prev>←</button>
+                <span class="pill" data-admin-match-stats-date-label>—</span>
+                <button class="button secondary" type="button" data-admin-match-stats-date-next>→</button>
+              </div>
               <div data-admin-users-match-stats-list></div>
               <p class="muted small" data-admin-users-match-stats-status></p>
             </div>

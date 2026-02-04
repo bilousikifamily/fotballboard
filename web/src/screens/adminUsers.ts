@@ -97,7 +97,7 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
       const resultLabel =
         typeof match.home_score === "number" && typeof match.away_score === "number"
           ? `${match.home_score}:${match.away_score}`
-          : "—";
+          : "—:—";
       const scoreLabel = `${match.hits}/${match.total_predictions}`;
       return `
         <div class="admin-match-accuracy-card">
@@ -105,16 +105,13 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
             <div class="admin-match-logo-item">
               ${homeLogoMarkup}
             </div>
-            <div class="admin-match-vs">∙</div>
+            <div class="admin-match-accuracy-card__score">${escapeHtml(resultLabel)}</div>
             <div class="admin-match-logo-item">
               ${awayLogoMarkup}
             </div>
           </div>
-          <div class="admin-match-accuracy-card__info">
-            <span class="admin-user-name">${escapeHtml(homeName)} — ${escapeHtml(awayName)}</span>
-            <span class="admin-user-session">${escapeHtml(kickoffLabel)} · ${match.accuracy_pct}% · ${escapeHtml(scoreLabel)}</span>
-            <span class="admin-user-session">Рахунок: ${escapeHtml(resultLabel)} · Середній: ${escapeHtml(avgScoreLabel)}</span>
-          </div>
+          <div class="admin-match-accuracy-card__average">Середній рахунок: ${escapeHtml(avgScoreLabel)}</div>
+          <div class="admin-match-accuracy-card__meta">${escapeHtml(kickoffLabel)} · ${match.accuracy_pct}% · ${escapeHtml(scoreLabel)}</div>
         </div>
       `;
     })
