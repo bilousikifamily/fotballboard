@@ -40,10 +40,17 @@ export type PredictionAccuracyMatch = {
   match_id: number;
   home_team: string;
   away_team: string;
+  league_id?: string | null;
+  home_club_id?: string | null;
+  away_club_id?: string | null;
+  home_score?: number | null;
+  away_score?: number | null;
   kickoff_at: string;
   total_predictions: number;
   hits: number;
   accuracy_pct: number;
+  avg_home_pred: number;
+  avg_away_pred: number;
 };
 
 export type PredictionAccuracyUser = {

@@ -298,6 +298,41 @@ a {
   white-space: nowrap;
 }
 
+.admin-match-accuracy-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  min-height: 104px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-match-accuracy-card__logos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-match-accuracy-card__logos .admin-match-logo-item {
+  width: 34px;
+  height: 34px;
+}
+
+.admin-match-accuracy-card__logos .match-logo,
+.admin-match-accuracy-card__logos .match-logo-fallback {
+  width: 34px;
+  height: 34px;
+}
+
+.admin-match-accuracy-card__info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .table-avatar {
   width: 32px;
   height: 32px;

@@ -1,8 +1,9 @@
-import type { LeaderboardUser, PredictionAccuracyMatch, PredictionAccuracyUser } from "../types";
+import type { LeaderboardUser, Match, PredictionAccuracyMatch, PredictionAccuracyUser } from "../types";
 import { formatKyivDateShort, formatKyivTime } from "../formatters/dates";
 import { formatUserName } from "../formatters/names";
-import { getAvatarLogoPath } from "../features/clubs";
+import { getAvatarLogoPath, getMatchTeamInfo } from "../features/clubs";
 import { escapeAttribute, escapeHtml } from "../utils/escape";
+import { renderTeamLogo } from "./matches";
 
 function parseUserTimestamp(user: LeaderboardUser): number {
   if (!user.last_seen_at) {
@@ -67,20 +68,53 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
     return `<p class="muted small">Немає даних по матчах.</p>`;
   }
 
+  const formatAverage = (value: number): string => {
+    const rounded = Number(value.toFixed(1));
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+
   const rows = matches
     .slice()
     .sort((a, b) => Date.parse(b.kickoff_at) - Date.parse(a.kickoff_at))
     .map((match) => {
-      const kickoffLabel = `${formatKyivDateShort(match.kickoff_at)} · ${formatKyivTime(match.kickoff_at)}`;
+      const matchForLogos: Match = {
+        id: match.match_id,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        league_id: match.league_id ?? null,
+        home_club_id: match.home_club_id ?? null,
+        away_club_id: match.away_club_id ?? null,
+        kickoff_at: match.kickoff_at,
+        status: "finished",
+        home_score: match.home_score ?? null,
+        away_score: match.away_score ?? null
+      };
+      const { homeName, awayName, homeLogo, awayLogo, homeLogoFallback, awayLogoFallback } = getMatchTeamInfo(matchForLogos);
+      const homeLogoMarkup = renderTeamLogo(homeName, homeLogo, homeLogoFallback);
+      const awayLogoMarkup = renderTeamLogo(awayName, awayLogo, awayLogoFallback);
+      const kickoffLabel = formatKyivDateShort(match.kickoff_at);
+      const avgScoreLabel = `${formatAverage(match.avg_home_pred)}:${formatAverage(match.avg_away_pred)}`;
+      const resultLabel =
+        typeof match.home_score === "number" && typeof match.away_score === "number"
+          ? `${match.home_score}:${match.away_score}`
+          : "—";
       const scoreLabel = `${match.hits}/${match.total_predictions}`;
       return `
-        <div class="admin-user-row">
-          <div class="table-avatar placeholder"></div>
-          <div class="admin-user-info">
-            <span class="admin-user-name">${escapeHtml(match.home_team)} — ${escapeHtml(match.away_team)}</span>
-            <span class="admin-user-session">${escapeHtml(kickoffLabel)} · ${match.accuracy_pct}%</span>
+        <div class="admin-match-accuracy-card">
+          <div class="admin-match-accuracy-card__logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
+            <div class="admin-match-logo-item">
+              ${homeLogoMarkup}
+            </div>
+            <div class="admin-match-vs">∙</div>
+            <div class="admin-match-logo-item">
+              ${awayLogoMarkup}
+            </div>
           </div>
-          <span class="admin-user-session">${escapeHtml(scoreLabel)}</span>
+          <div class="admin-match-accuracy-card__info">
+            <span class="admin-user-name">${escapeHtml(homeName)} — ${escapeHtml(awayName)}</span>
+            <span class="admin-user-session">${escapeHtml(kickoffLabel)} · ${match.accuracy_pct}% · ${escapeHtml(scoreLabel)}</span>
+            <span class="admin-user-session">Рахунок: ${escapeHtml(resultLabel)} · Середній: ${escapeHtml(avgScoreLabel)}</span>
+          </div>
         </div>
       `;
     })

@@ -2245,7 +2245,7 @@ async function getPredictionAccuracyStats(
   try {
     const { data: matchesData, error: matchesError } = await supabase
       .from("matches")
-      .select("id, home_team, away_team, kickoff_at")
+      .select("id, home_team, away_team, league_id, home_club_id, away_club_id, home_score, away_score, kickoff_at")
       .eq("status", "finished")
       .order("kickoff_at", { ascending: false })
       .limit(limit);
@@ -2259,6 +2259,11 @@ async function getPredictionAccuracyStats(
       id?: number | null;
       home_team?: string | null;
       away_team?: string | null;
+      league_id?: string | null;
+      home_club_id?: string | null;
+      away_club_id?: string | null;
+      home_score?: number | null;
+      away_score?: number | null;
       kickoff_at?: string | null;
     }> | null | undefined) ?? [];
 
@@ -2272,7 +2277,9 @@ async function getPredictionAccuracyStats(
 
     const { data: predictionsData, error: predictionsError } = await supabase
       .from("predictions")
-      .select("match_id, user_id, points, users(id, username, first_name, last_name, nickname, photo_url, avatar_choice)")
+      .select(
+        "match_id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, photo_url, avatar_choice)"
+      )
       .in("match_id", matchIds);
 
     if (predictionsError) {
@@ -2284,6 +2291,8 @@ async function getPredictionAccuracyStats(
       (predictionsData as Array<{
         match_id?: number | null;
         user_id?: number | null;
+        home_pred?: number | null;
+        away_pred?: number | null;
         points?: number | null;
         users?:
           | {
@@ -2307,7 +2316,7 @@ async function getPredictionAccuracyStats(
           | null;
       }> | null | undefined) ?? [];
 
-    const matchStats = new Map<number, { total: number; hits: number }>();
+    const matchStats = new Map<number, { total: number; hits: number; homePredSum: number; awayPredSum: number }>();
     const usersMap = new Map<
       number,
       {
@@ -2325,12 +2334,16 @@ async function getPredictionAccuracyStats(
       }
       const points = typeof prediction.points === "number" ? prediction.points : 0;
       const hit = points > 0;
+      const homePred = typeof prediction.home_pred === "number" ? prediction.home_pred : 0;
+      const awayPred = typeof prediction.away_pred === "number" ? prediction.away_pred : 0;
 
-      const matchStat = matchStats.get(matchId) ?? { total: 0, hits: 0 };
+      const matchStat = matchStats.get(matchId) ?? { total: 0, hits: 0, homePredSum: 0, awayPredSum: 0 };
       matchStat.total += 1;
       if (hit) {
         matchStat.hits += 1;
       }
+      matchStat.homePredSum += homePred;
+      matchStat.awayPredSum += awayPred;
       matchStats.set(matchId, matchStat);
 
       const rawUser = Array.isArray(prediction.users) ? prediction.users[0] ?? null : prediction.users ?? null;
@@ -2372,16 +2385,25 @@ async function getPredictionAccuracyStats(
         if (!id || !homeTeam || !awayTeam || !kickoffAt) {
           return null;
         }
-        const stats = matchStats.get(id) ?? { total: 0, hits: 0 };
+        const stats = matchStats.get(id) ?? { total: 0, hits: 0, homePredSum: 0, awayPredSum: 0 };
         const accuracy = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
+        const avgHomePred = stats.total > 0 ? Number((stats.homePredSum / stats.total).toFixed(1)) : 0;
+        const avgAwayPred = stats.total > 0 ? Number((stats.awayPredSum / stats.total).toFixed(1)) : 0;
         return {
           match_id: id,
           home_team: homeTeam,
           away_team: awayTeam,
+          league_id: match.league_id ?? null,
+          home_club_id: match.home_club_id ?? null,
+          away_club_id: match.away_club_id ?? null,
+          home_score: typeof match.home_score === "number" ? match.home_score : null,
+          away_score: typeof match.away_score === "number" ? match.away_score : null,
           kickoff_at: kickoffAt,
           total_predictions: stats.total,
           hits: stats.hits,
-          accuracy_pct: accuracy
+          accuracy_pct: accuracy,
+          avg_home_pred: avgHomePred,
+          avg_away_pred: avgAwayPred
         };
       })
       .filter((row): row is AdminPredictionAccuracyMatch => Boolean(row));
