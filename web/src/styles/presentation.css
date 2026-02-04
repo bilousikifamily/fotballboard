@@ -328,21 +328,26 @@ a {
 }
 
 .admin-match-accuracy-card__logos {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(72px, auto) minmax(0, auto);
   align-items: center;
   justify-content: center;
   gap: 16px;
+  width: 100%;
 }
 
-.admin-match-accuracy-card__logos .admin-match-logo-item {
+.admin-match-accuracy-card__logos .admin-match-accuracy-card__logo-item {
   width: 50px;
   height: 50px;
+  display: grid;
+  place-items: center;
 }
 
 .admin-match-accuracy-card__logos .match-logo,
 .admin-match-accuracy-card__logos .match-logo-fallback {
   width: 50px;
   height: 50px;
+  object-fit: contain;
 }
 
 .admin-match-accuracy-card__score {
@@ -357,12 +362,17 @@ a {
   text-align: center;
   font-size: 0.92rem;
   color: rgba(245, 246, 250, 0.86);
+  line-height: 1.25;
 }
 
 .admin-match-accuracy-card__meta {
   text-align: center;
   font-size: 0.8rem;
   color: rgba(245, 246, 250, 0.7);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-avatar {

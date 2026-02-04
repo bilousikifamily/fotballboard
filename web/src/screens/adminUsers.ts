@@ -102,11 +102,11 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
       return `
         <div class="admin-match-accuracy-card">
           <div class="admin-match-accuracy-card__logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
-            <div class="admin-match-logo-item">
+            <div class="admin-match-accuracy-card__logo-item">
               ${homeLogoMarkup}
             </div>
             <div class="admin-match-accuracy-card__score">${escapeHtml(resultLabel)}</div>
-            <div class="admin-match-logo-item">
+            <div class="admin-match-accuracy-card__logo-item">
               ${awayLogoMarkup}
             </div>
           </div>
