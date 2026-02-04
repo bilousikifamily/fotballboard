@@ -349,6 +349,29 @@ export interface PredictionStats {
   last_results: PredictionResult[];
 }
 
+export interface AdminPredictionAccuracyMatch {
+  match_id: number;
+  home_team: string;
+  away_team: string;
+  kickoff_at: string;
+  total_predictions: number;
+  hits: number;
+  accuracy_pct: number;
+}
+
+export interface AdminPredictionAccuracyUser {
+  user_id: number;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null;
+  photo_url?: string | null;
+  avatar_choice?: string | null;
+  total_predictions: number;
+  hits: number;
+  accuracy_pct: number;
+}
+
 export interface FactionStat {
   key: FactionKey;
   value: string;

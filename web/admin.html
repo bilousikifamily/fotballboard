@@ -59,6 +59,8 @@
             </div>
             <div class="admin-actions-group" data-admin-actions-group="users">
               <button class="button secondary" type="button" data-admin-action="users">КОРИСТУВАЧІ</button>
+              <button class="button secondary" type="button" data-admin-action="users-match-stats">СТАТИСТИКА ПО МАТЧАМ</button>
+              <button class="button secondary" type="button" data-admin-action="users-player-stats">СТАТИСТИКА ПО ГРАВЦЯМ</button>
             </div>
           </div>
 
@@ -125,6 +127,16 @@
             <div class="admin-users is-hidden" data-admin-panel-content="users">
               <div data-admin-users-list></div>
               <p class="muted small" data-admin-users-status></p>
+            </div>
+
+            <div class="admin-users is-hidden" data-admin-panel-content="users-match-stats">
+              <div data-admin-users-match-stats-list></div>
+              <p class="muted small" data-admin-users-match-stats-status></p>
+            </div>
+
+            <div class="admin-users is-hidden" data-admin-panel-content="users-player-stats">
+              <div data-admin-users-player-stats-list></div>
+              <p class="muted small" data-admin-users-player-stats-status></p>
             </div>
           </div>
 

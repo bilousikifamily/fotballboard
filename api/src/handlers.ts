@@ -18,6 +18,8 @@ import type {
   DbMatch,
   DbPrediction,
   DbTeamMatchStat,
+  AdminPredictionAccuracyMatch,
+  AdminPredictionAccuracyUser,
   FactionKey,
   MatchResultExactGuessUser,
   FactionStat,
@@ -572,6 +574,38 @@ export default {
       }
 
       return jsonResponse({ ok: true, logs: data ?? [] }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/admin/prediction-accuracy") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const limit = parseLimit(url.searchParams.get("limit"), 120, 300) ?? 120;
+      const stats = await getPredictionAccuracyStats(supabase, limit);
+      if (!stats) {
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, matches: stats.matches, users: stats.users }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/auth") {
@@ -2202,6 +2236,197 @@ async function listLeaderboard(supabase: SupabaseClient, limit?: number | null):
     console.error("Failed to fetch users", error);
     return null;
   }
+}
+
+async function getPredictionAccuracyStats(
+  supabase: SupabaseClient,
+  limit: number
+): Promise<{ matches: AdminPredictionAccuracyMatch[]; users: AdminPredictionAccuracyUser[] } | null> {
+  try {
+    const { data: matchesData, error: matchesError } = await supabase
+      .from("matches")
+      .select("id, home_team, away_team, kickoff_at")
+      .eq("status", "finished")
+      .order("kickoff_at", { ascending: false })
+      .limit(limit);
+
+    if (matchesError) {
+      console.error("Failed to fetch finished matches for prediction accuracy", matchesError);
+      return null;
+    }
+
+    const matches = (matchesData as Array<{
+      id?: number | null;
+      home_team?: string | null;
+      away_team?: string | null;
+      kickoff_at?: string | null;
+    }> | null | undefined) ?? [];
+
+    const matchIds = matches
+      .map((match) => (typeof match.id === "number" ? match.id : null))
+      .filter((value): value is number => typeof value === "number");
+
+    if (matchIds.length === 0) {
+      return { matches: [], users: [] };
+    }
+
+    const { data: predictionsData, error: predictionsError } = await supabase
+      .from("predictions")
+      .select("match_id, user_id, points, users(id, username, first_name, last_name, nickname, photo_url, avatar_choice)")
+      .in("match_id", matchIds);
+
+    if (predictionsError) {
+      console.error("Failed to fetch predictions for prediction accuracy", predictionsError);
+      return null;
+    }
+
+    const predictions =
+      (predictionsData as Array<{
+        match_id?: number | null;
+        user_id?: number | null;
+        points?: number | null;
+        users?:
+          | {
+              id?: number | null;
+              username?: string | null;
+              first_name?: string | null;
+              last_name?: string | null;
+              nickname?: string | null;
+              photo_url?: string | null;
+              avatar_choice?: string | null;
+            }
+          | Array<{
+              id?: number | null;
+              username?: string | null;
+              first_name?: string | null;
+              last_name?: string | null;
+              nickname?: string | null;
+              photo_url?: string | null;
+              avatar_choice?: string | null;
+            }>
+          | null;
+      }> | null | undefined) ?? [];
+
+    const matchStats = new Map<number, { total: number; hits: number }>();
+    const usersMap = new Map<
+      number,
+      {
+        user: AdminPredictionAccuracyUser;
+        total: number;
+        hits: number;
+      }
+    >();
+
+    for (const prediction of predictions) {
+      const matchId = typeof prediction.match_id === "number" ? prediction.match_id : null;
+      const userId = typeof prediction.user_id === "number" ? prediction.user_id : null;
+      if (!matchId || !userId) {
+        continue;
+      }
+      const points = typeof prediction.points === "number" ? prediction.points : 0;
+      const hit = points > 0;
+
+      const matchStat = matchStats.get(matchId) ?? { total: 0, hits: 0 };
+      matchStat.total += 1;
+      if (hit) {
+        matchStat.hits += 1;
+      }
+      matchStats.set(matchId, matchStat);
+
+      const rawUser = Array.isArray(prediction.users) ? prediction.users[0] ?? null : prediction.users ?? null;
+      const baseUser: AdminPredictionAccuracyUser = usersMap.get(userId)?.user ?? {
+        user_id: userId,
+        username: null,
+        first_name: null,
+        last_name: null,
+        nickname: null,
+        photo_url: null,
+        avatar_choice: null,
+        total_predictions: 0,
+        hits: 0,
+        accuracy_pct: 0
+      };
+      if (rawUser) {
+        baseUser.username = rawUser.username ?? baseUser.username ?? null;
+        baseUser.first_name = rawUser.first_name ?? baseUser.first_name ?? null;
+        baseUser.last_name = rawUser.last_name ?? baseUser.last_name ?? null;
+        baseUser.nickname = rawUser.nickname ?? baseUser.nickname ?? null;
+        baseUser.photo_url = rawUser.photo_url ?? baseUser.photo_url ?? null;
+        baseUser.avatar_choice = rawUser.avatar_choice ?? baseUser.avatar_choice ?? null;
+      }
+
+      const userBucket = usersMap.get(userId) ?? { user: baseUser, total: 0, hits: 0 };
+      userBucket.total += 1;
+      if (hit) {
+        userBucket.hits += 1;
+      }
+      usersMap.set(userId, userBucket);
+    }
+
+    const formattedMatches: AdminPredictionAccuracyMatch[] = matches
+      .map((match) => {
+        const id = typeof match.id === "number" ? match.id : null;
+        const homeTeam = typeof match.home_team === "string" ? match.home_team : "";
+        const awayTeam = typeof match.away_team === "string" ? match.away_team : "";
+        const kickoffAt = typeof match.kickoff_at === "string" ? match.kickoff_at : "";
+        if (!id || !homeTeam || !awayTeam || !kickoffAt) {
+          return null;
+        }
+        const stats = matchStats.get(id) ?? { total: 0, hits: 0 };
+        const accuracy = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
+        return {
+          match_id: id,
+          home_team: homeTeam,
+          away_team: awayTeam,
+          kickoff_at: kickoffAt,
+          total_predictions: stats.total,
+          hits: stats.hits,
+          accuracy_pct: accuracy
+        };
+      })
+      .filter((row): row is AdminPredictionAccuracyMatch => Boolean(row));
+
+    const formattedUsers: AdminPredictionAccuracyUser[] = Array.from(usersMap.values())
+      .map((entry) => {
+        const accuracy = entry.total > 0 ? Math.round((entry.hits / entry.total) * 100) : 0;
+        return {
+          ...entry.user,
+          total_predictions: entry.total,
+          hits: entry.hits,
+          accuracy_pct: accuracy
+        };
+      })
+      .sort((a, b) => {
+        if (b.accuracy_pct !== a.accuracy_pct) {
+          return b.accuracy_pct - a.accuracy_pct;
+        }
+        if (b.total_predictions !== a.total_predictions) {
+          return b.total_predictions - a.total_predictions;
+        }
+        return resolveAccuracyUserSortLabel(a).localeCompare(resolveAccuracyUserSortLabel(b), "uk");
+      });
+
+    return { matches: formattedMatches, users: formattedUsers };
+  } catch (error) {
+    console.error("Failed to build prediction accuracy stats", error);
+    return null;
+  }
+}
+
+function resolveAccuracyUserSortLabel(user: AdminPredictionAccuracyUser): string {
+  const nickname = user.nickname?.trim();
+  if (nickname) {
+    return nickname.toLowerCase();
+  }
+  const username = user.username?.trim();
+  if (username) {
+    return username.toLowerCase();
+  }
+  const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
+  if (fullName) {
+    return fullName.toLowerCase();
+  }
+  return String(user.user_id);
 }
 
 async function listFactionMembers(

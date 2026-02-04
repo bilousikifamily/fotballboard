@@ -1,4 +1,4 @@
-import type { AdminLoginResponse, BotLogsResponse, ChannelWebappResponse } from "../types";
+import type { AdminLoginResponse, BotLogsResponse, ChannelWebappResponse, PredictionAccuracyResponse } from "../types";
 import { authJsonHeaders, requestJson } from "./client";
 
 export function postAdminLogin(
@@ -39,5 +39,20 @@ export function postChannelWebapp(
     method: "POST",
     headers: authJsonHeaders(undefined, adminSessionToken),
     body: JSON.stringify(payload)
+  });
+}
+
+export function fetchPredictionAccuracy(
+  apiBase: string,
+  token: string,
+  params: { limit?: number } = {}
+): Promise<{ response: Response; data: PredictionAccuracyResponse }> {
+  const url = new URL(`${apiBase}/api/admin/prediction-accuracy`);
+  if (typeof params.limit === "number") {
+    url.searchParams.set("limit", String(params.limit));
+  }
+  return requestJson<PredictionAccuracyResponse>(url.toString(), {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` }
   });
 }

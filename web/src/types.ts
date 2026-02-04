@@ -36,6 +36,33 @@ export type BotLogsResponse =
   | { ok: true; logs: BotLogEntry[] }
   | { ok: false; error: string };
 
+export type PredictionAccuracyMatch = {
+  match_id: number;
+  home_team: string;
+  away_team: string;
+  kickoff_at: string;
+  total_predictions: number;
+  hits: number;
+  accuracy_pct: number;
+};
+
+export type PredictionAccuracyUser = {
+  user_id: number;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null;
+  photo_url?: string | null;
+  avatar_choice?: string | null;
+  total_predictions: number;
+  hits: number;
+  accuracy_pct: number;
+};
+
+export type PredictionAccuracyResponse =
+  | { ok: true; matches: PredictionAccuracyMatch[]; users: PredictionAccuracyUser[] }
+  | { ok: false; error: string };
+
 export type PendingMatchesResponse =
   | { ok: true; matches: Match[] }
   | { ok: false; error: string };

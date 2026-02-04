@@ -1,6 +1,6 @@
 import { ALL_CLUBS } from "./data/clubs";
 import { formatClubName } from "./features/clubs";
-import type { LeaderboardUser, Match, OddsRefreshDebug } from "./types";
+import type { LeaderboardUser, Match, OddsRefreshDebug, PredictionAccuracyMatch, PredictionAccuracyUser } from "./types";
 import {
   fetchMatches,
   fetchPendingMatches,
@@ -12,9 +12,9 @@ import {
   postResult,
   postConfirmMatch
 } from "./api/matches";
-import { fetchBotLogs, postAdminLogin, postChannelWebapp } from "./api/admin";
+import { fetchBotLogs, fetchPredictionAccuracy, postAdminLogin, postChannelWebapp } from "./api/admin";
 import { fetchLeaderboard } from "./api/leaderboard";
-import { renderAdminUserSessions } from "./screens/adminUsers";
+import { renderAdminMatchAccuracy, renderAdminPlayerAccuracy, renderAdminUserSessions } from "./screens/adminUsers";
 import { renderPendingMatchesList } from "./screens/matches";
 import { formatKyivDateTime, getKyivDateString } from "./formatters/dates";
 import { toKyivISOString } from "./utils/time";
@@ -65,6 +65,10 @@ const pendingList = document.querySelector<HTMLElement>("[data-admin-pending-lis
 const pendingStatus = document.querySelector<HTMLElement>("[data-admin-pending-status]");
 const usersList = document.querySelector<HTMLElement>("[data-admin-users-list]");
 const usersStatus = document.querySelector<HTMLElement>("[data-admin-users-status]");
+const usersMatchStatsList = document.querySelector<HTMLElement>("[data-admin-users-match-stats-list]");
+const usersMatchStatsStatus = document.querySelector<HTMLElement>("[data-admin-users-match-stats-status]");
+const usersPlayerStatsList = document.querySelector<HTMLElement>("[data-admin-users-player-stats-list]");
+const usersPlayerStatsStatus = document.querySelector<HTMLElement>("[data-admin-users-player-stats-status]");
 const leagueSelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-league]') ?? null;
 const homeSelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-home]') ?? null;
 const awaySelect = addForm?.querySelector<HTMLSelectElement>('[data-admin-away]') ?? null;
@@ -78,7 +82,10 @@ const state = {
   matches: [] as Match[],
   pending: [] as Match[],
   leaderboard: [] as LeaderboardUser[],
-  leaderboardLoaded: false
+  leaderboardLoaded: false,
+  accuracyMatches: [] as PredictionAccuracyMatch[],
+  accuracyUsers: [] as PredictionAccuracyUser[],
+  accuracyLoaded: false
 };
 
 type LogLevel = "error" | "warn" | "info" | "log";
@@ -323,9 +330,9 @@ function setAdminFilter(filter: "matches" | "users"): void {
 
 function isActionAvailableForCurrentFilter(action: string): boolean {
   if (currentAdminFilter === "users") {
-    return action === "users";
+    return action === "users" || action === "users-match-stats" || action === "users-player-stats";
   }
-  return action !== "users";
+  return action !== "users" && action !== "users-match-stats" && action !== "users-player-stats";
 }
 
 function setStatus(element: HTMLElement | null, message: string): void {
@@ -599,6 +606,50 @@ async function loadLeaderboard(): Promise<void> {
   }
 }
 
+function renderPredictionAccuracyPanels(): void {
+  if (usersMatchStatsList) {
+    usersMatchStatsList.innerHTML = renderAdminMatchAccuracy(state.accuracyMatches);
+  }
+  if (usersPlayerStatsList) {
+    usersPlayerStatsList.innerHTML = renderAdminPlayerAccuracy(state.accuracyUsers);
+  }
+}
+
+async function loadPredictionAccuracy(force = false): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  if (state.accuracyLoaded && !force) {
+    renderPredictionAccuracyPanels();
+    return;
+  }
+  setStatus(usersMatchStatsStatus, "Завантаження статистики по матчах…");
+  setStatus(usersPlayerStatsStatus, "Завантаження статистики по гравцях…");
+  try {
+    const token = getAdminToken();
+    if (!token) {
+      setStatus(usersMatchStatsStatus, "Ви не авторизовані.");
+      setStatus(usersPlayerStatsStatus, "Ви не авторизовані.");
+      return;
+    }
+    const { response, data } = await fetchPredictionAccuracy(API_BASE, token, { limit: 120 });
+    if (!response.ok || !data.ok) {
+      setStatus(usersMatchStatsStatus, "Не вдалося завантажити статистику.");
+      setStatus(usersPlayerStatsStatus, "Не вдалося завантажити статистику.");
+      return;
+    }
+    state.accuracyMatches = data.matches;
+    state.accuracyUsers = data.users;
+    state.accuracyLoaded = true;
+    renderPredictionAccuracyPanels();
+    setStatus(usersMatchStatsStatus, "");
+    setStatus(usersPlayerStatsStatus, "");
+  } catch {
+    setStatus(usersMatchStatsStatus, "Не вдалося завантажити статистику.");
+    setStatus(usersPlayerStatsStatus, "Не вдалося завантажити статистику.");
+  }
+}
+
 function parseScore(value: string | null | undefined): number | null {
   if (!value) {
     return null;
@@ -823,6 +874,9 @@ function attachListeners(): void {
       if (action === "users" && !state.leaderboardLoaded) {
         void loadLeaderboard();
       }
+      if ((action === "users-match-stats" || action === "users-player-stats") && !state.accuracyLoaded) {
+        void loadPredictionAccuracy();
+      }
       if (action === "result") {
         // Оновлюємо матчі при відкритті панелі результатів
         void loadMatches();
@@ -966,14 +1020,25 @@ function handleLogout(): void {
   stopBotLogPolling();
   state.leaderboardLoaded = false;
   state.leaderboard = [];
+  state.accuracyLoaded = false;
+  state.accuracyMatches = [];
+  state.accuracyUsers = [];
   state.matches = [];
   state.pending = [];
   setStatus(pendingStatus, "");
   setStatus(usersStatus, "");
+  setStatus(usersMatchStatsStatus, "");
+  setStatus(usersPlayerStatsStatus, "");
   setStatus(addStatus, "");
   setStatus(resultStatus, "");
   setStatus(announceStatus, "");
   setStatus(predictionsStatsStatus, "");
+  if (usersMatchStatsList) {
+    usersMatchStatsList.innerHTML = "";
+  }
+  if (usersPlayerStatsList) {
+    usersPlayerStatsList.innerHTML = "";
+  }
   showLogin();
 }
 
