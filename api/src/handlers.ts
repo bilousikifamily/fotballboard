@@ -95,6 +95,10 @@ const CHANNEL_WEBAPP_BUTTON_TEXT = "ВІДКРИТИ";
 const CHANNEL_WEBAPP_BUTTON_URL = "https://t.me/football_rada_bot";
 const MATCH_START_DIGEST_DELAY_MS = 60 * 1000;
 const MISSED_PREDICTION_PENALTY = -1;
+const MATCH_RESULT_NOTIFICATION_BATCH_SIZE = 120;
+const MATCH_RESULT_NOTIFICATION_CONCURRENCY = 8;
+const MATCH_RESULT_NOTIFICATION_MAX_ATTEMPTS = 8;
+const MATCH_RESULT_NOTIFICATION_LOCK_TIMEOUT_MS = 15 * 60 * 1000;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const ANALITIKA_LEAGUE_ID = "english-premier-league";
@@ -1589,7 +1593,8 @@ export default {
       }
 
       if (result.notifications.length) {
-        await notifyUsersAboutMatchResult(env, result.notifications);
+        await enqueueMatchResultNotifications(env, supabase, result.notifications);
+        ctx.waitUntil(handleMatchResultNotificationQueue(env));
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -1766,6 +1771,7 @@ export default {
     ctx.waitUntil(handlePredictionReminders(env));
     ctx.waitUntil(handleMatchStartDigests(env));
     ctx.waitUntil(handleSubscriptionExpiryReminders(env));
+    ctx.waitUntil(handleMatchResultNotificationQueue(env));
   }
 };
 
@@ -5793,6 +5799,7 @@ async function applyMatchResult(
       }
 
       notifications.push({
+        match_id: match.id,
         user_id: user.id,
         delta,
         total_points: nextPoints,
@@ -6151,6 +6158,7 @@ async function applyMissingPredictionPenalties(
       }
 
       notifications.push({
+        match_id: match.id,
         user_id: user.id,
         delta: MISSED_PREDICTION_PENALTY,
         total_points: nextPoints,
@@ -6848,41 +6856,338 @@ function buildFactionLabel(factionClubId?: string | null): string {
   return trimmed.length ? trimmed : NO_FACTION_LABEL;
 }
 
-async function notifyUsersAboutMatchResult(
+type MatchResultDeliveryResult = { ok: boolean; status: number | null; body: string };
+
+type MatchResultDeliveryAttempt = {
+  context: "match_result_photo" | "match_result_text";
+  result: MatchResultDeliveryResult;
+};
+
+type MatchResultNotificationJobRow = {
+  id: number;
+  user_id: number;
+  payload: MatchResultNotification;
+  attempts: number | null;
+  max_attempts: number | null;
+};
+
+async function enqueueMatchResultNotifications(
   env: Env,
+  supabase: SupabaseClient,
   notifications: MatchResultNotification[]
 ): Promise<void> {
-  const supabase = createSupabaseClient(env);
+  if (!notifications.length) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const records = notifications.map((notification) => ({
+    job_key: buildMatchResultNotificationJobKey(notification),
+    user_id: notification.user_id,
+    payload: notification,
+    status: "pending",
+    attempts: 0,
+    max_attempts: MATCH_RESULT_NOTIFICATION_MAX_ATTEMPTS,
+    next_attempt_at: now,
+    locked_at: null,
+    last_error: null,
+    sent_at: null,
+    created_at: now,
+    updated_at: now
+  }));
+
+  const { error } = await supabase
+    .from("match_result_notification_jobs")
+    .upsert(records, { onConflict: "job_key", ignoreDuplicates: true });
+
+  if (!error) {
+    return;
+  }
+
+  console.error("Failed to enqueue match result notifications", error);
   for (const notification of notifications) {
-    const imageFile = getMatchResultImageFile(notification.delta);
-    const caption = buildMatchResultCaption(notification) || formatMatchResultLine(notification);
-    if (imageFile) {
-      const result = await sendPhotoWithResult(
-        env,
-        notification.user_id,
-        buildWebappImageUrl(env, imageFile),
-        caption,
-        {
-          inline_keyboard: [
-            [
-              {
-                text: "ПОДИВИТИСЬ ТАБЛИЦЮ",
-                web_app: { url: buildWebappLeaderboardUrl(env) }
-              }
-            ]
-          ]
-        }
-      );
-      if (!result.ok) {
-        await logBotDeliveryFailure(supabase, notification.user_id, "match_result_photo", result);
-      }
-      continue;
-    }
-    const result = await sendMessageWithResult(env, notification.user_id, caption);
-    if (!result.ok) {
-      await logBotDeliveryFailure(supabase, notification.user_id, "match_result_text", result);
+    const attempt = await sendMatchResultNotification(env, notification);
+    if (!attempt.result.ok) {
+      await logBotDeliveryFailure(supabase, notification.user_id, attempt.context, attempt.result);
     }
   }
+}
+
+async function handleMatchResultNotificationQueue(env: Env): Promise<void> {
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Failed to process match result queue: missing_supabase");
+    return;
+  }
+
+  await releaseStaleMatchResultNotificationLocks(supabase);
+
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("match_result_notification_jobs")
+    .select("id, user_id, payload, attempts, max_attempts")
+    .in("status", ["pending", "retry"])
+    .is("locked_at", null)
+    .lte("next_attempt_at", nowIso)
+    .order("next_attempt_at", { ascending: true })
+    .limit(MATCH_RESULT_NOTIFICATION_BATCH_SIZE);
+
+  if (error) {
+    console.error("Failed to load match result notification queue", error);
+    return;
+  }
+
+  const jobs = (data as MatchResultNotificationJobRow[] | null) ?? [];
+  if (!jobs.length) {
+    return;
+  }
+
+  let index = 0;
+  const workerCount = Math.min(MATCH_RESULT_NOTIFICATION_CONCURRENCY, jobs.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const job = jobs[index];
+      index += 1;
+      if (!job) {
+        break;
+      }
+      const claimed = await claimMatchResultNotificationJob(supabase, job.id);
+      if (!claimed) {
+        continue;
+      }
+      await processMatchResultNotificationJob(env, supabase, job);
+    }
+  });
+  await Promise.all(workers);
+}
+
+async function releaseStaleMatchResultNotificationLocks(supabase: SupabaseClient): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const staleLockBeforeIso = new Date(Date.now() - MATCH_RESULT_NOTIFICATION_LOCK_TIMEOUT_MS).toISOString();
+  const { error } = await supabase
+    .from("match_result_notification_jobs")
+    .update({
+      status: "retry",
+      locked_at: null,
+      next_attempt_at: nowIso,
+      updated_at: nowIso
+    })
+    .eq("status", "processing")
+    .lt("locked_at", staleLockBeforeIso);
+  if (error) {
+    console.error("Failed to release stale match result notification locks", error);
+  }
+}
+
+async function claimMatchResultNotificationJob(supabase: SupabaseClient, jobId: number): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("match_result_notification_jobs")
+    .update({
+      status: "processing",
+      locked_at: nowIso,
+      updated_at: nowIso
+    })
+    .eq("id", jobId)
+    .in("status", ["pending", "retry"])
+    .is("locked_at", null)
+    .select("id");
+
+  if (error) {
+    console.error("Failed to claim match result notification job", error, { jobId });
+    return false;
+  }
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function processMatchResultNotificationJob(
+  env: Env,
+  supabase: SupabaseClient,
+  job: MatchResultNotificationJobRow
+): Promise<void> {
+  const attempts = (job.attempts ?? 0) + 1;
+  const maxAttempts = job.max_attempts ?? MATCH_RESULT_NOTIFICATION_MAX_ATTEMPTS;
+  const nowIso = new Date().toISOString();
+  const payload = job.payload;
+
+  if (!isMatchResultNotificationPayload(payload)) {
+    await markMatchResultNotificationJobFailed(supabase, job.id, attempts, "invalid_payload");
+    return;
+  }
+
+  const attempt = await sendMatchResultNotification(env, payload);
+  if (attempt.result.ok) {
+    const { error } = await supabase
+      .from("match_result_notification_jobs")
+      .update({
+        status: "sent",
+        attempts,
+        locked_at: null,
+        last_error: null,
+        sent_at: nowIso,
+        updated_at: nowIso
+      })
+      .eq("id", job.id);
+    if (error) {
+      console.error("Failed to mark match result notification job as sent", error, { jobId: job.id });
+    }
+    return;
+  }
+
+  const retryDelayMs = computeMatchResultRetryDelayMs(attempt.result, attempts);
+  if (retryDelayMs === null || attempts >= maxAttempts) {
+    await markMatchResultNotificationJobFailed(
+      supabase,
+      job.id,
+      attempts,
+      buildMatchResultDeliveryError(attempt.context, attempt.result)
+    );
+    await logBotDeliveryFailure(supabase, job.user_id, attempt.context, attempt.result);
+    return;
+  }
+
+  const nextAttemptAt = new Date(Date.now() + retryDelayMs).toISOString();
+  const { error } = await supabase
+    .from("match_result_notification_jobs")
+    .update({
+      status: "retry",
+      attempts,
+      locked_at: null,
+      next_attempt_at: nextAttemptAt,
+      last_error: buildMatchResultDeliveryError(attempt.context, attempt.result),
+      updated_at: nowIso
+    })
+    .eq("id", job.id);
+  if (error) {
+    console.error("Failed to reschedule match result notification job", error, { jobId: job.id });
+  }
+}
+
+async function markMatchResultNotificationJobFailed(
+  supabase: SupabaseClient,
+  jobId: number,
+  attempts: number,
+  reason: string
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const { error } = await supabase
+    .from("match_result_notification_jobs")
+    .update({
+      status: "failed",
+      attempts,
+      locked_at: null,
+      last_error: reason,
+      updated_at: nowIso
+    })
+    .eq("id", jobId);
+  if (error) {
+    console.error("Failed to mark match result notification job as failed", error, { jobId });
+  }
+}
+
+async function sendMatchResultNotification(
+  env: Env,
+  notification: MatchResultNotification
+): Promise<MatchResultDeliveryAttempt> {
+  const imageFile = getMatchResultImageFile(notification.delta);
+  const caption = buildMatchResultCaption(notification) || formatMatchResultLine(notification);
+  if (imageFile) {
+    const result = await sendPhotoWithResult(
+      env,
+      notification.user_id,
+      buildWebappImageUrl(env, imageFile),
+      caption,
+      {
+        inline_keyboard: [
+          [
+            {
+              text: "ПОДИВИТИСЬ ТАБЛИЦЮ",
+              web_app: { url: buildWebappLeaderboardUrl(env) }
+            }
+          ]
+        ]
+      }
+    );
+    return { context: "match_result_photo", result };
+  }
+  const result = await sendMessageWithResult(env, notification.user_id, caption);
+  return { context: "match_result_text", result };
+}
+
+function isMatchResultNotificationPayload(payload: unknown): payload is MatchResultNotification {
+  if (!payload || typeof payload !== "object") {
+    return false;
+  }
+  const value = payload as Partial<MatchResultNotification>;
+  if (
+    typeof value.match_id !== "number" ||
+    typeof value.user_id !== "number" ||
+    typeof value.delta !== "number" ||
+    typeof value.total_points !== "number" ||
+    typeof value.home_team !== "string" ||
+    typeof value.away_team !== "string" ||
+    typeof value.home_score !== "number" ||
+    typeof value.away_score !== "number"
+  ) {
+    return false;
+  }
+  const stats = value.prediction_stats;
+  if (!stats || typeof stats !== "object") {
+    return false;
+  }
+  const exactGuessers = (stats as Partial<MatchResultNotification["prediction_stats"]>).exact_guessers;
+  return Array.isArray(exactGuessers);
+}
+
+function computeMatchResultRetryDelayMs(result: MatchResultDeliveryResult, attempts: number): number | null {
+  const status = result.status;
+  if (status === 429) {
+    const retryAfterSeconds = extractTelegramRetryAfterSeconds(result.body);
+    if (retryAfterSeconds !== null) {
+      return Math.max(1_000, (retryAfterSeconds + 1) * 1_000);
+    }
+    return 60_000;
+  }
+  if (status === null || status >= 500) {
+    const retryBaseMs = 5_000;
+    const power = Math.max(0, Math.min(attempts - 1, 6));
+    return Math.min(15 * 60 * 1_000, retryBaseMs * 2 ** power);
+  }
+  return null;
+}
+
+function extractTelegramRetryAfterSeconds(body: string): number | null {
+  if (!body) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(body) as { parameters?: { retry_after?: number } };
+    const rawValue = payload.parameters?.retry_after;
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      return Math.max(0, Math.floor(rawValue));
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function buildMatchResultDeliveryError(context: string, result: MatchResultDeliveryResult): string {
+  const statusLabel = result.status === null ? "network_error" : String(result.status);
+  const rawBody = result.body || "";
+  const clippedBody = rawBody.length > 500 ? `${rawBody.slice(0, 500)}…` : rawBody;
+  return `${context} status=${statusLabel} body=${clippedBody}`;
+}
+
+function buildMatchResultNotificationJobKey(notification: MatchResultNotification): string {
+  return [
+    "match_result",
+    notification.match_id,
+    notification.user_id,
+    notification.delta,
+    notification.home_score,
+    notification.away_score
+  ].join(":");
 }
 
 async function logBotDeliveryFailure(

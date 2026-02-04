@@ -52,3 +52,26 @@ alter table if exists missed_predictions add column if not exists season_month t
 
 create index if not exists predictions_season_month_idx on predictions (season_month);
 create index if not exists missed_predictions_season_month_idx on missed_predictions (season_month);
+
+create table if not exists match_result_notification_jobs (
+  id bigserial primary key,
+  job_key text not null,
+  user_id bigint not null,
+  payload jsonb not null,
+  status text not null default 'pending',
+  attempts int not null default 0,
+  max_attempts int not null default 8,
+  next_attempt_at timestamptz not null default now(),
+  locked_at timestamptz,
+  last_error text,
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists match_result_notification_jobs_job_key_uidx
+  on match_result_notification_jobs (job_key);
+create index if not exists match_result_notification_jobs_status_next_attempt_idx
+  on match_result_notification_jobs (status, next_attempt_at);
+create index if not exists match_result_notification_jobs_locked_at_idx
+  on match_result_notification_jobs (locked_at);

@@ -627,6 +627,7 @@ export interface NicknamePayload {
 }
 
 export interface MatchResultNotification {
+  match_id: number;
   user_id: number;
   delta: number;
   total_points: number;
