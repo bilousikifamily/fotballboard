@@ -5943,17 +5943,18 @@ async function applyMatchResult(
     return { ok: false, notifications: [] };
   }
 
-  const { error: updateError } = await supabase
-    .from("matches")
-    .update({
-      home_score: homeScore,
-      away_score: awayScore,
-      status: "finished"
-    })
-    .eq("id", matchId);
-
-  if (updateError) {
-    console.error("Failed to update match", updateError);
+  const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
+  const { data: scoringRowsData, error: scoringError } = await supabase.rpc("apply_match_result_atomic", {
+    p_match_id: match.id,
+    p_home_score: homeScore,
+    p_away_score: awayScore,
+    p_kickoff_at: match.kickoff_at,
+    p_season_month: seasonMonth,
+    p_starting_points: STARTING_POINTS,
+    p_missed_penalty: MISSED_PREDICTION_PENALTY
+  });
+  if (scoringError) {
+    console.error("Failed to apply match result transactionally", scoringError);
     return { ok: false, notifications: [] };
   }
 
@@ -5970,103 +5971,52 @@ async function applyMatchResult(
     await logDebugUpdate(supabase, "team_match_stats_failed", { matchId });
   }
 
+  let predictionStats: MatchResultPredictionStats = {
+    total_predictions: 0,
+    result_support_percent: 0,
+    exact_guessers: []
+  };
   const { data: predictions, error: predError } = await supabase
     .from("predictions")
     .select(
       "id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, faction_club_id)"
     )
     .eq("match_id", matchId);
-
   if (predError) {
-    console.error("Failed to fetch predictions", predError);
-    return { ok: false, notifications: [] };
+    console.error("Failed to fetch predictions for match result stats", predError);
+  } else {
+    predictionStats = buildMatchResultPredictionStats((predictions as PredictionRow[]) ?? [], homeScore, awayScore);
   }
 
-  const predictionRows = (predictions as PredictionRow[]) ?? [];
-  const predictionStats = buildMatchResultPredictionStats(predictionRows, homeScore, awayScore);
-  const deltas = new Map<number, number>();
-  const updates: Array<{ id: number; points: number }> = [];
-  const predictedUserIds = new Set<number>();
-
-  for (const prediction of predictionRows) {
-    predictedUserIds.add(prediction.user_id);
-    const currentPoints = prediction.points ?? 0;
-    const newPoints = scorePrediction(
-      prediction.home_pred,
-      prediction.away_pred,
-      homeScore,
-      awayScore
-    );
-    if (newPoints !== currentPoints) {
-      updates.push({ id: prediction.id, points: newPoints });
-      const delta = newPoints - currentPoints;
-      deltas.set(prediction.user_id, (deltas.get(prediction.user_id) ?? 0) + delta);
-    }
-  }
-
-  for (const update of updates) {
-    const { error } = await supabase.from("predictions").update({ points: update.points }).eq("id", update.id);
-    if (error) {
-      console.error("Failed to update prediction points", error);
-    }
-  }
-
+  const scoringRows =
+    (scoringRowsData as Array<{ user_id?: number | string | null; delta?: number | string | null; total_points?: number | string | null }> | null) ??
+    [];
   const notifications: MatchResultNotification[] = [];
-  if (deltas.size > 0) {
-    const userIds = Array.from(deltas.keys());
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("id, points_total")
-      .in("id", userIds);
-
-    if (usersError) {
-      console.error("Failed to fetch users for scoring", usersError);
-      return { ok: false, notifications: [] };
+  for (const row of scoringRows) {
+    const userIdRaw = typeof row.user_id === "number" ? row.user_id : Number(row.user_id);
+    const deltaRaw = typeof row.delta === "number" ? row.delta : Number(row.delta);
+    const totalPointsRaw = typeof row.total_points === "number" ? row.total_points : Number(row.total_points);
+    if (!Number.isFinite(userIdRaw) || !Number.isFinite(deltaRaw) || !Number.isFinite(totalPointsRaw)) {
+      continue;
     }
-
-    for (const user of (users as StoredUser[]) ?? []) {
-      const delta = deltas.get(user.id) ?? 0;
-      if (delta === 0) {
-        continue;
-      }
-      const rawPoints = user.points_total;
-      const parsedPoints = typeof rawPoints === "number" ? rawPoints : Number(rawPoints);
-      const currentPoints = Number.isFinite(parsedPoints) ? parsedPoints : STARTING_POINTS;
-      const nextPoints = currentPoints + delta;
-      const { error } = await supabase
-        .from("users")
-        .update({ points_total: nextPoints, updated_at: new Date().toISOString() })
-        .eq("id", user.id);
-      if (error) {
-        console.error("Failed to update user points", error);
-        continue;
-      }
-
-      notifications.push({
-        match_id: match.id,
-        user_id: user.id,
-        delta,
-        total_points: nextPoints,
-        home_team: match.home_team,
-        away_team: match.away_team,
-        home_score: homeScore,
-        away_score: awayScore,
-        prediction_stats: predictionStats
-      });
+    const userId = Number(userIdRaw);
+    const delta = Number(deltaRaw);
+    const totalPoints = Number(totalPointsRaw);
+    if (delta === 0) {
+      continue;
     }
+    notifications.push({
+      match_id: match.id,
+      user_id: userId,
+      delta,
+      total_points: totalPoints,
+      home_team: match.home_team,
+      away_team: match.away_team,
+      home_score: homeScore,
+      away_score: awayScore,
+      prediction_stats: predictionStats
+    });
   }
-
-  const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
-  const penaltyNotifications = await applyMissingPredictionPenalties(
-    supabase,
-    match,
-    predictedUserIds,
-    homeScore,
-    awayScore,
-    predictionStats,
-    seasonMonth
-  );
-  notifications.push(...penaltyNotifications);
 
   return { ok: true, notifications };
 }
@@ -6339,96 +6289,6 @@ async function logDebugUpdate(
   }
 }
 
-async function applyMissingPredictionPenalties(
-  supabase: SupabaseClient,
-  match: DbMatch,
-  predictedUserIds: Set<number>,
-  homeScore: number,
-  awayScore: number,
-  predictionStats: MatchResultPredictionStats,
-  seasonMonth: string | null
-): Promise<MatchResultNotification[]> {
-  try {
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("id, points_total, faction_club_id, created_at");
-    if (usersError) {
-      console.error("Failed to fetch users for missing prediction penalties", usersError);
-      return [];
-    }
-
-    const { data: penalties, error: penaltiesError } = await supabase
-      .from("missed_predictions")
-      .select("user_id")
-      .eq("match_id", match.id);
-    if (penaltiesError) {
-      console.error("Failed to fetch missing prediction penalties", penaltiesError);
-      return [];
-    }
-
-    const penalizedUserIds = new Set(
-      (penalties as Array<{ user_id: number }> | null | undefined)?.map((row) => row.user_id) ?? []
-    );
-
-    const notifications: MatchResultNotification[] = [];
-    const now = new Date().toISOString();
-    const kickoffTimestamp = Date.parse(match.kickoff_at);
-    const hasKickoffTimestamp = Number.isFinite(kickoffTimestamp);
-
-    for (const user of (users as StoredUser[]) ?? []) {
-      if (!user.faction_club_id) {
-        continue;
-      }
-      if (hasKickoffTimestamp && typeof user.created_at === "string" && user.created_at.length > 0) {
-        const userCreatedTimestamp = Date.parse(user.created_at);
-        if (Number.isFinite(userCreatedTimestamp) && userCreatedTimestamp >= kickoffTimestamp) {
-          continue;
-        }
-      }
-      if (predictedUserIds.has(user.id) || penalizedUserIds.has(user.id)) {
-        continue;
-      }
-
-      const currentPoints = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
-      const nextPoints = currentPoints + MISSED_PREDICTION_PENALTY;
-
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ points_total: nextPoints, updated_at: now })
-        .eq("id", user.id);
-      if (updateError) {
-        console.error("Failed to apply missing prediction penalty", updateError);
-        continue;
-      }
-
-      const { error: insertError } = await supabase
-        .from("missed_predictions")
-        .insert({ user_id: user.id, match_id: match.id, season_month: seasonMonth ?? null });
-      if (insertError) {
-        console.error("Failed to store missing prediction penalty", insertError);
-        continue;
-      }
-
-      notifications.push({
-        match_id: match.id,
-        user_id: user.id,
-        delta: MISSED_PREDICTION_PENALTY,
-        total_points: nextPoints,
-        home_team: match.home_team,
-        away_team: match.away_team,
-        home_score: homeScore,
-        away_score: awayScore,
-        prediction_stats: predictionStats
-      });
-    }
-
-    return notifications;
-  } catch (error) {
-    console.error("Failed to apply missing prediction penalties", error);
-    return [];
-  }
-}
-
 async function saveUserOnboarding(
   supabase: SupabaseClient,
   userId: number,
@@ -6502,13 +6362,6 @@ async function saveUserNickname(
     console.error("Failed to save nickname", error);
     return false;
   }
-}
-
-function scorePrediction(homePred: number, awayPred: number, homeScore: number, awayScore: number): number {
-  if (homePred === homeScore && awayPred === awayScore) {
-    return 5;
-  }
-  return getOutcome(homePred, awayPred) === getOutcome(homeScore, awayScore) ? 1 : -1;
 }
 
 function getOutcome(home: number, away: number): "home" | "away" | "draw" {
@@ -7152,10 +7005,27 @@ async function enqueueMatchResultNotifications(
     return;
   }
 
+  const nicknameByUserId = new Map<number, string | null>();
+  const uniqueUserIds = Array.from(new Set(notifications.map((notification) => notification.user_id)));
+  if (uniqueUserIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, nickname")
+      .in("id", uniqueUserIds);
+    if (usersError) {
+      console.error("Failed to load user nicknames for match result notifications", usersError);
+    } else {
+      for (const user of (users as Array<{ id: number; nickname?: string | null }> | null) ?? []) {
+        nicknameByUserId.set(user.id, user.nickname ?? null);
+      }
+    }
+  }
+
   const now = new Date().toISOString();
   const records = notifications.map((notification) => ({
     job_key: buildMatchResultNotificationJobKey(notification),
     user_id: notification.user_id,
+    user_nickname: nicknameByUserId.get(notification.user_id) ?? null,
     payload: notification,
     status: "pending",
     attempts: 0,
@@ -7179,7 +7049,7 @@ async function enqueueMatchResultNotifications(
   console.error("Failed to enqueue match result notifications", error);
   for (const notification of notifications) {
     const attempt = await sendMatchResultNotification(env, notification);
-    if (!attempt.result.ok) {
+    if (!attempt.result.ok && !isTelegramBotBlockedByUser(attempt.result)) {
       await logBotDeliveryFailure(supabase, notification.user_id, attempt.context, attempt.result);
     }
   }
@@ -7308,13 +7178,16 @@ async function processMatchResultNotificationJob(
 
   const retryDelayMs = computeMatchResultRetryDelayMs(attempt.result, attempts);
   if (retryDelayMs === null || attempts >= maxAttempts) {
+    const blockedByUser = isTelegramBotBlockedByUser(attempt.result);
     await markMatchResultNotificationJobFailed(
       supabase,
       job.id,
       attempts,
-      buildMatchResultDeliveryError(attempt.context, attempt.result)
+      blockedByUser ? "заблокував бота" : buildMatchResultDeliveryError(attempt.context, attempt.result)
     );
-    await logBotDeliveryFailure(supabase, job.user_id, attempt.context, attempt.result);
+    if (!blockedByUser) {
+      await logBotDeliveryFailure(supabase, job.user_id, attempt.context, attempt.result);
+    }
     return;
   }
 
@@ -7442,6 +7315,14 @@ function extractTelegramRetryAfterSeconds(body: string): number | null {
     return null;
   }
   return null;
+}
+
+function isTelegramBotBlockedByUser(result: MatchResultDeliveryResult): boolean {
+  if (result.status !== 403) {
+    return false;
+  }
+  const body = result.body || "";
+  return /bot was blocked by the user/i.test(body);
 }
 
 function buildMatchResultDeliveryError(context: string, result: MatchResultDeliveryResult): string {
