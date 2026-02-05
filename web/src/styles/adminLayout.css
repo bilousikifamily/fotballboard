@@ -622,13 +622,15 @@ body.admin-layout-active #app {
 .admin-layout__info-odd {
   padding: 10px 8px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--admin-orange-pill);
+  border: 1px solid var(--admin-orange-border-soft);
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01));
   color: var(--ink);
   font-size: 1.05rem;
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.04em;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
 }
 
 .admin-layout__info-odd.is-highlighted {
@@ -645,9 +647,29 @@ body.admin-layout-active #app {
 }
 
 .admin-layout__header .date-switcher {
-  gap: 4px;
-  grid-template-columns: 30px auto 30px;
-  padding: clamp(2px, 0.6vh, 6px) clamp(4px, 2vw, 8px);
+  gap: 8px;
+  grid-template-columns: 34px auto 34px;
+  padding: 2px 6px;
+}
+
+.admin-layout__header .date-nav {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+}
+
+.admin-layout__header .date-nav:active {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-layout__faction-average .match-faction-score {
+  background: var(--admin-orange-pill);
+  border: 1px solid var(--admin-orange-border-soft);
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
 }
 
 .admin-layout__pagination {
