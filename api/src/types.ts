@@ -305,6 +305,7 @@ export interface TelegramUser {
 
 export interface StoredUser {
   id: number;
+  created_at?: string | null;
   username?: string | null;
   first_name?: string | null;
   last_name?: string | null;
