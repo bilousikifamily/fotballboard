@@ -1215,7 +1215,7 @@
   object-fit: contain;
   border: none;
   border-radius: 0;
-  filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.35));
+  filter: none;
 }
 
 .analitika-table-wrap {
