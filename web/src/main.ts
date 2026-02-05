@@ -80,6 +80,7 @@ let teamGraphBodyEl: HTMLElement | null = null;
 let teamGraphTitleEl: HTMLElement | null = null;
 
 const INTRO_SEEN_KEY = "intro_seen";
+const ADMIN_TOKEN_STORAGE_KEY = "football.admin_token";
 const INTRO_TIMEOUT_MS = 900;
 const PRIMARY_FACTION_STORAGE_KEY = "football.primaryFaction";
 const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -311,7 +312,23 @@ function bootstrapDev(): void {
 }
 
 function getStoredAdminToken(): string | undefined {
-  return undefined;
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  const token = sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)?.trim();
+  return token ? token : undefined;
+}
+
+function setStoredAdminToken(token?: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const normalized = token?.trim();
+  if (normalized) {
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, normalized);
+    return;
+  }
+  sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
 }
 
 function getDevMatches(): Match[] {
@@ -500,6 +517,11 @@ async function bootstrap(data: string): Promise<void> {
     }
 
     isAdmin = Boolean(payload.admin);
+    if (isAdmin) {
+      setStoredAdminToken(payload.admin_token);
+    } else {
+      setStoredAdminToken(undefined);
+    }
     currentUserId = payload.user?.id ?? null;
     currentUser = payload.user;
     currentDate = getKyivDateString();

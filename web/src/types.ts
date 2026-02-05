@@ -3,6 +3,7 @@ export type AuthResponse =
       ok: true;
       user?: TelegramWebAppUser;
       admin?: boolean;
+      admin_token?: string;
       points_total?: number;
       rank?: number | null;
       profile?: ProfileStatsPayload | null;

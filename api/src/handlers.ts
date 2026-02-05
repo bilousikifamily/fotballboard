@@ -69,7 +69,6 @@ import { UKRAINIAN_CLUB_NAMES } from "./data/clubNamesUk";
 import {
   buildApiPath,
   fetchApiFootball,
-  getApiFootballBase,
   getApiFootballTimezone,
   logFixturesFallback,
   logFixturesSearch
@@ -279,30 +278,6 @@ function parseEnvNumber(value: string | undefined, fallback: number): number {
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function logFixturesSearch(env: Env, payload: {
-  source: string;
-  path: string;
-  params: Record<string, string | number | undefined>;
-  fixturesCount: number;
-  reason?: string;
-}): void {
-  const url = `${getApiFootballBase(env)}${payload.path}`;
-  const params = Object.entries(payload.params)
-    .filter(([, value]) => value !== undefined && value !== null)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(" ");
-  const reason = payload.reason ? ` reason=${payload.reason}` : "";
-  console.info(`fixtures.search source=${payload.source} url=${url} ${params} result.fixtures=${payload.fixturesCount}${reason}`);
-}
-
-function logFixturesFallback(reason: string, context: Record<string, string | number | undefined>): void {
-  const details = Object.entries(context)
-    .filter(([, value]) => value !== undefined && value !== null)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(" ");
-  console.info(`fixtures.fallback reason=${reason} ${details}`);
 }
 
 type FactionChatRef = {
@@ -635,6 +610,7 @@ export default {
 
       const supabase = createSupabaseClient(env);
       let isAdmin = false;
+      let adminToken: string | undefined;
       let stats: UserStats | null = null;
       let profileStats: ProfileStats | null = null;
       let onboarding: UserOnboarding | null = null;
@@ -642,6 +618,12 @@ export default {
         await storeUser(supabase, valid.user, { markLastSeen: true });
         if (supabase) {
           isAdmin = await checkAdmin(supabase, valid.user.id);
+          if (isAdmin) {
+            const jwtSecret = env.ADMIN_JWT_SECRET?.trim();
+            if (jwtSecret) {
+              adminToken = await createAdminJwt({ sub: String(valid.user.id), scope: "admin" }, jwtSecret);
+            }
+          }
           stats = await getUserStats(supabase, valid.user.id);
           const seasonMonth = resolveSeasonMonthForNow(env);
           profileStats = await getProfileStats(supabase, valid.user.id, seasonMonth);
@@ -654,6 +636,7 @@ export default {
           ok: true,
           user: valid.user,
           admin: isAdmin,
+          admin_token: adminToken,
           points_total: stats?.points_total ?? STARTING_POINTS,
           rank: stats?.rank ?? null,
           profile: profileStats,
