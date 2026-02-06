@@ -335,10 +335,10 @@ a {
 
 .admin-match-accuracy-card__logos {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(72px, auto) minmax(0, auto);
+  grid-template-columns: auto auto minmax(72px, auto) auto auto;
   align-items: center;
   justify-content: center;
-  gap: 0px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -382,6 +382,17 @@ a {
 .admin-match-accuracy-card__average--left,
 .admin-match-accuracy-card__average--right {
   margin: 0;
+  min-width: 2.2ch;
+}
+
+.admin-match-accuracy-card__average--left {
+  justify-self: end;
+  text-align: right;
+}
+
+.admin-match-accuracy-card__average--right {
+  justify-self: start;
+  text-align: left;
 }
 
 .admin-match-accuracy-card__progress {

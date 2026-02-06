@@ -102,8 +102,8 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
       return `
         <div class="admin-match-accuracy-card">
           <div class="admin-match-accuracy-card__logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
+            <div class="admin-match-accuracy-card__average admin-match-accuracy-card__average--left">${escapeHtml(avgHomeLabel)}</div>
             <div class="admin-match-accuracy-card__logo-item">
-              <div class="admin-match-accuracy-card__average admin-match-accuracy-card__average--left">${escapeHtml(avgHomeLabel)}</div>
               ${homeLogoMarkup}
             </div>
             <div class="admin-match-accuracy-card__center">
@@ -111,8 +111,8 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
             </div>
             <div class="admin-match-accuracy-card__logo-item">
               ${awayLogoMarkup}
-              <div class="admin-match-accuracy-card__average admin-match-accuracy-card__average--right">${escapeHtml(avgAwayLabel)}</div>
             </div>
+            <div class="admin-match-accuracy-card__average admin-match-accuracy-card__average--right">${escapeHtml(avgAwayLabel)}</div>
           </div>
           <div class="admin-match-accuracy-card__progress" role="img" aria-label="Влучність ${accuracyPercent}% (${escapeHtml(scoreLabel)})">
             <div class="admin-match-accuracy-card__progress-fill" style="width:${accuracyPercent}%"></div>
