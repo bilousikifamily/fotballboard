@@ -3695,9 +3695,10 @@ function updateMatchAverage(matchId: number, predictions: PredictionView[]): voi
   averageEl.innerHTML = `
     <span class="match-average-label">Середній прогноз</span>
     <div class="match-average-line">
-      ${homeLogoMarkup}
-      <span class="match-average-score">${formatAverageValue(homeAvg)} : ${formatAverageValue(awayAvg)}</span>
-      ${awayLogoMarkup}
+      <span class="match-average-score match-average-score--left">${formatAverageValue(homeAvg)}</span>
+      <span class="match-average-logo">${homeLogoMarkup}</span>
+      <span class="match-average-logo">${awayLogoMarkup}</span>
+      <span class="match-average-score match-average-score--right">${formatAverageValue(awayAvg)}</span>
     </div>
   `;
 }
