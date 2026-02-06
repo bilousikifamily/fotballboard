@@ -338,7 +338,7 @@ a {
   grid-template-columns: auto auto minmax(72px, auto) auto auto;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 0px;
   width: 100%;
 }
 
@@ -374,7 +374,7 @@ a {
 
 .admin-match-accuracy-card__average {
   text-align: center;
-  font-size: 0.92rem;
+  font-size: 1.3rem;
   color: rgba(245, 246, 250, 0.86);
   line-height: 1.25;
 }
