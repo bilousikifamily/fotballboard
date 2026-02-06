@@ -1613,7 +1613,9 @@ export default {
 
       if (result.notifications.length) {
         await enqueueMatchResultNotifications(env, supabase, result.notifications);
-        ctx.waitUntil(handleMatchResultNotificationQueue(env));
+        const queuePromise = handleMatchResultNotificationQueue(env);
+        ctx.waitUntil(queuePromise);
+        await queuePromise;
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
