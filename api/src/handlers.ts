@@ -5954,6 +5954,9 @@ async function applyMatchResult(
     p_missed_penalty: MISSED_PREDICTION_PENALTY
   });
   if (scoringError) {
+    if (isMissingMatchResultRpc(scoringError)) {
+      return await applyMatchResultLegacy(supabase, match, homeScore, awayScore, homeRating, awayRating, timeZone);
+    }
     console.error("Failed to apply match result transactionally", scoringError);
     return { ok: false, notifications: [] };
   }
@@ -6019,6 +6022,245 @@ async function applyMatchResult(
   }
 
   return { ok: true, notifications };
+}
+
+function isMissingMatchResultRpc(error: unknown): boolean {
+  const message = formatSupabaseError(error).toLowerCase();
+  return message.includes("apply_match_result_atomic") && (message.includes("does not exist") || message.includes("not exist"));
+}
+
+async function applyMatchResultLegacy(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  homeScore: number,
+  awayScore: number,
+  homeRating: number,
+  awayRating: number,
+  timeZone: string
+): Promise<MatchResultOutcome> {
+  const { error: updateError } = await supabase
+    .from("matches")
+    .update({
+      home_score: homeScore,
+      away_score: awayScore,
+      status: "finished"
+    })
+    .eq("id", match.id);
+
+  if (updateError) {
+    console.error("Failed to update match", updateError);
+    return { ok: false, notifications: [] };
+  }
+
+  const statsOk = await upsertTeamMatchStats(
+    supabase,
+    match,
+    homeScore,
+    awayScore,
+    homeRating,
+    awayRating
+  );
+  if (!statsOk) {
+    console.error("Failed to update team_match_stats; continuing without stats update.");
+    await logDebugUpdate(supabase, "team_match_stats_failed", { matchId: match.id });
+  }
+
+  const { data: predictions, error: predError } = await supabase
+    .from("predictions")
+    .select(
+      "id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, faction_club_id)"
+    )
+    .eq("match_id", match.id);
+
+  if (predError) {
+    console.error("Failed to fetch predictions", predError);
+    return { ok: false, notifications: [] };
+  }
+
+  const predictionRows = (predictions as PredictionRow[]) ?? [];
+  const predictionStats = buildMatchResultPredictionStats(predictionRows, homeScore, awayScore);
+  const deltas = new Map<number, number>();
+  const updates: Array<{ id: number; points: number }> = [];
+  const predictedUserIds = new Set<number>();
+
+  for (const prediction of predictionRows) {
+    predictedUserIds.add(prediction.user_id);
+    const currentPoints = prediction.points ?? 0;
+    const newPoints = scorePrediction(
+      prediction.home_pred,
+      prediction.away_pred,
+      homeScore,
+      awayScore
+    );
+    if (newPoints !== currentPoints) {
+      updates.push({ id: prediction.id, points: newPoints });
+      const delta = newPoints - currentPoints;
+      deltas.set(prediction.user_id, (deltas.get(prediction.user_id) ?? 0) + delta);
+    }
+  }
+
+  for (const update of updates) {
+    const { error } = await supabase.from("predictions").update({ points: update.points }).eq("id", update.id);
+    if (error) {
+      console.error("Failed to update prediction points", error);
+    }
+  }
+
+  const notifications: MatchResultNotification[] = [];
+  if (deltas.size > 0) {
+    const userIds = Array.from(deltas.keys());
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, points_total")
+      .in("id", userIds);
+
+    if (usersError) {
+      console.error("Failed to fetch users for scoring", usersError);
+      return { ok: false, notifications: [] };
+    }
+
+    for (const user of (users as StoredUser[]) ?? []) {
+      const delta = deltas.get(user.id) ?? 0;
+      if (delta === 0) {
+        continue;
+      }
+      const rawPoints = user.points_total;
+      const parsedPoints = typeof rawPoints === "number" ? rawPoints : Number(rawPoints);
+      const currentPoints = Number.isFinite(parsedPoints) ? parsedPoints : STARTING_POINTS;
+      const nextPoints = currentPoints + delta;
+      const { error } = await supabase
+        .from("users")
+        .update({ points_total: nextPoints, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+      if (error) {
+        console.error("Failed to update user points", error);
+        continue;
+      }
+
+      notifications.push({
+        match_id: match.id,
+        user_id: user.id,
+        delta,
+        total_points: nextPoints,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        home_score: homeScore,
+        away_score: awayScore,
+        prediction_stats: predictionStats
+      });
+    }
+  }
+
+  const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
+  const penaltyNotifications = await applyMissingPredictionPenalties(
+    supabase,
+    match,
+    predictedUserIds,
+    homeScore,
+    awayScore,
+    predictionStats,
+    seasonMonth
+  );
+  notifications.push(...penaltyNotifications);
+
+  return { ok: true, notifications };
+}
+
+async function applyMissingPredictionPenalties(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  predictedUserIds: Set<number>,
+  homeScore: number,
+  awayScore: number,
+  predictionStats: MatchResultPredictionStats,
+  seasonMonth: string | null
+): Promise<MatchResultNotification[]> {
+  try {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, points_total, faction_club_id, created_at");
+    if (usersError) {
+      console.error("Failed to fetch users for missing prediction penalties", usersError);
+      return [];
+    }
+
+    const { data: penalties, error: penaltiesError } = await supabase
+      .from("missed_predictions")
+      .select("user_id")
+      .eq("match_id", match.id);
+    if (penaltiesError) {
+      console.error("Failed to fetch missing prediction penalties", penaltiesError);
+      return [];
+    }
+
+    const penalizedUserIds = new Set(
+      (penalties as Array<{ user_id: number }> | null | undefined)?.map((row) => row.user_id) ?? []
+    );
+
+    const notifications: MatchResultNotification[] = [];
+    const now = new Date().toISOString();
+    const kickoffTimestamp = Date.parse(match.kickoff_at);
+    const hasKickoffTimestamp = Number.isFinite(kickoffTimestamp);
+
+    for (const user of (users as StoredUser[]) ?? []) {
+      if (!user.faction_club_id) {
+        continue;
+      }
+      if (hasKickoffTimestamp && typeof user.created_at === "string" && user.created_at.length > 0) {
+        const userCreatedTimestamp = Date.parse(user.created_at);
+        if (Number.isFinite(userCreatedTimestamp) && userCreatedTimestamp >= kickoffTimestamp) {
+          continue;
+        }
+      }
+      if (predictedUserIds.has(user.id) || penalizedUserIds.has(user.id)) {
+        continue;
+      }
+
+      const currentPoints = typeof user.points_total === "number" ? user.points_total : STARTING_POINTS;
+      const nextPoints = currentPoints + MISSED_PREDICTION_PENALTY;
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ points_total: nextPoints, updated_at: now })
+        .eq("id", user.id);
+      if (updateError) {
+        console.error("Failed to apply missing prediction penalty", updateError);
+        continue;
+      }
+
+      const { error: insertError } = await supabase
+        .from("missed_predictions")
+        .insert({ user_id: user.id, match_id: match.id, season_month: seasonMonth ?? null });
+      if (insertError) {
+        console.error("Failed to store missing prediction penalty", insertError);
+        continue;
+      }
+
+      notifications.push({
+        match_id: match.id,
+        user_id: user.id,
+        delta: MISSED_PREDICTION_PENALTY,
+        total_points: nextPoints,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        home_score: homeScore,
+        away_score: awayScore,
+        prediction_stats: predictionStats
+      });
+    }
+
+    return notifications;
+  } catch (error) {
+    console.error("Failed to apply missing prediction penalties", error);
+    return [];
+  }
+}
+
+function scorePrediction(homePred: number, awayPred: number, homeScore: number, awayScore: number): number {
+  if (homePred === homeScore && awayPred === awayScore) {
+    return 5;
+  }
+  return getOutcome(homePred, awayPred) === getOutcome(homeScore, awayScore) ? 1 : -1;
 }
 
 async function upsertTeamMatchStats(

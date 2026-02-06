@@ -50,7 +50,7 @@ export const UKRAINIAN_CLUB_NAMES: Record<string, string> = {
   "inhulets-petrove": "ІНГУЛЕЦЬ",
   "inter": "ІНТЕР",
   "ipswich": "ІПСВІЧ",
-  "juventus": "ЮВЕ",
+  "juventus": "ЮВЕНТУС",
   "karabakh": "КАРАБАХ",
   "karpaty": "КАРПАТИ",
   "kolos-kovalivka": "КОЛОС",
