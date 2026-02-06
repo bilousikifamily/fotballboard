@@ -5954,11 +5954,10 @@ async function applyMatchResult(
     p_missed_penalty: MISSED_PREDICTION_PENALTY
   });
   if (scoringError) {
-    if (isMissingMatchResultRpc(scoringError)) {
-      return await applyMatchResultLegacy(supabase, match, homeScore, awayScore, homeRating, awayRating, timeZone);
-    }
+    const errorMessage = formatSupabaseError(scoringError);
     console.error("Failed to apply match result transactionally", scoringError);
-    return { ok: false, notifications: [] };
+    await logDebugUpdate(supabase, "match_result_rpc_failed", { matchId: match.id, error: errorMessage });
+    return await applyMatchResultLegacy(supabase, match, homeScore, awayScore, homeRating, awayRating, timeZone);
   }
 
   const statsOk = await upsertTeamMatchStats(
