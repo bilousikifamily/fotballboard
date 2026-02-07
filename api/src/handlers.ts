@@ -5995,6 +5995,8 @@ async function applyMatchResult(
   const scoringRows =
     (scoringRowsData as Array<{ user_id?: number | string | null; delta?: number | string | null; total_points?: number | string | null }> | null) ??
     [];
+  const deltaByUserId = new Map<number, number>();
+  const totalPointsByUserId = new Map<number, number>();
   const notifications: MatchResultNotification[] = [];
   for (const row of scoringRows) {
     const userIdRaw = typeof row.user_id === "number" ? row.user_id : Number(row.user_id);
@@ -6006,9 +6008,40 @@ async function applyMatchResult(
     const userId = Number(userIdRaw);
     const delta = Number(deltaRaw);
     const totalPoints = Number(totalPointsRaw);
-    if (delta === 0) {
-      continue;
+    deltaByUserId.set(userId, delta);
+    totalPointsByUserId.set(userId, totalPoints);
+  }
+
+  const predictionRows = (predictions as PredictionRow[]) ?? [];
+  const predictedUserIds = new Set<number>(predictionRows.map((row) => row.user_id));
+  const predictedUserIdsList = Array.from(predictedUserIds);
+
+  const pointsByUserId = new Map<number, number>();
+  const missingPointsUserIds = predictedUserIdsList.filter((userId) => !totalPointsByUserId.has(userId));
+  if (missingPointsUserIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, points_total")
+      .in("id", missingPointsUserIds);
+    if (usersError) {
+      console.error("Failed to fetch users for match result notifications", usersError);
+    } else {
+      for (const user of (users as Array<{ id: number; points_total?: number | string | null }> | null) ?? []) {
+        const rawPoints = user.points_total;
+        const parsedPoints = typeof rawPoints === "number" ? rawPoints : Number(rawPoints);
+        const totalPoints = Number.isFinite(parsedPoints) ? parsedPoints : STARTING_POINTS;
+        pointsByUserId.set(user.id, totalPoints);
+      }
     }
+  }
+
+  const allUserIds = new Set<number>([...predictedUserIds, ...deltaByUserId.keys()]);
+  for (const userId of allUserIds) {
+    const delta = deltaByUserId.get(userId) ?? 0;
+    const totalPoints =
+      totalPointsByUserId.get(userId) ??
+      pointsByUserId.get(userId) ??
+      STARTING_POINTS;
     notifications.push({
       match_id: match.id,
       user_id: userId,
