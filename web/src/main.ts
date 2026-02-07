@@ -84,7 +84,7 @@ const ADMIN_TOKEN_STORAGE_KEY = "football.admin_token";
 const INTRO_TIMEOUT_MS = 900;
 const PRIMARY_FACTION_STORAGE_KEY = "football.primaryFaction";
 const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-const shouldShowIntro = !prefersReducedMotion && !sessionStorage.getItem(INTRO_SEEN_KEY);
+const shouldShowIntro = !prefersReducedMotion;
 let introFinished = false;
 let introOverlay: HTMLDivElement | null = null;
 let introTimeoutId: number | null = null;
@@ -425,7 +425,6 @@ function mountIntro(): void {
   introOverlay.innerHTML = `
     <div class="intro-content">
       <video autoplay muted playsinline preload="auto" poster="/poster.jpg">
-        <source src="/preloader2.webm" type="video/webm" />
         <source src="/preloader%2022.webm" type="video/webm" />
       </video>
       <button class="intro-skip" type="button" aria-label="Пропустити інтро">Пропустити</button>
