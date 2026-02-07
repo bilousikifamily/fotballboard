@@ -81,6 +81,28 @@ create index if not exists match_result_notification_jobs_locked_at_idx
 alter table if exists match_result_notification_jobs
   add column if not exists user_nickname text;
 
+create table if not exists bot_message_deliveries (
+  id bigserial primary key,
+  context text not null,
+  telegram_method text,
+  chat_id text,
+  user_id bigint,
+  user_nickname text,
+  message_id bigint,
+  status text not null,
+  attempt int,
+  telegram_status int,
+  telegram_body text,
+  error text,
+  payload jsonb,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz
+);
+
+create index if not exists bot_message_deliveries_user_id_idx on bot_message_deliveries (user_id);
+create index if not exists bot_message_deliveries_status_created_idx on bot_message_deliveries (status, created_at);
+create index if not exists bot_message_deliveries_chat_id_idx on bot_message_deliveries (chat_id);
+
 create or replace function public.apply_match_result_atomic(
   p_match_id bigint,
   p_home_score integer,

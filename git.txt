@@ -1,5 +1,5 @@
 cd 
-git reset --hard <>
+git reset --hard 31d5f4ddd284b2ac489301f2da7ed8c3f3e6818c
 git push --force
 
 git pull --rebase origin main

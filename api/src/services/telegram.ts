@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Env } from "../env";
 import type {
@@ -19,6 +20,107 @@ const REGULAR_MONTH_PRICE = 100;
 const KYIV_TIMEZONE = "Europe/Kyiv";
 const SUBSCRIPTION_CARD_CALLBACK = "subscription_pay";
 const SUBSCRIPTION_CARD_IMAGE = "/images/subscription.png";
+
+const USER_NICKNAME_CACHE_LIMIT = 500;
+const userNicknameCache = new Map<number, string | null>();
+
+type BotDeliveryResult = { ok: boolean; status: number | null; body: string };
+
+type BotMessageDeliveryLogInput = {
+  context: string;
+  telegramMethod?: string;
+  chatId: number | string;
+  payload: Record<string, unknown>;
+  result: BotDeliveryResult;
+  attempt?: number | null;
+};
+
+function createSupabaseClientFromEnv(env: Env): SupabaseClient | null {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { "X-Client-Info": "tg-webapp-worker" } }
+  });
+}
+
+function getUserIdFromChatId(chatId: number | string): number | null {
+  return typeof chatId === "number" && Number.isFinite(chatId) && chatId > 0 ? chatId : null;
+}
+
+function clipText(value: string, limit = 2000): string {
+  if (value.length <= limit) {
+    return value;
+  }
+  return `${value.slice(0, limit)}…`;
+}
+
+function extractTelegramMessageId(body: string): number | null {
+  if (!body) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(body) as { ok?: boolean; result?: { message_id?: number } };
+    if (payload?.ok && typeof payload.result?.message_id === "number") {
+      return payload.result.message_id;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function loadUserNickname(supabase: SupabaseClient, userId: number): Promise<string | null> {
+  if (userNicknameCache.has(userId)) {
+    return userNicknameCache.get(userId) ?? null;
+  }
+  const { data, error } = await supabase.from("users").select("nickname").eq("id", userId).maybeSingle();
+  if (error) {
+    return null;
+  }
+  const nickname = (data as { nickname?: string | null } | null)?.nickname ?? null;
+  userNicknameCache.set(userId, nickname);
+  if (userNicknameCache.size > USER_NICKNAME_CACHE_LIMIT) {
+    userNicknameCache.clear();
+  }
+  return nickname;
+}
+
+async function logBotMessageDelivery(env: Env, input: BotMessageDeliveryLogInput): Promise<void> {
+  const supabase = createSupabaseClientFromEnv(env);
+  if (!supabase) {
+    return;
+  }
+  const userId = getUserIdFromChatId(input.chatId);
+  const nickname = userId ? await loadUserNickname(supabase, userId) : null;
+  const messageId = input.result.ok ? extractTelegramMessageId(input.result.body) : null;
+  const nowIso = new Date().toISOString();
+  const status = input.result.ok ? "sent" : "failed";
+  const telegramBody = clipText(input.result.body || "");
+  const error = input.result.ok ? null : telegramBody;
+
+  try {
+    await supabase.from("bot_message_deliveries").insert({
+      context: input.context,
+      telegram_method: input.telegramMethod ?? null,
+      chat_id: String(input.chatId),
+      user_id: userId,
+      user_nickname: nickname,
+      message_id: messageId,
+      status,
+      attempt: input.attempt ?? null,
+      telegram_status: input.result.status ?? null,
+      telegram_body: telegramBody || null,
+      error,
+      payload: input.payload ?? null,
+      created_at: nowIso,
+      sent_at: input.result.ok ? nowIso : null
+    });
+  } catch (errorInsert) {
+    console.error("Failed to log bot message delivery", errorInsert);
+  }
+}
 
 export async function handleUpdate(
   update: TelegramUpdate,
@@ -817,11 +919,29 @@ export async function sendInvoice(
     prices: payload.prices
   };
 
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const responseBody = await response.text();
+    await logBotMessageDelivery(env, {
+      context: "send_invoice",
+      telegramMethod: "sendInvoice",
+      chatId,
+      payload: body,
+      result: { ok: response.ok, status: response.status, body: responseBody }
+    });
+  } catch (error) {
+    await logBotMessageDelivery(env, {
+      context: "send_invoice",
+      telegramMethod: "sendInvoice",
+      chatId,
+      payload: body,
+      result: { ok: false, status: null, body: String(error) }
+    });
+  }
 }
 
 export async function answerPreCheckoutQuery(
@@ -904,9 +1024,25 @@ export async function sendMessageWithResult(
       body: JSON.stringify(payload)
     });
     const body = await response.text();
-    return { ok: response.ok, status: response.status, body };
+    const result = { ok: response.ok, status: response.status, body };
+    await logBotMessageDelivery(env, {
+      context: "send_message",
+      telegramMethod: "sendMessage",
+      chatId,
+      payload,
+      result
+    });
+    return result;
   } catch (error) {
-    return { ok: false, status: null, body: String(error) };
+    const result = { ok: false, status: null, body: String(error) };
+    await logBotMessageDelivery(env, {
+      context: "send_message",
+      telegramMethod: "sendMessage",
+      chatId,
+      payload,
+      result
+    });
+    return result;
   }
 }
 
@@ -944,9 +1080,25 @@ export async function sendPhotoWithResult(
       body: JSON.stringify(payload)
     });
     const body = await response.text();
-    return { ok: response.ok, status: response.status, body };
+    const result = { ok: response.ok, status: response.status, body };
+    await logBotMessageDelivery(env, {
+      context: "send_photo",
+      telegramMethod: "sendPhoto",
+      chatId,
+      payload,
+      result
+    });
+    return result;
   } catch (error) {
-    return { ok: false, status: null, body: String(error) };
+    const result = { ok: false, status: null, body: String(error) };
+    await logBotMessageDelivery(env, {
+      context: "send_photo",
+      telegramMethod: "sendPhoto",
+      chatId,
+      payload,
+      result
+    });
+    return result;
   }
 }
 
