@@ -1,5 +1,6 @@
-import type { AdminChatMessage, AdminChatThread } from "./types";
+import type { AdminChatMessage, AdminChatThread, LeaderboardUser } from "./types";
 import { postAdminLogin, fetchAdminChatMessages, fetchAdminChatThreads, sendAdminChatMessage } from "./api/admin";
+import { fetchLeaderboard } from "./api/leaderboard";
 import { renderAdminChatMessages, renderAdminChatThreads } from "./screens/adminUsers";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
@@ -10,6 +11,7 @@ let adminSessionToken: string | null = null;
 let threads: AdminChatThread[] = [];
 let messages: AdminChatMessage[] = [];
 let selectedUserId: number | null = null;
+let fallbackUsers: LeaderboardUser[] = [];
 
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const messagesPanel = document.querySelector<HTMLElement>("[data-messages-panel]");
@@ -51,8 +53,30 @@ function setStatus(el: HTMLElement | null, text: string): void {
 }
 
 function renderThreads(): void {
-  if (threadsList) {
-    threadsList.innerHTML = renderAdminChatThreads(threads, selectedUserId);
+  if (!threadsList) {
+    return;
+  }
+  const activeThreads = threads.length > 0 ? threads : fallbackUsers.map((user) => ({
+    user_id: user.id,
+    chat_id: user.id,
+    direction: null,
+    sender: null,
+    message_type: null,
+    last_text: null,
+    last_message_at: user.last_seen_at ?? null,
+    username: user.username ?? null,
+    first_name: user.first_name ?? null,
+    last_name: user.last_name ?? null,
+    nickname: user.nickname ?? null,
+    photo_url: user.photo_url ?? null,
+    last_seen_at: user.last_seen_at ?? null
+  }));
+  if (activeThreads.length === 0) {
+    threadsList.innerHTML = "";
+    setStatus(threadsStatus, "Поки що немає чатів.");
+  } else {
+    threadsList.innerHTML = renderAdminChatThreads(activeThreads, selectedUserId);
+    setStatus(threadsStatus, "");
   }
   if (selectedLabel) {
     selectedLabel.textContent = selectedUserId ? `Чат з id:${selectedUserId}` : "Оберіть користувача";
@@ -83,13 +107,21 @@ async function loadThreads(selectFirst = false): Promise<void> {
       return;
     }
     threads = data.threads ?? [];
+    fallbackUsers = [];
+    if (threads.length === 0) {
+      const { response: usersResponse, data: usersData } = await fetchLeaderboard(API_BASE, "", 200, token);
+      if (usersResponse.ok && usersData.ok) {
+        fallbackUsers = usersData.users ?? [];
+      }
+    }
     if (selectFirst && !selectedUserId && threads.length > 0) {
       const first = threads[0]?.user_id ?? null;
       if (typeof first === "number") {
         selectedUserId = first;
       }
+    } else if (selectFirst && !selectedUserId && threads.length === 0 && fallbackUsers.length > 0) {
+      selectedUserId = fallbackUsers[0]?.id ?? null;
     }
-    setStatus(threadsStatus, threads.length === 0 ? "Поки що немає чатів." : "");
     renderThreads();
   } catch {
     setStatus(threadsStatus, "Не вдалося завантажити чати.");
