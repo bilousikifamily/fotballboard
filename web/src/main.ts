@@ -2362,6 +2362,49 @@ function renderAdminChatMessagesUI(container: HTMLElement | null, statusEl: HTML
   container.scrollTop = container.scrollHeight;
 }
 
+function parseNumericId(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeAdminChatThread(raw: AdminChatThread): AdminChatThread | null {
+  const chatId = parseNumericId(raw.chat_id);
+  const userId = parseNumericId(raw.user_id) ?? chatId;
+  if (userId === null) {
+    return null;
+  }
+  return {
+    ...raw,
+    user_id: userId,
+    chat_id: chatId ?? userId
+  };
+}
+
+function normalizeAdminChatMessage(raw: AdminChatMessage): AdminChatMessage | null {
+  const id = parseNumericId(raw.id);
+  if (id === null) {
+    return null;
+  }
+  return {
+    ...raw,
+    id,
+    chat_id: parseNumericId(raw.chat_id),
+    user_id: parseNumericId(raw.user_id),
+    thread_id: parseNumericId(raw.thread_id),
+    message_id: parseNumericId(raw.message_id)
+  };
+}
+
 async function loadAdminChatThreads(
   container: HTMLElement | null,
   statusEl: HTMLElement | null,
@@ -2389,7 +2432,9 @@ async function loadAdminChatThreads(
       }
       return;
     }
-    adminChatThreads = data.threads ?? [];
+    adminChatThreads = (data.threads ?? [])
+      .map(normalizeAdminChatThread)
+      .filter((thread): thread is AdminChatThread => Boolean(thread));
     adminChatLoaded = true;
     if (!adminChatSelectedUserId && adminChatThreads.length > 0 && force) {
       const firstUser = adminChatThreads[0]?.user_id ?? null;
@@ -2431,7 +2476,9 @@ async function loadAdminChatMessages(
       }
       return;
     }
-    adminChatMessages = data.messages ?? [];
+    adminChatMessages = (data.messages ?? [])
+      .map(normalizeAdminChatMessage)
+      .filter((message): message is AdminChatMessage => Boolean(message));
     renderAdminChatMessagesUI(container, statusEl);
   } catch {
     if (statusEl) {

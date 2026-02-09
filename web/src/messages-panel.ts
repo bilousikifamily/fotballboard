@@ -15,6 +15,49 @@ let fallbackUsers: LeaderboardUser[] = [];
 let oldestMessageId: number | null = null;
 let selectedChatId: number | null = null;
 
+function parseNumericId(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeThread(raw: AdminChatThread): AdminChatThread | null {
+  const chatId = parseNumericId(raw.chat_id);
+  const userId = parseNumericId(raw.user_id) ?? chatId;
+  if (userId === null) {
+    return null;
+  }
+  return {
+    ...raw,
+    user_id: userId,
+    chat_id: chatId ?? userId
+  };
+}
+
+function normalizeMessage(raw: AdminChatMessage): AdminChatMessage | null {
+  const id = parseNumericId(raw.id);
+  if (id === null) {
+    return null;
+  }
+  return {
+    ...raw,
+    id,
+    chat_id: parseNumericId(raw.chat_id),
+    user_id: parseNumericId(raw.user_id),
+    thread_id: parseNumericId(raw.thread_id),
+    message_id: parseNumericId(raw.message_id)
+  };
+}
+
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const messagesPanel = document.querySelector<HTMLElement>("[data-messages-panel]");
 const loginForm = document.querySelector<HTMLFormElement>("[data-login-form]");
@@ -147,7 +190,7 @@ async function loadThreads(selectFirst = false): Promise<void> {
       setStatus(threadsStatus, "Не вдалося завантажити чати.");
       return;
     }
-    threads = data.threads ?? [];
+    threads = (data.threads ?? []).map(normalizeThread).filter((thread): thread is AdminChatThread => Boolean(thread));
     fallbackUsers = [];
     const { response: usersResponse, data: usersData } = await fetchLeaderboard(API_BASE, "", 200, token);
     if (usersResponse.ok && usersData.ok) {
@@ -170,10 +213,11 @@ async function loadThreads(selectFirst = false): Promise<void> {
 function normalizeMessages(input: AdminChatMessage[]): AdminChatMessage[] {
   const byId = new Map<number, AdminChatMessage>();
   for (const message of input) {
-    if (typeof message.id !== "number") {
+    const normalized = normalizeMessage(message);
+    if (!normalized) {
       continue;
     }
-    byId.set(message.id, message);
+    byId.set(normalized.id, normalized);
   }
   return Array.from(byId.values()).sort((a, b) => b.id - a.id);
 }
