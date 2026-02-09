@@ -7,7 +7,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         presentation: resolve(__dirname, "presentation.html"),
-        admin: resolve(__dirname, "admin.html")
+        admin: resolve(__dirname, "admin.html"),
+        messages: resolve(__dirname, "messages/index.html")
       }
     }
   },
