@@ -1139,6 +1139,149 @@ a {
   font-weight: 600;
 }
 
+.admin-chat-page {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-chat {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.6fr);
+  gap: 12px;
+}
+
+.admin-chat__threads,
+.admin-chat__messages-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-chat__header,
+.admin-chat__messages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-chat__title {
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.admin-chat__threads-list,
+.admin-chat__messages-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-chat-thread {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+  color: inherit;
+}
+
+.admin-chat-thread.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(255, 139, 60, 0.35) inset;
+}
+
+.admin-chat-thread__body {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-chat-thread__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.admin-chat-thread__name {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-chat-thread__time,
+.admin-chat-thread__preview {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-chat-messages {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-chat-message {
+  display: grid;
+  gap: 4px;
+  max-width: 85%;
+}
+
+.admin-chat-message.is-outgoing {
+  justify-self: end;
+  text-align: right;
+}
+
+.admin-chat-message__meta {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-chat-message__bubble {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-chat-message.is-outgoing .admin-chat-message__bubble {
+  background: rgba(255, 139, 60, 0.18);
+  border-color: rgba(255, 139, 60, 0.4);
+}
+
+.admin-chat__form {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-chat__form textarea {
+  resize: vertical;
+  min-height: 72px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  color: inherit;
+  font-size: 1rem;
+}
+
+.admin-chat__form textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 139, 60, 0.3);
+}
+
+@media (max-width: 720px) {
+  .admin-chat {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-match-logos {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
+    />
+    <title>Повідомлення</title>
+    <link rel="stylesheet" href="/src/styles/presentation.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <section class="admin-login" data-login-panel>
+        <h1>Адмінський доступ</h1>
+        <p class="admin-subtitle">Увійдіть, щоб відповідати гравцям.</p>
+        <form data-login-form>
+          <div class="field">
+            <label>Логін</label>
+            <input name="username" type="text" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label>Пароль</label>
+            <input name="password" type="password" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="button primary">Увійти</button>
+        </form>
+        <p class="login-error" data-login-error></p>
+      </section>
+
+      <section class="admin-panel is-hidden" data-messages-panel>
+        <div class="admin-panel__card">
+          <header class="admin-header">
+            <div class="admin-header__title">
+              <h1>ПОВІДОМЛЕННЯ</h1>
+            </div>
+            <div class="admin-header__controls">
+              <span class="pill admin-build" data-admin-build></span>
+              <a class="button secondary" href="/admin">Назад</a>
+              <button class="button secondary" type="button" data-logout>Вийти</button>
+            </div>
+          </header>
+
+          <section class="admin-chat-page" data-admin-chat-page>
+            <div class="admin-chat">
+              <div class="admin-chat__threads">
+                <div class="admin-chat__header">
+                  <h3 class="admin-chat__title">Чати</h3>
+                  <button class="button secondary small" type="button" data-admin-chat-refresh>Оновити</button>
+                </div>
+                <div class="admin-chat__threads-list" data-admin-chat-threads></div>
+                <p class="muted small" data-admin-chat-threads-status></p>
+              </div>
+              <div class="admin-chat__messages-panel">
+                <div class="admin-chat__messages-header">
+                  <div class="admin-chat__selected" data-admin-chat-selected>Оберіть користувача</div>
+                  <button class="button secondary small" type="button" data-admin-chat-messages-refresh>Оновити</button>
+                </div>
+                <div class="admin-chat__messages-list" data-admin-chat-messages></div>
+                <form class="admin-chat__form" data-admin-chat-form>
+                  <textarea rows="3" placeholder="Ваше повідомлення..." data-admin-chat-input></textarea>
+                  <button class="button primary" type="submit">НАДІСЛАТИ</button>
+                </form>
+                <p class="muted small" data-admin-chat-form-status></p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/messages-panel.ts"></script>
+  </body>
+</html>

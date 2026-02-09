@@ -21,6 +21,7 @@ import { toKyivISOString } from "./utils/time";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? (typeof window !== "undefined" ? window.location.origin : "");
 let adminSessionToken: string | null = null;
+const ADMIN_TOKEN_KEY = "admin_token";
 const BUILD_ID = import.meta.env.VITE_BUILD_ID ?? "";
 const BUILD_TIME = import.meta.env.VITE_BUILD_TIME ?? "";
 
@@ -1159,6 +1160,9 @@ async function handleLogin(event: Event): Promise<void> {
       return;
     }
     adminSessionToken = data.token;
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+    }
     loginError && (loginError.textContent = "");
     showAdmin();
     startBotLogPolling();
@@ -1176,6 +1180,9 @@ async function handleLogin(event: Event): Promise<void> {
 
 function handleLogout(): void {
   adminSessionToken = null;
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  }
   stopBotLogPolling();
   state.leaderboardLoaded = false;
   state.leaderboard = [];
@@ -1216,4 +1223,19 @@ if (loginForm) {
 logoutButton?.addEventListener("click", handleLogout);
 attachListeners();
 updateBuildBadge();
-showLogin();
+if (typeof sessionStorage !== "undefined") {
+  const storedToken = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  if (storedToken) {
+    adminSessionToken = storedToken;
+    showAdmin();
+    startBotLogPolling();
+    populateLeagueOptions();
+    populateClubOptions(leagueSelect?.value ?? MATCH_LEAGUES[0].id);
+    setDefaultKickoffAt();
+    void initializeAdminView();
+  } else {
+    showLogin();
+  }
+} else {
+  showLogin();
+}

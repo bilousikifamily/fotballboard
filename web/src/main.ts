@@ -1379,7 +1379,7 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-users>КОРИСТУВАЧІ</button>
-          <button class="button secondary" type="button" data-admin-toggle-chat>ЧАТ</button>
+          <a class="button secondary" href="/messages">ЧАТ</a>
           <button class="button secondary" type="button" data-admin-toggle-logs>ЛОГИ БОТА</button>
           <button class="button secondary" type="button" data-admin-toggle-debug>DEBUG</button>
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
@@ -1461,30 +1461,6 @@ function renderUser(
             </div>
             <div class="admin-logs__content" data-admin-logs-content></div>
             <p class="muted small" data-admin-logs-status></p>
-          </section>
-        </div>
-        <div class="admin-chat-panel" data-admin-chat>
-          <section class="admin-chat">
-            <div class="admin-chat__threads">
-              <div class="admin-chat__header">
-                <h2 class="admin-chat__title">Чати</h2>
-                <button class="button secondary small" type="button" data-admin-chat-refresh>Оновити</button>
-              </div>
-              <div class="admin-chat__threads-list" data-admin-chat-threads></div>
-              <p class="muted small" data-admin-chat-threads-status></p>
-            </div>
-            <div class="admin-chat__messages-panel">
-              <div class="admin-chat__messages-header">
-                <div class="admin-chat__selected" data-admin-chat-selected>Оберіть користувача</div>
-                <button class="button secondary small" type="button" data-admin-chat-messages-refresh>Оновити</button>
-              </div>
-              <div class="admin-chat__messages-list" data-admin-chat-messages></div>
-              <form class="admin-chat__form" data-admin-chat-form>
-                <textarea rows="3" placeholder="Ваше повідомлення..." data-admin-chat-input></textarea>
-                <button class="button" type="submit">НАДІСЛАТИ</button>
-              </form>
-              <p class="muted small" data-admin-chat-form-status></p>
-            </div>
           </section>
         </div>
       </section>
@@ -1647,6 +1623,40 @@ function renderUser(
         </button>
       `;
   const tabbarClass = admin ? "tabbar is-admin" : "tabbar";
+  const messagesScreen = admin
+    ? `
+      <section class="screen screen--messages" data-screen="messages">
+        <div class="admin-chat-page" data-admin-chat-page>
+          <div class="admin-chat-page__header">
+            <a class="button secondary small" href="/admin">Назад</a>
+            <h2>Повідомлення</h2>
+            <button class="button secondary small" type="button" data-admin-chat-refresh>Оновити</button>
+          </div>
+          <div class="admin-chat">
+            <div class="admin-chat__threads">
+              <div class="admin-chat__header">
+                <h3 class="admin-chat__title">Чати</h3>
+              </div>
+              <div class="admin-chat__threads-list" data-admin-chat-threads></div>
+              <p class="muted small" data-admin-chat-threads-status></p>
+            </div>
+            <div class="admin-chat__messages-panel">
+              <div class="admin-chat__messages-header">
+                <div class="admin-chat__selected" data-admin-chat-selected>Оберіть користувача</div>
+                <button class="button secondary small" type="button" data-admin-chat-messages-refresh>Оновити</button>
+              </div>
+              <div class="admin-chat__messages-list" data-admin-chat-messages></div>
+              <form class="admin-chat__form" data-admin-chat-form>
+                <textarea rows="3" placeholder="Ваше повідомлення..." data-admin-chat-input></textarea>
+                <button class="button" type="submit">НАДІСЛАТИ</button>
+              </form>
+              <p class="muted small" data-admin-chat-form-status></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    `
+    : "";
 
   app.innerHTML = `
     <div class="app-shell">
@@ -1690,6 +1700,7 @@ function renderUser(
         </section>
 
         ${adminLayoutScreen}
+        ${messagesScreen}
 
         ${matchesScreen}
 
@@ -1820,7 +1831,6 @@ function renderUser(
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
     const toggleUsers = app.querySelector<HTMLButtonElement>("[data-admin-toggle-users]");
-    const toggleChat = app.querySelector<HTMLButtonElement>("[data-admin-toggle-chat]");
     const toggleLogs = app.querySelector<HTMLButtonElement>("[data-admin-toggle-logs]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
@@ -1831,9 +1841,9 @@ function renderUser(
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
     const debugPanel = app.querySelector<HTMLElement>("[data-admin-debug]");
     const usersPanel = app.querySelector<HTMLElement>("[data-admin-users]");
-    const chatPanel = app.querySelector<HTMLElement>("[data-admin-chat]");
     const logsPanel = app.querySelector<HTMLElement>("[data-admin-logs]");
     const logsRefresh = app.querySelector<HTMLButtonElement>("[data-admin-logs-refresh]");
+    const chatPage = app.querySelector<HTMLElement>("[data-admin-chat-page]");
     const chatThreadsList = app.querySelector<HTMLElement>("[data-admin-chat-threads]");
     const chatThreadsStatus = app.querySelector<HTMLElement>("[data-admin-chat-threads-status]");
     const chatRefreshButton = app.querySelector<HTMLButtonElement>("[data-admin-chat-refresh]");
@@ -1881,21 +1891,6 @@ function renderUser(
       });
     }
 
-    if (toggleChat && chatPanel) {
-      toggleChat.addEventListener("click", () => {
-        const nextState = !chatPanel.classList.contains("is-open");
-        chatPanel.classList.toggle("is-open", nextState);
-        if (nextState && !adminChatLoaded) {
-          void (async () => {
-            await loadAdminChatThreads(chatThreadsList, chatThreadsStatus, chatSelectedLabel, true);
-            if (adminChatSelectedUserId && chatMessagesList) {
-              await loadAdminChatMessages(chatMessagesList, chatMessagesStatus, adminChatSelectedUserId);
-            }
-          })();
-        }
-      });
-    }
-
     if (toggleLogs && logsPanel) {
       toggleLogs.addEventListener("click", () => {
         const nextState = !logsPanel.classList.contains("is-open");
@@ -1910,6 +1905,15 @@ function renderUser(
       logsRefresh.addEventListener("click", () => {
         void loadBotLogs(true);
       });
+    }
+
+    if (chatPage && !adminChatLoaded) {
+      void (async () => {
+        await loadAdminChatThreads(chatThreadsList, chatThreadsStatus, chatSelectedLabel, true);
+        if (adminChatSelectedUserId && chatMessagesList) {
+          await loadAdminChatMessages(chatMessagesList, chatMessagesStatus, adminChatSelectedUserId);
+        }
+      })();
     }
 
     if (chatRefreshButton) {
@@ -3347,6 +3351,11 @@ function setupTabs(): void {
       }
     }
   };
+
+  if (window.location.pathname.startsWith("/messages")) {
+    setActive("messages");
+    return;
+  }
 
   buttons.forEach((button) => {
     button.addEventListener("click", () => {

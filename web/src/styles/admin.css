@@ -40,14 +40,6 @@
   display: block;
 }
 
-.admin-chat-panel {
-  display: none;
-}
-
-.admin-chat-panel.is-open {
-  display: block;
-}
-
 .admin-chat {
   display: grid;
   grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.6fr);
@@ -170,6 +162,26 @@
 .admin-chat__form textarea {
   resize: vertical;
   min-height: 72px;
+}
+
+.admin-chat-page {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-chat-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.screen--messages {
+  padding-top: 16px;
 }
 
 @media (max-width: 720px) {
