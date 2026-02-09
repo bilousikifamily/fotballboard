@@ -648,26 +648,59 @@ export default {
 
       const limit = parseLimit(url.searchParams.get("limit"), 50, 200);
       const beforeId = Number(url.searchParams.get("before") ?? "");
+      const selectFields =
+        "id, chat_id, user_id, admin_id, thread_id, message_id, direction, sender, message_type, text, payload, created_at";
 
-      let query = supabase
+      let userQuery = supabase
         .from("bot_message_logs")
-        .select(
-          "id, chat_id, user_id, admin_id, thread_id, message_id, direction, sender, message_type, text, payload, created_at"
-        )
-        .or(`chat_id.eq.${userId},user_id.eq.${userId}`)
+        .select(selectFields)
+        .eq("user_id", userId)
+        .order("id", { ascending: false });
+
+      let chatQuery = supabase
+        .from("bot_message_logs")
+        .select(selectFields)
+        .eq("chat_id", userId)
         .order("id", { ascending: false });
 
       if (Number.isFinite(beforeId)) {
-        query = query.lt("id", beforeId);
+        userQuery = userQuery.lt("id", beforeId);
+        chatQuery = chatQuery.lt("id", beforeId);
       }
 
-      const { data, error } = await query.limit(limit);
-      if (error) {
-        console.error("Failed to fetch admin chat messages", error);
+      const [{ data: userData, error: userError }, { data: chatData, error: chatError }] = await Promise.all([
+        userQuery.limit(limit),
+        chatQuery.limit(limit)
+      ]);
+
+      if (userError && chatError) {
+        console.error("Failed to fetch admin chat messages", { userError, chatError });
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
+      if (userError) {
+        console.error("Failed to fetch admin chat messages by user_id", userError);
+      }
+      if (chatError) {
+        console.error("Failed to fetch admin chat messages by chat_id", chatError);
+      }
 
-      return jsonResponse({ ok: true, messages: data ?? [] }, 200, corsHeaders());
+      const merged = new Map<number, typeof userData extends Array<infer T> ? T : never>();
+      for (const row of userData ?? []) {
+        if (typeof row?.id === "number") {
+          merged.set(row.id, row);
+        }
+      }
+      for (const row of chatData ?? []) {
+        if (typeof row?.id === "number") {
+          merged.set(row.id, row);
+        }
+      }
+
+      const messages = Array.from(merged.values())
+        .sort((a, b) => (typeof b.id === "number" && typeof a.id === "number" ? b.id - a.id : 0))
+        .slice(0, limit);
+
+      return jsonResponse({ ok: true, messages }, 200, corsHeaders());
     }
 
     if (url.pathname === "/api/admin/chat-send") {
