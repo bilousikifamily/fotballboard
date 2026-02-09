@@ -1,6 +1,8 @@
 import "./style.css";
 import { ALL_CLUBS, EU_CLUBS, type AllLeagueId, type LeagueId, type MatchLeagueId } from "./data/clubs";
 import type {
+  AdminChatMessage,
+  AdminChatThread,
   AvatarOption,
   BotLogEntry,
   ClubSyncResponse,
@@ -16,7 +18,7 @@ import type {
   TeamMatchStat,
   UserStats
 } from "./types";
-import { fetchBotLogs } from "./api/admin";
+import { fetchAdminChatMessages, fetchAdminChatThreads, fetchBotLogs, sendAdminChatMessage } from "./api/admin";
 import { fetchAuth } from "./api/auth";
 import { fetchAnalitikaTeam as fetchAnalitikaTeamApi } from "./api/analitika";
 import { fetchLeaderboard } from "./api/leaderboard";
@@ -58,7 +60,7 @@ import {
   renderMatchesList,
   renderTeamLogo
 } from "./screens/matches";
-import { renderAdminUserSessions } from "./screens/adminUsers";
+import { renderAdminChatMessages, renderAdminChatThreads, renderAdminUserSessions } from "./screens/adminUsers";
 import {
   renderFactionMembersRows,
   renderFactionMembersSection,
@@ -118,6 +120,10 @@ let predictionCountdownId: number | null = null;
 let botLogsLoaded = false;
 let lastBotLogId = 0;
 const botLogs: BotLogEntry[] = [];
+let adminChatThreads: AdminChatThread[] = [];
+let adminChatSelectedUserId: number | null = null;
+let adminChatMessages: AdminChatMessage[] = [];
+let adminChatLoaded = false;
 const analitikaTeamCache = new Map<string, TeamMatchStat[]>();
 const analitikaTeamInFlight = new Map<string, Promise<TeamMatchStat[] | null>>();
 const predictionsLoaded = new Set<number>();
@@ -1373,6 +1379,7 @@ function renderUser(
           <button class="button secondary" type="button" data-admin-toggle-odds>КОЕФІЦІЄНТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-result>ВВЕСТИ РЕЗУЛЬТАТИ</button>
           <button class="button secondary" type="button" data-admin-toggle-users>КОРИСТУВАЧІ</button>
+          <button class="button secondary" type="button" data-admin-toggle-chat>ЧАТ</button>
           <button class="button secondary" type="button" data-admin-toggle-logs>ЛОГИ БОТА</button>
           <button class="button secondary" type="button" data-admin-toggle-debug>DEBUG</button>
           <button class="button secondary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>
@@ -1454,6 +1461,30 @@ function renderUser(
             </div>
             <div class="admin-logs__content" data-admin-logs-content></div>
             <p class="muted small" data-admin-logs-status></p>
+          </section>
+        </div>
+        <div class="admin-chat-panel" data-admin-chat>
+          <section class="admin-chat">
+            <div class="admin-chat__threads">
+              <div class="admin-chat__header">
+                <h2 class="admin-chat__title">Чати</h2>
+                <button class="button secondary small" type="button" data-admin-chat-refresh>Оновити</button>
+              </div>
+              <div class="admin-chat__threads-list" data-admin-chat-threads></div>
+              <p class="muted small" data-admin-chat-threads-status></p>
+            </div>
+            <div class="admin-chat__messages-panel">
+              <div class="admin-chat__messages-header">
+                <div class="admin-chat__selected" data-admin-chat-selected>Оберіть користувача</div>
+                <button class="button secondary small" type="button" data-admin-chat-messages-refresh>Оновити</button>
+              </div>
+              <div class="admin-chat__messages-list" data-admin-chat-messages></div>
+              <form class="admin-chat__form" data-admin-chat-form>
+                <textarea rows="3" placeholder="Ваше повідомлення..." data-admin-chat-input></textarea>
+                <button class="button" type="submit">НАДІСЛАТИ</button>
+              </form>
+              <p class="muted small" data-admin-chat-form-status></p>
+            </div>
           </section>
         </div>
       </section>
@@ -1789,6 +1820,7 @@ function renderUser(
     const toggleResult = app.querySelector<HTMLButtonElement>("[data-admin-toggle-result]");
     const toggleOdds = app.querySelector<HTMLButtonElement>("[data-admin-toggle-odds]");
     const toggleUsers = app.querySelector<HTMLButtonElement>("[data-admin-toggle-users]");
+    const toggleChat = app.querySelector<HTMLButtonElement>("[data-admin-toggle-chat]");
     const toggleLogs = app.querySelector<HTMLButtonElement>("[data-admin-toggle-logs]");
     const toggleDebug = app.querySelector<HTMLButtonElement>("[data-admin-toggle-debug]");
     const announceButton = app.querySelector<HTMLButtonElement>("[data-admin-announce]");
@@ -1799,8 +1831,18 @@ function renderUser(
     const oddsForm = app.querySelector<HTMLFormElement>("[data-admin-odds-form]");
     const debugPanel = app.querySelector<HTMLElement>("[data-admin-debug]");
     const usersPanel = app.querySelector<HTMLElement>("[data-admin-users]");
+    const chatPanel = app.querySelector<HTMLElement>("[data-admin-chat]");
     const logsPanel = app.querySelector<HTMLElement>("[data-admin-logs]");
     const logsRefresh = app.querySelector<HTMLButtonElement>("[data-admin-logs-refresh]");
+    const chatThreadsList = app.querySelector<HTMLElement>("[data-admin-chat-threads]");
+    const chatThreadsStatus = app.querySelector<HTMLElement>("[data-admin-chat-threads-status]");
+    const chatRefreshButton = app.querySelector<HTMLButtonElement>("[data-admin-chat-refresh]");
+    const chatMessagesList = app.querySelector<HTMLElement>("[data-admin-chat-messages]");
+    const chatMessagesStatus = app.querySelector<HTMLElement>("[data-admin-chat-form-status]");
+    const chatMessagesRefresh = app.querySelector<HTMLButtonElement>("[data-admin-chat-messages-refresh]");
+    const chatSelectedLabel = app.querySelector<HTMLElement>("[data-admin-chat-selected]");
+    const chatForm = app.querySelector<HTMLFormElement>("[data-admin-chat-form]");
+    const chatInput = app.querySelector<HTMLTextAreaElement>("[data-admin-chat-input]");
     if (toggleAdd && form) {
       setupAdminMatchForm(form);
       toggleAdd.addEventListener("click", () => {
@@ -1839,6 +1881,21 @@ function renderUser(
       });
     }
 
+    if (toggleChat && chatPanel) {
+      toggleChat.addEventListener("click", () => {
+        const nextState = !chatPanel.classList.contains("is-open");
+        chatPanel.classList.toggle("is-open", nextState);
+        if (nextState && !adminChatLoaded) {
+          void (async () => {
+            await loadAdminChatThreads(chatThreadsList, chatThreadsStatus, chatSelectedLabel, true);
+            if (adminChatSelectedUserId && chatMessagesList) {
+              await loadAdminChatMessages(chatMessagesList, chatMessagesStatus, adminChatSelectedUserId);
+            }
+          })();
+        }
+      });
+    }
+
     if (toggleLogs && logsPanel) {
       toggleLogs.addEventListener("click", () => {
         const nextState = !logsPanel.classList.contains("is-open");
@@ -1852,6 +1909,59 @@ function renderUser(
     if (logsRefresh) {
       logsRefresh.addEventListener("click", () => {
         void loadBotLogs(true);
+      });
+    }
+
+    if (chatRefreshButton) {
+      chatRefreshButton.addEventListener("click", () => {
+        void loadAdminChatThreads(chatThreadsList, chatThreadsStatus, chatSelectedLabel, true);
+      });
+    }
+
+    if (chatMessagesRefresh) {
+      chatMessagesRefresh.addEventListener("click", () => {
+        if (adminChatSelectedUserId) {
+          void loadAdminChatMessages(chatMessagesList, chatMessagesStatus, adminChatSelectedUserId);
+        }
+      });
+    }
+
+    if (chatThreadsList) {
+      chatThreadsList.addEventListener("click", (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-chat-thread]");
+        if (!button) {
+          return;
+        }
+        const userIdRaw = button.dataset.adminChatThread || "";
+        const userId = Number.parseInt(userIdRaw, 10);
+        if (!Number.isFinite(userId)) {
+          return;
+        }
+        adminChatSelectedUserId = userId;
+        if (chatSelectedLabel) {
+          chatSelectedLabel.textContent = `Чат з id:${userId}`;
+        }
+        void loadAdminChatThreads(chatThreadsList, chatThreadsStatus, chatSelectedLabel, true);
+        if (chatMessagesList) {
+          void loadAdminChatMessages(chatMessagesList, chatMessagesStatus, userId);
+        }
+      });
+    }
+
+    if (chatForm && chatInput) {
+      chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!adminChatSelectedUserId) {
+          if (chatMessagesStatus) {
+            chatMessagesStatus.textContent = "Оберіть користувача зі списку.";
+          }
+          return;
+        }
+        const text = chatInput.value.trim();
+        if (!text) {
+          return;
+        }
+        void submitAdminChatMessage(chatForm, chatInput, chatMessagesStatus, adminChatSelectedUserId, chatMessagesList);
       });
     }
 
@@ -2212,6 +2322,168 @@ async function loadBotLogs(force = false): Promise<void> {
   } catch {
     if (status) {
       status.textContent = "Не вдалося завантажити логи.";
+    }
+  }
+}
+
+function renderAdminChatThreadsUI(
+  container: HTMLElement | null,
+  statusEl: HTMLElement | null,
+  selectedLabel: HTMLElement | null
+): void {
+  if (!container) {
+    return;
+  }
+  container.innerHTML = renderAdminChatThreads(adminChatThreads, adminChatSelectedUserId);
+  if (selectedLabel) {
+    if (adminChatSelectedUserId) {
+      selectedLabel.textContent = `Чат з id:${adminChatSelectedUserId}`;
+    } else {
+      selectedLabel.textContent = "Оберіть користувача";
+    }
+  }
+  if (statusEl) {
+    statusEl.textContent = adminChatThreads.length === 0 ? "Поки що немає чатів." : "";
+  }
+}
+
+function renderAdminChatMessagesUI(container: HTMLElement | null, statusEl: HTMLElement | null): void {
+  if (!container) {
+    return;
+  }
+  container.innerHTML = renderAdminChatMessages(adminChatMessages);
+  if (statusEl) {
+    statusEl.textContent = "";
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+async function loadAdminChatThreads(
+  container: HTMLElement | null,
+  statusEl: HTMLElement | null,
+  selectedLabel: HTMLElement | null,
+  force = false
+): Promise<void> {
+  if (!apiBase || !isAdmin) {
+    return;
+  }
+  const token = getStoredAdminToken();
+  if (!token) {
+    if (statusEl) {
+      statusEl.textContent = "Ви не авторизовані.";
+    }
+    return;
+  }
+  if (statusEl) {
+    statusEl.textContent = "Завантаження...";
+  }
+  try {
+    const { response, data } = await fetchAdminChatThreads(apiBase, token, { limit: 60 });
+    if (!response.ok || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = "Не вдалося завантажити чати.";
+      }
+      return;
+    }
+    adminChatThreads = data.threads ?? [];
+    adminChatLoaded = true;
+    if (!adminChatSelectedUserId && adminChatThreads.length > 0 && force) {
+      const firstUser = adminChatThreads[0]?.user_id ?? null;
+      if (typeof firstUser === "number") {
+        adminChatSelectedUserId = firstUser;
+      }
+    }
+    renderAdminChatThreadsUI(container, statusEl, selectedLabel);
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося завантажити чати.";
+    }
+  }
+}
+
+async function loadAdminChatMessages(
+  container: HTMLElement | null,
+  statusEl: HTMLElement | null,
+  userId: number
+): Promise<void> {
+  if (!apiBase || !isAdmin) {
+    return;
+  }
+  const token = getStoredAdminToken();
+  if (!token) {
+    if (statusEl) {
+      statusEl.textContent = "Ви не авторизовані.";
+    }
+    return;
+  }
+  if (statusEl) {
+    statusEl.textContent = "Завантаження...";
+  }
+  try {
+    const { response, data } = await fetchAdminChatMessages(apiBase, token, { userId, limit: 100 });
+    if (!response.ok || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = "Не вдалося завантажити повідомлення.";
+      }
+      return;
+    }
+    adminChatMessages = data.messages ?? [];
+    renderAdminChatMessagesUI(container, statusEl);
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося завантажити повідомлення.";
+    }
+  }
+}
+
+async function submitAdminChatMessage(
+  form: HTMLFormElement,
+  input: HTMLTextAreaElement,
+  statusEl: HTMLElement | null,
+  userId: number,
+  messagesContainer: HTMLElement | null
+): Promise<void> {
+  if (!apiBase || !isAdmin) {
+    return;
+  }
+  const token = getStoredAdminToken();
+  if (!token) {
+    if (statusEl) {
+      statusEl.textContent = "Ви не авторизовані.";
+    }
+    return;
+  }
+  const text = input.value.trim();
+  if (!text) {
+    return;
+  }
+  if (statusEl) {
+    statusEl.textContent = "Відправка...";
+  }
+  const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+  try {
+    const { response, data } = await sendAdminChatMessage(apiBase, token, { user_id: userId, text });
+    if (!response.ok || !data.ok) {
+      if (statusEl) {
+        statusEl.textContent = "Не вдалося надіслати повідомлення.";
+      }
+      return;
+    }
+    input.value = "";
+    if (statusEl) {
+      statusEl.textContent = "";
+    }
+    await loadAdminChatMessages(messagesContainer, statusEl, userId);
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Не вдалося надіслати повідомлення.";
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
     }
   }
 }

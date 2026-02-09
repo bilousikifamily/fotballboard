@@ -36,6 +36,49 @@ export type BotLogsResponse =
   | { ok: true; logs: BotLogEntry[] }
   | { ok: false; error: string };
 
+export type AdminChatThread = {
+  user_id: number | null;
+  chat_id: number | null;
+  direction: string | null;
+  sender: string | null;
+  message_type: string | null;
+  last_text: string | null;
+  last_message_at: string | null;
+  username?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null;
+  photo_url?: string | null;
+  last_seen_at?: string | null;
+};
+
+export type AdminChatMessage = {
+  id: number;
+  chat_id: number | null;
+  user_id: number | null;
+  admin_id: string | null;
+  thread_id: number | null;
+  message_id: number | null;
+  direction: "in" | "out";
+  sender: "bot" | "admin" | "user";
+  message_type: string;
+  text: string | null;
+  payload: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
+export type AdminChatThreadsResponse =
+  | { ok: true; threads: AdminChatThread[] }
+  | { ok: false; error: string };
+
+export type AdminChatMessagesResponse =
+  | { ok: true; messages: AdminChatMessage[] }
+  | { ok: false; error: string };
+
+export type AdminChatSendResponse =
+  | { ok: true }
+  | { ok: false; error: string };
+
 export type PredictionAccuracyMatch = {
   match_id: number;
   home_team: string;

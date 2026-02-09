@@ -675,8 +675,11 @@ async function insertBotMessageLog(
   payload: {
     chatId: number | null;
     userId: number | null;
+    adminId: string | null;
     threadId: number | null;
     messageId: number | null;
+    direction: "in" | "out";
+    sender: "bot" | "admin" | "user";
     messageType: "text" | "photo" | "invoice";
     text: string | null;
     extra?: Record<string, unknown> | null;
@@ -693,8 +696,11 @@ async function insertBotMessageLog(
     await supabase.from("bot_message_logs").insert({
       chat_id: payload.chatId,
       user_id: payload.userId,
+      admin_id: payload.adminId,
       thread_id: payload.threadId,
       message_id: payload.messageId,
+      direction: payload.direction,
+      sender: payload.sender,
       message_type: payload.messageType,
       text: payload.text,
       payload: payload.extra ?? null,
@@ -879,9 +885,10 @@ export async function sendMessage(
   text: string,
   replyMarkup?: TelegramInlineKeyboardMarkup,
   parseMode?: "HTML" | "MarkdownV2",
-  messageThreadId?: number
+  messageThreadId?: number,
+  logAdminId?: string
 ): Promise<void> {
-  await sendMessageWithResult(env, chatId, text, replyMarkup, parseMode, messageThreadId);
+  await sendMessageWithResult(env, chatId, text, replyMarkup, parseMode, messageThreadId, logAdminId);
 }
 
 export async function sendInvoice(
@@ -919,8 +926,11 @@ export async function sendInvoice(
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
         userId: resolvedChatId,
+        adminId: null,
         threadId: parsed.threadId ?? null,
         messageId: parsed.messageId,
+        direction: "out",
+        sender: "bot",
         messageType: "invoice",
         text: payload.title,
         extra: {
@@ -992,7 +1002,8 @@ export async function sendMessageWithResult(
   text: string,
   replyMarkup?: TelegramInlineKeyboardMarkup,
   parseMode?: "HTML" | "MarkdownV2",
-  messageThreadId?: number
+  messageThreadId?: number,
+  logAdminId?: string
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
   const payload: Record<string, unknown> = {
@@ -1022,8 +1033,11 @@ export async function sendMessageWithResult(
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
         userId: resolvedChatId,
+        adminId: logAdminId ?? null,
         threadId: parsed.threadId ?? (typeof messageThreadId === "number" ? messageThreadId : null),
         messageId: parsed.messageId,
+        direction: "out",
+        sender: logAdminId ? "admin" : "bot",
         messageType: "text",
         text
       });
@@ -1074,8 +1088,11 @@ export async function sendPhotoWithResult(
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
         userId: resolvedChatId,
+        adminId: null,
         threadId: parsed.threadId ?? (typeof messageThreadId === "number" ? messageThreadId : null),
         messageId: parsed.messageId,
+        direction: "out",
+        sender: "bot",
         messageType: "photo",
         text: caption ?? null,
         extra: { photo_url: photoUrl }

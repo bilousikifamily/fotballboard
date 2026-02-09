@@ -1,4 +1,12 @@
-import type { AdminLoginResponse, BotLogsResponse, ChannelWebappResponse, PredictionAccuracyResponse } from "../types";
+import type {
+  AdminChatMessagesResponse,
+  AdminChatSendResponse,
+  AdminChatThreadsResponse,
+  AdminLoginResponse,
+  BotLogsResponse,
+  ChannelWebappResponse,
+  PredictionAccuracyResponse
+} from "../types";
 import { authJsonHeaders, requestJson } from "./client";
 
 export function postAdminLogin(
@@ -27,6 +35,52 @@ export function fetchBotLogs(
   return requestJson<BotLogsResponse>(url.toString(), {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export function fetchAdminChatThreads(
+  apiBase: string,
+  token: string,
+  params: { limit?: number } = {}
+): Promise<{ response: Response; data: AdminChatThreadsResponse }> {
+  const url = new URL(`${apiBase}/api/admin/chat-threads`);
+  if (typeof params.limit === "number") {
+    url.searchParams.set("limit", String(params.limit));
+  }
+  return requestJson<AdminChatThreadsResponse>(url.toString(), {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export function fetchAdminChatMessages(
+  apiBase: string,
+  token: string,
+  params: { userId: number; limit?: number; before?: number }
+): Promise<{ response: Response; data: AdminChatMessagesResponse }> {
+  const url = new URL(`${apiBase}/api/admin/chat-messages`);
+  url.searchParams.set("user_id", String(params.userId));
+  if (typeof params.limit === "number") {
+    url.searchParams.set("limit", String(params.limit));
+  }
+  if (typeof params.before === "number") {
+    url.searchParams.set("before", String(params.before));
+  }
+  return requestJson<AdminChatMessagesResponse>(url.toString(), {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export function sendAdminChatMessage(
+  apiBase: string,
+  token: string,
+  payload: { user_id: number; text: string }
+): Promise<{ response: Response; data: AdminChatSendResponse }> {
+  return requestJson<AdminChatSendResponse>(`${apiBase}/api/admin/chat-send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   });
 }
 

@@ -576,6 +576,149 @@ export default {
       return jsonResponse({ ok: true, logs: data ?? [] }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/admin/chat-threads") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const limit = parseLimit(url.searchParams.get("limit"), 40, 200);
+      const { data, error } = await supabase
+        .from("admin_chat_threads")
+        .select(
+          "user_id, chat_id, direction, sender, message_type, last_text, last_message_at, username, first_name, last_name, nickname, photo_url, last_seen_at"
+        )
+        .order("last_message_at", { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error("Failed to fetch admin chat threads", error);
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, threads: data ?? [] }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/admin/chat-messages") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const userId = Number(url.searchParams.get("user_id") ?? "");
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return jsonResponse({ ok: false, error: "invalid_user_id" }, 400, corsHeaders());
+      }
+
+      const limit = parseLimit(url.searchParams.get("limit"), 50, 200);
+      const beforeId = Number(url.searchParams.get("before") ?? "");
+
+      let query = supabase
+        .from("bot_message_logs")
+        .select(
+          "id, chat_id, user_id, admin_id, thread_id, message_id, direction, sender, message_type, text, payload, created_at"
+        )
+        .eq("user_id", userId)
+        .order("id", { ascending: false });
+
+      if (Number.isFinite(beforeId)) {
+        query = query.lt("id", beforeId);
+      }
+
+      const { data, error } = await query.limit(limit);
+      if (error) {
+        console.error("Failed to fetch admin chat messages", error);
+        return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
+      }
+
+      return jsonResponse({ ok: true, messages: data ?? [] }, 200, corsHeaders());
+    }
+
+    if (url.pathname === "/api/admin/chat-send") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const secret = env.ADMIN_JWT_SECRET?.trim();
+      if (!secret) {
+        return jsonResponse({ ok: false, error: "missing_secret" }, 500, corsHeaders());
+      }
+      const verification = await verifyAdminJwt(adminBearer, secret);
+      if (!verification.ok) {
+        const status = adminAccessErrorStatus("invalid_token");
+        return jsonResponse({ ok: false, error: "invalid_token" }, status, corsHeaders());
+      }
+
+      const body = await readJson<{ user_id?: number; text?: string }>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+      const userId = typeof body.user_id === "number" ? body.user_id : Number(body.user_id ?? "");
+      const text = typeof body.text === "string" ? body.text.trim() : "";
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return jsonResponse({ ok: false, error: "invalid_user_id" }, 400, corsHeaders());
+      }
+      if (!text) {
+        return jsonResponse({ ok: false, error: "empty_text" }, 400, corsHeaders());
+      }
+
+      await sendMessage(env, userId, text, undefined, undefined, undefined, verification.claims.sub);
+      return jsonResponse({ ok: true }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/admin/prediction-accuracy") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -1796,13 +1939,14 @@ export default {
       }
 
       const supabase = createSupabaseClient(env);
-    if (supabase) {
-      await insertDebugUpdate(supabase, update);
-    } else {
-      console.error("Supabase not configured; /pay will not work");
-    }
-    await enforceFactionChatPermissions(env, supabase, update);
-    await handleUpdate(update, env, supabase);
+      if (supabase) {
+        await insertDebugUpdate(supabase, update);
+        await insertIncomingPrivateMessageLog(supabase, update);
+      } else {
+        console.error("Supabase not configured; /pay will not work");
+      }
+      await enforceFactionChatPermissions(env, supabase, update);
+      await handleUpdate(update, env, supabase);
       return new Response("ok");
     }
 
@@ -1890,6 +2034,46 @@ async function insertDebugUpdate(supabase: SupabaseClient, update: TelegramUpdat
     }
   } catch (error) {
     console.error("Failed to insert debug update", error);
+  }
+}
+
+async function insertIncomingPrivateMessageLog(supabase: SupabaseClient, update: TelegramUpdate): Promise<void> {
+  if (!update.message) {
+    return;
+  }
+  const message = update.message;
+  if (!message.chat || message.chat.type !== "private") {
+    return;
+  }
+  if (message.from?.is_bot) {
+    return;
+  }
+  const chatId = message.chat.id ?? null;
+  const userId = message.from?.id ?? message.chat.id ?? null;
+  if (typeof chatId !== "number" || chatId <= 0) {
+    return;
+  }
+  const text = message.text?.trim() ?? null;
+  const messageType = text ? "text" : "system";
+  try {
+    const { error } = await supabase.from("bot_message_logs").insert({
+      chat_id: chatId,
+      user_id: userId,
+      admin_id: null,
+      thread_id: message.message_thread_id ?? null,
+      message_id: message.message_id ?? null,
+      direction: "in",
+      sender: "user",
+      message_type: messageType,
+      text,
+      payload: null,
+      created_at: new Date().toISOString()
+    });
+    if (error) {
+      console.error("Failed to insert incoming bot message log", error);
+    }
+  } catch (error) {
+    console.error("Failed to insert incoming bot message log", error);
   }
 }
 

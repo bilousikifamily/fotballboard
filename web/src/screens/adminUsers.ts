@@ -1,4 +1,11 @@
-import type { LeaderboardUser, Match, PredictionAccuracyMatch, PredictionAccuracyUser } from "../types";
+import type {
+  AdminChatMessage,
+  AdminChatThread,
+  LeaderboardUser,
+  Match,
+  PredictionAccuracyMatch,
+  PredictionAccuracyUser
+} from "../types";
 import { formatKyivDateShort, formatKyivTime } from "../formatters/dates";
 import { formatUserName } from "../formatters/names";
 import { getAvatarLogoPath, getMatchTeamInfo } from "../features/clubs";
@@ -155,4 +162,82 @@ export function renderAdminPlayerAccuracy(users: PredictionAccuracyUser[]): stri
     .join("");
 
   return `<div class="admin-users-list">${rows}</div>`;
+}
+
+function formatChatThreadName(thread: AdminChatThread): string {
+  const nickname = thread.nickname?.trim();
+  if (nickname) {
+    return nickname;
+  }
+  const username = thread.username?.trim();
+  if (username) {
+    return username;
+  }
+  const fullName = `${thread.first_name ?? ""} ${thread.last_name ?? ""}`.trim();
+  if (fullName) {
+    return fullName;
+  }
+  return thread.user_id ? `id:${thread.user_id}` : "Невідомий";
+}
+
+export function renderAdminChatThreads(threads: AdminChatThread[], selectedUserId: number | null): string {
+  if (!threads.length) {
+    return `<p class="muted small">Поки що немає чатів.</p>`;
+  }
+
+  const rows = threads
+    .map((thread) => {
+      const name = formatChatThreadName(thread);
+      const timeLabel = thread.last_message_at
+        ? `${formatKyivDateShort(thread.last_message_at)} · ${formatKyivTime(thread.last_message_at)}`
+        : "—";
+      const lastText = thread.last_text?.trim() || "—";
+      const avatar = thread.photo_url
+        ? `<img class="table-avatar" src="${escapeAttribute(thread.photo_url)}" alt="" />`
+        : `<div class="table-avatar placeholder"></div>`;
+      const isActive = typeof thread.user_id === "number" && thread.user_id === selectedUserId;
+      const buttonLabel = thread.user_id ? String(thread.user_id) : "";
+      return `
+        <button class="admin-chat-thread${isActive ? " is-active" : ""}" type="button" data-admin-chat-thread="${escapeAttribute(buttonLabel)}">
+          ${avatar}
+          <div class="admin-chat-thread__body">
+            <div class="admin-chat-thread__top">
+              <span class="admin-chat-thread__name">${escapeHtml(name)}</span>
+              <span class="admin-chat-thread__time">${escapeHtml(timeLabel)}</span>
+            </div>
+            <div class="admin-chat-thread__preview">${escapeHtml(lastText)}</div>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
+
+  return `<div class="admin-chat-threads">${rows}</div>`;
+}
+
+export function renderAdminChatMessages(messages: AdminChatMessage[]): string {
+  if (!messages.length) {
+    return `<p class="muted small">Оберіть користувача зі списку.</p>`;
+  }
+
+  const rows = messages
+    .slice()
+    .reverse()
+    .map((message) => {
+      const timeLabel = message.created_at
+        ? `${formatKyivDateShort(message.created_at)} · ${formatKyivTime(message.created_at)}`
+        : "—";
+      const text = message.text?.trim() || message.message_type;
+      const isOutgoing = message.direction === "out";
+      const roleLabel = message.sender === "admin" ? "адмін" : message.sender === "bot" ? "бот" : "гравець";
+      return `
+        <div class="admin-chat-message${isOutgoing ? " is-outgoing" : " is-incoming"}">
+          <div class="admin-chat-message__meta">${escapeHtml(roleLabel)} · ${escapeHtml(timeLabel)}</div>
+          <div class="admin-chat-message__bubble">${escapeHtml(text)}</div>
+        </div>
+      `;
+    })
+    .join("");
+
+  return `<div class="admin-chat-messages">${rows}</div>`;
 }

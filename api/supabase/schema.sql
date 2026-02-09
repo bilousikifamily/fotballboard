@@ -80,14 +80,42 @@ create table if not exists bot_message_logs (
   id bigserial primary key,
   chat_id bigint,
   user_id bigint,
+  admin_id text,
   thread_id int4,
   message_id int4,
+  direction text not null,
+  sender text not null,
   message_type text not null,
   text text,
   payload jsonb,
   created_at timestamptz not null default now()
 );
 
+alter table if exists bot_message_logs add column if not exists admin_id text;
+alter table if exists bot_message_logs add column if not exists direction text;
+alter table if exists bot_message_logs add column if not exists sender text;
+
 create index if not exists bot_message_logs_chat_id_idx on bot_message_logs (chat_id);
 create index if not exists bot_message_logs_user_id_idx on bot_message_logs (user_id);
 create index if not exists bot_message_logs_created_at_idx on bot_message_logs (created_at);
+create index if not exists bot_message_logs_user_created_idx on bot_message_logs (user_id, created_at);
+
+create or replace view admin_chat_threads as
+select distinct on (log.user_id)
+  log.user_id,
+  log.chat_id,
+  log.direction,
+  log.sender,
+  log.message_type,
+  log.text as last_text,
+  log.created_at as last_message_at,
+  users.username,
+  users.first_name,
+  users.last_name,
+  users.nickname,
+  users.photo_url,
+  users.last_seen_at
+from bot_message_logs log
+left join users on users.id = log.user_id
+where log.user_id is not null
+order by log.user_id, log.created_at desc;
