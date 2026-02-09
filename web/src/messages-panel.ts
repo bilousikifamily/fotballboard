@@ -146,6 +146,24 @@ async function loadThreads(selectFirst = false): Promise<void> {
   }
 }
 
+function normalizeMessages(input: AdminChatMessage[]): AdminChatMessage[] {
+  const byId = new Map<number, AdminChatMessage>();
+  for (const message of input) {
+    if (typeof message.id !== "number") {
+      continue;
+    }
+    byId.set(message.id, message);
+  }
+  return Array.from(byId.values()).sort((a, b) => b.id - a.id);
+}
+
+function computeOldestId(list: AdminChatMessage[]): number | null {
+  if (list.length === 0) {
+    return null;
+  }
+  return list.reduce((min, msg) => (msg.id < min ? msg.id : min), list[0].id);
+}
+
 async function loadMessages(loadMore = false): Promise<void> {
   if (!API_BASE || !selectedUserId) {
     return;
@@ -169,8 +187,12 @@ async function loadMessages(loadMore = false): Promise<void> {
       return;
     }
     const incoming = data.messages ?? [];
-    messages = loadMore ? [...messages, ...incoming] : incoming;
-    oldestMessageId = messages.length > 0 ? messages[messages.length - 1]?.id ?? null : null;
+    if (loadMore && incoming.length === 0) {
+      setStatus(messagesStatus, "Немає старіших повідомлень.");
+      return;
+    }
+    messages = normalizeMessages(loadMore ? [...messages, ...incoming] : incoming);
+    oldestMessageId = computeOldestId(messages);
     if (!loadMore) {
       setStatus(messagesStatus, "");
     }
@@ -295,6 +317,8 @@ threadsList?.addEventListener("click", (event) => {
   }
   selectedUserId = userId;
   oldestMessageId = null;
+  messages = [];
+  renderMessages();
   renderThreads();
   void loadMessages();
 });
