@@ -1628,6 +1628,11 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
+      await logDebugUpdate(supabase, "match_result_notifications_count", {
+        matchId,
+        error: `count=${result.notifications.length}`
+      });
+
       if (result.notifications.length) {
         await enqueueMatchResultNotifications(env, supabase, result.notifications);
         ctx.waitUntil(handleMatchResultNotificationQueue(env));
@@ -7161,6 +7166,11 @@ async function enqueueMatchResultNotifications(
     return;
   }
 
+  await logDebugUpdate(supabase, "match_result_enqueue", {
+    matchId: notifications[0]?.match_id,
+    error: `count=${notifications.length}`
+  });
+
   const now = new Date().toISOString();
   const records = notifications.map((notification) => ({
     job_key: buildMatchResultNotificationJobKey(notification),
@@ -7184,6 +7194,11 @@ async function enqueueMatchResultNotifications(
   if (!error) {
     return;
   }
+
+  await logDebugUpdate(supabase, "match_result_enqueue_failed", {
+    matchId: notifications[0]?.match_id,
+    error: formatSupabaseError(error)
+  });
 
   console.error("Failed to enqueue match result notifications", error);
   for (const notification of notifications) {
