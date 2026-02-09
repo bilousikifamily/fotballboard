@@ -12,6 +12,7 @@ let threads: AdminChatThread[] = [];
 let messages: AdminChatMessage[] = [];
 let selectedUserId: number | null = null;
 let fallbackUsers: LeaderboardUser[] = [];
+let oldestMessageId: number | null = null;
 
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const messagesPanel = document.querySelector<HTMLElement>("[data-messages-panel]");
@@ -24,6 +25,7 @@ const threadsStatus = document.querySelector<HTMLElement>("[data-admin-chat-thre
 const messagesList = document.querySelector<HTMLElement>("[data-admin-chat-messages]");
 const messagesStatus = document.querySelector<HTMLElement>("[data-admin-chat-form-status]");
 const messagesRefresh = document.querySelector<HTMLButtonElement>("[data-admin-chat-messages-refresh]");
+const loadMoreButton = document.querySelector<HTMLButtonElement>("[data-admin-chat-load-more]");
 const threadsRefresh = document.querySelector<HTMLButtonElement>("[data-admin-chat-refresh]");
 const selectedLabel = document.querySelector<HTMLElement>("[data-admin-chat-selected]");
 const chatForm = document.querySelector<HTMLFormElement>("[data-admin-chat-form]");
@@ -56,7 +58,7 @@ function renderThreads(): void {
   if (!threadsList) {
     return;
   }
-  const activeThreads = threads.length > 0 ? threads : fallbackUsers.map((user) => ({
+  const fallbackThreads = fallbackUsers.map((user) => ({
     user_id: user.id,
     chat_id: user.id,
     direction: null,
@@ -71,6 +73,21 @@ function renderThreads(): void {
     photo_url: user.photo_url ?? null,
     last_seen_at: user.last_seen_at ?? null
   }));
+  const byUserId = new Map<number, AdminChatThread>();
+  for (const thread of [...threads, ...fallbackThreads]) {
+    if (typeof thread.user_id !== "number") {
+      continue;
+    }
+    const existing = byUserId.get(thread.user_id);
+    if (!existing || (existing.last_message_at ?? "") < (thread.last_message_at ?? "")) {
+      byUserId.set(thread.user_id, thread);
+    }
+  }
+  const activeThreads = Array.from(byUserId.values()).sort((a, b) => {
+    const aTime = a.last_message_at ?? "";
+    const bTime = b.last_message_at ?? "";
+    return bTime.localeCompare(aTime);
+  });
   if (activeThreads.length === 0) {
     threadsList.innerHTML = "";
     setStatus(threadsStatus, "Поки що немає чатів.");
@@ -87,6 +104,9 @@ function renderMessages(): void {
   if (messagesList) {
     messagesList.innerHTML = renderAdminChatMessages(messages);
     messagesList.scrollTop = messagesList.scrollHeight;
+  }
+  if (loadMoreButton) {
+    loadMoreButton.disabled = !oldestMessageId;
   }
 }
 
@@ -108,11 +128,9 @@ async function loadThreads(selectFirst = false): Promise<void> {
     }
     threads = data.threads ?? [];
     fallbackUsers = [];
-    if (threads.length === 0) {
-      const { response: usersResponse, data: usersData } = await fetchLeaderboard(API_BASE, "", 200, token);
-      if (usersResponse.ok && usersData.ok) {
-        fallbackUsers = usersData.users ?? [];
-      }
+    const { response: usersResponse, data: usersData } = await fetchLeaderboard(API_BASE, "", 200, token);
+    if (usersResponse.ok && usersData.ok) {
+      fallbackUsers = usersData.users ?? [];
     }
     if (selectFirst && !selectedUserId && threads.length > 0) {
       const first = threads[0]?.user_id ?? null;
@@ -128,7 +146,7 @@ async function loadThreads(selectFirst = false): Promise<void> {
   }
 }
 
-async function loadMessages(): Promise<void> {
+async function loadMessages(loadMore = false): Promise<void> {
   if (!API_BASE || !selectedUserId) {
     return;
   }
@@ -137,18 +155,25 @@ async function loadMessages(): Promise<void> {
     setStatus(messagesStatus, "Потрібна авторизація.");
     return;
   }
-  setStatus(messagesStatus, "Завантаження...");
+  if (!loadMore) {
+    setStatus(messagesStatus, "Завантаження...");
+  }
   try {
     const { response, data } = await fetchAdminChatMessages(API_BASE, token, {
       userId: selectedUserId,
-      limit: 120
+      limit: 120,
+      before: loadMore ? oldestMessageId ?? undefined : undefined
     });
     if (!response.ok || !data.ok) {
       setStatus(messagesStatus, "Не вдалося завантажити повідомлення.");
       return;
     }
-    messages = data.messages ?? [];
-    setStatus(messagesStatus, "");
+    const incoming = data.messages ?? [];
+    messages = loadMore ? [...messages, ...incoming] : incoming;
+    oldestMessageId = messages.length > 0 ? messages[messages.length - 1]?.id ?? null : null;
+    if (!loadMore) {
+      setStatus(messagesStatus, "");
+    }
     renderMessages();
   } catch {
     setStatus(messagesStatus, "Не вдалося завантажити повідомлення.");
@@ -249,7 +274,14 @@ threadsRefresh?.addEventListener("click", () => {
   void loadThreads(true);
 });
 messagesRefresh?.addEventListener("click", () => {
+  oldestMessageId = null;
   void loadMessages();
+});
+loadMoreButton?.addEventListener("click", () => {
+  if (!oldestMessageId) {
+    return;
+  }
+  void loadMessages(true);
 });
 threadsList?.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-chat-thread]");
@@ -262,6 +294,7 @@ threadsList?.addEventListener("click", (event) => {
     return;
   }
   selectedUserId = userId;
+  oldestMessageId = null;
   renderThreads();
   void loadMessages();
 });
