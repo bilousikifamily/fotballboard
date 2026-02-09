@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Env } from "../env";
 import type {
   TelegramCallbackQuery,
@@ -19,6 +19,18 @@ const REGULAR_MONTH_PRICE = 100;
 const KYIV_TIMEZONE = "Europe/Kyiv";
 const SUBSCRIPTION_CARD_CALLBACK = "subscription_pay";
 const SUBSCRIPTION_CARD_IMAGE = "/images/subscription.png";
+
+type TelegramMessageResponse = {
+  ok?: boolean;
+  result?: {
+    message_id?: number;
+    chat?: {
+      id?: number;
+      type?: string;
+    };
+    message_thread_id?: number;
+  };
+};
 
 export async function handleUpdate(
   update: TelegramUpdate,
@@ -616,6 +628,83 @@ async function insertBotLog(
   }
 }
 
+function createSupabaseClientForLogs(env: Env): SupabaseClient | null {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { "X-Client-Info": "tg-webapp-worker" } }
+  });
+}
+
+function parseTelegramMessageResponse(body: string): {
+  messageId: number | null;
+  chatId: number | null;
+  chatType: string | null;
+  threadId: number | null;
+} {
+  if (!body) {
+    return { messageId: null, chatId: null, chatType: null, threadId: null };
+  }
+  try {
+    const payload = JSON.parse(body) as TelegramMessageResponse;
+    const result = payload.result;
+    const chat = result?.chat;
+    return {
+      messageId: typeof result?.message_id === "number" ? result.message_id : null,
+      chatId: typeof chat?.id === "number" ? chat.id : null,
+      chatType: typeof chat?.type === "string" ? chat.type : null,
+      threadId: typeof result?.message_thread_id === "number" ? result.message_thread_id : null
+    };
+  } catch {
+    return { messageId: null, chatId: null, chatType: null, threadId: null };
+  }
+}
+
+function shouldLogPrivateChat(chatId: number | null, chatType: string | null): boolean {
+  if (chatType) {
+    return chatType === "private";
+  }
+  return typeof chatId === "number" && chatId > 0;
+}
+
+async function insertBotMessageLog(
+  env: Env,
+  payload: {
+    chatId: number | null;
+    userId: number | null;
+    threadId: number | null;
+    messageId: number | null;
+    messageType: "text" | "photo" | "invoice";
+    text: string | null;
+    extra?: Record<string, unknown> | null;
+  }
+): Promise<void> {
+  if (typeof payload.chatId !== "number" || payload.chatId <= 0) {
+    return;
+  }
+  const supabase = createSupabaseClientForLogs(env);
+  if (!supabase) {
+    return;
+  }
+  try {
+    await supabase.from("bot_message_logs").insert({
+      chat_id: payload.chatId,
+      user_id: payload.userId,
+      thread_id: payload.threadId,
+      message_id: payload.messageId,
+      message_type: payload.messageType,
+      text: payload.text,
+      payload: payload.extra ?? null,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Failed to insert bot message log", error);
+  }
+}
+
 async function sendSubscriptionCard(
   env: Env,
   chatId: number | string,
@@ -817,11 +906,34 @@ export async function sendInvoice(
     prices: payload.prices
   };
 
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const responseBody = await response.text();
+    const parsed = parseTelegramMessageResponse(responseBody);
+    const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
+    if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+      await insertBotMessageLog(env, {
+        chatId: resolvedChatId,
+        userId: resolvedChatId,
+        threadId: parsed.threadId ?? null,
+        messageId: parsed.messageId,
+        messageType: "invoice",
+        text: payload.title,
+        extra: {
+          invoice_payload: payload.payload,
+          currency: payload.currency,
+          prices: payload.prices,
+          description: payload.description
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Failed to send invoice", error);
+  }
 }
 
 export async function answerPreCheckoutQuery(
@@ -904,6 +1016,18 @@ export async function sendMessageWithResult(
       body: JSON.stringify(payload)
     });
     const body = await response.text();
+    const parsed = parseTelegramMessageResponse(body);
+    const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
+    if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+      await insertBotMessageLog(env, {
+        chatId: resolvedChatId,
+        userId: resolvedChatId,
+        threadId: parsed.threadId ?? (typeof messageThreadId === "number" ? messageThreadId : null),
+        messageId: parsed.messageId,
+        messageType: "text",
+        text
+      });
+    }
     return { ok: response.ok, status: response.status, body };
   } catch (error) {
     return { ok: false, status: null, body: String(error) };
@@ -944,6 +1068,19 @@ export async function sendPhotoWithResult(
       body: JSON.stringify(payload)
     });
     const body = await response.text();
+    const parsed = parseTelegramMessageResponse(body);
+    const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
+    if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+      await insertBotMessageLog(env, {
+        chatId: resolvedChatId,
+        userId: resolvedChatId,
+        threadId: parsed.threadId ?? (typeof messageThreadId === "number" ? messageThreadId : null),
+        messageId: parsed.messageId,
+        messageType: "photo",
+        text: caption ?? null,
+        extra: { photo_url: photoUrl }
+      });
+    }
     return { ok: response.ok, status: response.status, body };
   } catch (error) {
     return { ok: false, status: null, body: String(error) };

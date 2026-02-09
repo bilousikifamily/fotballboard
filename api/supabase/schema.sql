@@ -75,3 +75,19 @@ create index if not exists match_result_notification_jobs_status_next_attempt_id
   on match_result_notification_jobs (status, next_attempt_at);
 create index if not exists match_result_notification_jobs_locked_at_idx
   on match_result_notification_jobs (locked_at);
+
+create table if not exists bot_message_logs (
+  id bigserial primary key,
+  chat_id bigint,
+  user_id bigint,
+  thread_id int4,
+  message_id int4,
+  message_type text not null,
+  text text,
+  payload jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists bot_message_logs_chat_id_idx on bot_message_logs (chat_id);
+create index if not exists bot_message_logs_user_id_idx on bot_message_logs (user_id);
+create index if not exists bot_message_logs_created_at_idx on bot_message_logs (created_at);
