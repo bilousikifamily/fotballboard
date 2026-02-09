@@ -56,9 +56,12 @@ export function fetchAdminChatThreads(
 export function fetchAdminChatMessages(
   apiBase: string,
   token: string,
-  params: { userId: number; limit?: number; before?: number }
+  params: { userId: number; chatId?: number; limit?: number; before?: number }
 ): Promise<{ response: Response; data: AdminChatMessagesResponse }> {
   const url = new URL(`${apiBase}/api/admin/chat-messages`);
+  if (typeof params.chatId === "number") {
+    url.searchParams.set("chat_id", String(params.chatId));
+  }
   url.searchParams.set("user_id", String(params.userId));
   if (typeof params.limit === "number") {
     url.searchParams.set("limit", String(params.limit));

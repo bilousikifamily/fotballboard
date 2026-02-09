@@ -13,6 +13,7 @@ let messages: AdminChatMessage[] = [];
 let selectedUserId: number | null = null;
 let fallbackUsers: LeaderboardUser[] = [];
 let oldestMessageId: number | null = null;
+let selectedChatId: number | null = null;
 
 const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
 const messagesPanel = document.querySelector<HTMLElement>("[data-messages-panel]");
@@ -54,6 +55,16 @@ function setStatus(el: HTMLElement | null, text: string): void {
   }
 }
 
+function resolveChatId(thread: AdminChatThread): number | null {
+  if (typeof thread.chat_id === "number") {
+    return thread.chat_id;
+  }
+  if (typeof thread.user_id === "number") {
+    return thread.user_id;
+  }
+  return null;
+}
+
 function renderThreads(): void {
   if (!threadsList) {
     return;
@@ -88,6 +99,12 @@ function renderThreads(): void {
     const bTime = b.last_message_at ?? "";
     return bTime.localeCompare(aTime);
   });
+  if (selectedUserId && !selectedChatId) {
+    const selectedThread = activeThreads.find((thread) => thread.user_id === selectedUserId);
+    if (selectedThread) {
+      selectedChatId = resolveChatId(selectedThread);
+    }
+  }
   if (activeThreads.length === 0) {
     threadsList.innerHTML = "";
     setStatus(threadsStatus, "Поки що немає чатів.");
@@ -183,6 +200,7 @@ async function loadMessages(loadMore = false): Promise<void> {
   try {
     const { response, data } = await fetchAdminChatMessages(API_BASE, token, {
       userId: selectedUserId,
+      chatId: selectedChatId ?? undefined,
       limit: 120,
       before: loadMore ? oldestMessageId ?? undefined : undefined
     });
@@ -320,6 +338,8 @@ threadsList?.addEventListener("click", (event) => {
     return;
   }
   selectedUserId = userId;
+  const activeThread = threads.find((thread) => thread.user_id === userId) ?? null;
+  selectedChatId = activeThread ? resolveChatId(activeThread) : userId;
   oldestMessageId = null;
   messages = [];
   renderMessages();

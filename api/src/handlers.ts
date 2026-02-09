@@ -639,7 +639,9 @@ export default {
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
-      const userId = Number(url.searchParams.get("user_id") ?? "");
+      const userIdRaw = url.searchParams.get("user_id") ?? "";
+      const chatIdRaw = url.searchParams.get("chat_id") ?? "";
+      const userId = Number(userIdRaw || chatIdRaw);
       if (!Number.isFinite(userId) || userId <= 0) {
         return jsonResponse({ ok: false, error: "invalid_user_id" }, 400, corsHeaders());
       }
@@ -652,7 +654,7 @@ export default {
         .select(
           "id, chat_id, user_id, admin_id, thread_id, message_id, direction, sender, message_type, text, payload, created_at"
         )
-        .or(`user_id.eq.${userId},chat_id.eq.${userId}`)
+        .or(`chat_id.eq.${userId},user_id.eq.${userId}`)
         .order("id", { ascending: false });
 
       if (Number.isFinite(beforeId)) {
