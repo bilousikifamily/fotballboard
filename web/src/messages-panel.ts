@@ -102,7 +102,11 @@ function renderThreads(): void {
 
 function renderMessages(): void {
   if (messagesList) {
-    messagesList.innerHTML = renderAdminChatMessages(messages);
+    if (messages.length === 0 && selectedUserId) {
+      messagesList.innerHTML = `<p class="muted small">Поки що немає повідомлень.</p>`;
+    } else {
+      messagesList.innerHTML = renderAdminChatMessages(messages);
+    }
     messagesList.scrollTop = messagesList.scrollHeight;
   }
   if (loadMoreButton) {

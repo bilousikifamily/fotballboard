@@ -652,7 +652,7 @@ export default {
         .select(
           "id, chat_id, user_id, admin_id, thread_id, message_id, direction, sender, message_type, text, payload, created_at"
         )
-        .eq("user_id", userId)
+        .or(`user_id.eq.${userId},chat_id.eq.${userId}`)
         .order("id", { ascending: false });
 
       if (Number.isFinite(beforeId)) {
