@@ -616,6 +616,70 @@ export default {
       return jsonResponse({ ok: true, threads: data ?? [] }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/admin/chat-debug") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "GET") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const userIdRaw = url.searchParams.get("user_id") ?? "";
+      const chatIdRaw = url.searchParams.get("chat_id") ?? "";
+      const userId = Number(userIdRaw || chatIdRaw);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return jsonResponse({ ok: false, error: "invalid_user_id" }, 400, corsHeaders());
+      }
+
+      let supabaseHost: string | null = null;
+      try {
+        supabaseHost = env.SUPABASE_URL ? new URL(env.SUPABASE_URL).hostname : null;
+      } catch {
+        supabaseHost = env.SUPABASE_URL ?? null;
+      }
+
+      const [{ count: userCount, error: userError }, { count: chatCount, error: chatError }] = await Promise.all([
+        supabase
+          .from("bot_message_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId),
+        supabase
+          .from("bot_message_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("chat_id", userId)
+      ]);
+
+      if (userError || chatError) {
+        console.error("Failed to fetch admin chat debug counts", { userError, chatError });
+      }
+
+      return jsonResponse(
+        {
+          ok: true,
+          supabase_host: supabaseHost,
+          user_id: userId,
+          counts: { by_user_id: userCount ?? 0, by_chat_id: chatCount ?? 0 }
+        },
+        200,
+        corsHeaders()
+      );
+    }
+
     if (url.pathname === "/api/admin/chat-messages") {
       if (request.method === "OPTIONS") {
         return corsResponse();
