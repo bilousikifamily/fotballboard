@@ -56,6 +56,7 @@ export type AdminChatMessage = {
   id: number;
   chat_id: number | null;
   user_id: number | null;
+  user_nickname?: string | null;
   admin_id: string | null;
   thread_id: number | null;
   message_id: number | null;
@@ -63,6 +64,10 @@ export type AdminChatMessage = {
   sender: "bot" | "admin" | "user";
   message_type: string;
   text: string | null;
+  delivery_status?: string | null;
+  error_code?: number | null;
+  http_status?: number | null;
+  error_message?: string | null;
   payload: Record<string, unknown> | null;
   created_at: string | null;
 };

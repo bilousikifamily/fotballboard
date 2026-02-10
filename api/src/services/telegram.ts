@@ -663,6 +663,21 @@ function parseTelegramMessageResponse(body: string): {
   }
 }
 
+function parseTelegramErrorResponse(body: string): { errorCode: number | null; description: string | null } {
+  if (!body) {
+    return { errorCode: null, description: null };
+  }
+  try {
+    const payload = JSON.parse(body) as { ok?: boolean; error_code?: number; description?: string };
+    return {
+      errorCode: typeof payload.error_code === "number" ? payload.error_code : null,
+      description: typeof payload.description === "string" ? payload.description : null
+    };
+  } catch {
+    return { errorCode: null, description: null };
+  }
+}
+
 function shouldLogPrivateChat(chatId: number | null, chatType: string | null): boolean {
   if (chatType) {
     return chatType === "private";
@@ -676,12 +691,17 @@ async function insertBotMessageLog(
     chatId: number | null;
     userId: number | null;
     adminId: string | null;
+    userNickname?: string | null;
     threadId: number | null;
     messageId: number | null;
     direction: "in" | "out";
     sender: "bot" | "admin" | "user";
     messageType: "text" | "photo" | "invoice";
     text: string | null;
+    deliveryStatus?: "sent" | "failed" | null;
+    errorCode?: number | null;
+    httpStatus?: number | null;
+    errorMessage?: string | null;
     extra?: Record<string, unknown> | null;
   }
 ): Promise<void> {
@@ -693,9 +713,20 @@ async function insertBotMessageLog(
     return;
   }
   try {
+    let resolvedNickname = payload.userNickname ?? null;
+    if (!resolvedNickname && typeof payload.userId === "number") {
+      const { data } = await supabase
+        .from("users")
+        .select("nickname")
+        .eq("id", payload.userId)
+        .maybeSingle();
+      resolvedNickname = typeof data?.nickname === "string" ? data.nickname : null;
+    }
+
     await supabase.from("bot_message_logs").insert({
       chat_id: payload.chatId,
       user_id: payload.userId,
+      user_nickname: resolvedNickname,
       admin_id: payload.adminId,
       thread_id: payload.threadId,
       message_id: payload.messageId,
@@ -703,6 +734,10 @@ async function insertBotMessageLog(
       sender: payload.sender,
       message_type: payload.messageType,
       text: payload.text,
+      delivery_status: payload.deliveryStatus ?? null,
+      error_code: payload.errorCode ?? null,
+      http_status: payload.httpStatus ?? null,
+      error_message: payload.errorMessage ?? null,
       payload: payload.extra ?? null,
       created_at: new Date().toISOString()
     });
@@ -921,6 +956,7 @@ export async function sendInvoice(
     });
     const responseBody = await response.text();
     const parsed = parseTelegramMessageResponse(responseBody);
+    const parsedError = parseTelegramErrorResponse(responseBody);
     const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
     if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
@@ -933,6 +969,10 @@ export async function sendInvoice(
         sender: "bot",
         messageType: "invoice",
         text: payload.title,
+        deliveryStatus: "sent",
+        errorCode: null,
+        httpStatus: response.status,
+        errorMessage: null,
         extra: {
           invoice_payload: payload.payload,
           currency: payload.currency,
@@ -940,8 +980,41 @@ export async function sendInvoice(
           description: payload.description
         }
       });
+    } else if (shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+      await insertBotMessageLog(env, {
+        chatId: resolvedChatId,
+        userId: resolvedChatId,
+        adminId: null,
+        threadId: parsed.threadId ?? null,
+        messageId: parsed.messageId,
+        direction: "out",
+        sender: "bot",
+        messageType: "invoice",
+        text: payload.title,
+        deliveryStatus: "failed",
+        errorCode: parsedError.errorCode,
+        httpStatus: response.status,
+        errorMessage: parsedError.description ?? responseBody
+      });
     }
   } catch (error) {
+    if (shouldLogPrivateChat(typeof chatId === "number" ? chatId : null, null)) {
+      await insertBotMessageLog(env, {
+        chatId: typeof chatId === "number" ? chatId : null,
+        userId: typeof chatId === "number" ? chatId : null,
+        adminId: null,
+        threadId: null,
+        messageId: null,
+        direction: "out",
+        sender: "bot",
+        messageType: "invoice",
+        text: payload.title,
+        deliveryStatus: "failed",
+        errorCode: null,
+        httpStatus: null,
+        errorMessage: String(error)
+      });
+    }
     console.error("Failed to send invoice", error);
   }
 }
@@ -1028,6 +1101,7 @@ export async function sendMessageWithResult(
     });
     const body = await response.text();
     const parsed = parseTelegramMessageResponse(body);
+    const parsedError = parseTelegramErrorResponse(body);
     const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
     if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
@@ -1039,11 +1113,48 @@ export async function sendMessageWithResult(
         direction: "out",
         sender: logAdminId ? "admin" : "bot",
         messageType: "text",
-        text
+        text,
+        deliveryStatus: "sent",
+        errorCode: null,
+        httpStatus: response.status,
+        errorMessage: null
+      });
+    } else if (shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+      await insertBotMessageLog(env, {
+        chatId: resolvedChatId,
+        userId: resolvedChatId,
+        adminId: logAdminId ?? null,
+        threadId: parsed.threadId ?? (typeof messageThreadId === "number" ? messageThreadId : null),
+        messageId: parsed.messageId,
+        direction: "out",
+        sender: logAdminId ? "admin" : "bot",
+        messageType: "text",
+        text,
+        deliveryStatus: "failed",
+        errorCode: parsedError.errorCode,
+        httpStatus: response.status,
+        errorMessage: parsedError.description ?? body
       });
     }
     return { ok: response.ok, status: response.status, body };
   } catch (error) {
+    if (shouldLogPrivateChat(typeof chatId === "number" ? chatId : null, null)) {
+      await insertBotMessageLog(env, {
+        chatId: typeof chatId === "number" ? chatId : null,
+        userId: typeof chatId === "number" ? chatId : null,
+        adminId: logAdminId ?? null,
+        threadId: typeof messageThreadId === "number" ? messageThreadId : null,
+        messageId: null,
+        direction: "out",
+        sender: logAdminId ? "admin" : "bot",
+        messageType: "text",
+        text,
+        deliveryStatus: "failed",
+        errorCode: null,
+        httpStatus: null,
+        errorMessage: String(error)
+      });
+    }
     return { ok: false, status: null, body: String(error) };
   }
 }
@@ -1083,6 +1194,7 @@ export async function sendPhotoWithResult(
     });
     const body = await response.text();
     const parsed = parseTelegramMessageResponse(body);
+    const parsedError = parseTelegramErrorResponse(body);
     const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
     if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
@@ -1095,11 +1207,50 @@ export async function sendPhotoWithResult(
         sender: "bot",
         messageType: "photo",
         text: caption ?? null,
+        deliveryStatus: "sent",
+        errorCode: null,
+        httpStatus: response.status,
+        errorMessage: null,
+        extra: { photo_url: photoUrl }
+      });
+    } else if (shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+      await insertBotMessageLog(env, {
+        chatId: resolvedChatId,
+        userId: resolvedChatId,
+        adminId: null,
+        threadId: parsed.threadId ?? (typeof messageThreadId === "number" ? messageThreadId : null),
+        messageId: parsed.messageId,
+        direction: "out",
+        sender: "bot",
+        messageType: "photo",
+        text: caption ?? null,
+        deliveryStatus: "failed",
+        errorCode: parsedError.errorCode,
+        httpStatus: response.status,
+        errorMessage: parsedError.description ?? body,
         extra: { photo_url: photoUrl }
       });
     }
     return { ok: response.ok, status: response.status, body };
   } catch (error) {
+    if (shouldLogPrivateChat(typeof chatId === "number" ? chatId : null, null)) {
+      await insertBotMessageLog(env, {
+        chatId: typeof chatId === "number" ? chatId : null,
+        userId: typeof chatId === "number" ? chatId : null,
+        adminId: null,
+        threadId: typeof messageThreadId === "number" ? messageThreadId : null,
+        messageId: null,
+        direction: "out",
+        sender: "bot",
+        messageType: "photo",
+        text: caption ?? null,
+        deliveryStatus: "failed",
+        errorCode: null,
+        httpStatus: null,
+        errorMessage: String(error),
+        extra: { photo_url: photoUrl }
+      });
+    }
     return { ok: false, status: null, body: String(error) };
   }
 }

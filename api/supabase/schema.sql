@@ -80,6 +80,7 @@ create table if not exists bot_message_logs (
   id bigserial primary key,
   chat_id bigint,
   user_id bigint,
+  user_nickname text,
   admin_id text,
   thread_id int4,
   message_id int4,
@@ -87,13 +88,22 @@ create table if not exists bot_message_logs (
   sender text not null,
   message_type text not null,
   text text,
+  delivery_status text,
+  error_code int4,
+  http_status int4,
+  error_message text,
   payload jsonb,
   created_at timestamptz not null default now()
 );
 
+alter table if exists bot_message_logs add column if not exists user_nickname text;
 alter table if exists bot_message_logs add column if not exists admin_id text;
 alter table if exists bot_message_logs add column if not exists direction text;
 alter table if exists bot_message_logs add column if not exists sender text;
+alter table if exists bot_message_logs add column if not exists delivery_status text;
+alter table if exists bot_message_logs add column if not exists error_code int4;
+alter table if exists bot_message_logs add column if not exists http_status int4;
+alter table if exists bot_message_logs add column if not exists error_message text;
 
 create index if not exists bot_message_logs_chat_id_idx on bot_message_logs (chat_id);
 create index if not exists bot_message_logs_user_id_idx on bot_message_logs (user_id);

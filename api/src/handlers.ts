@@ -713,7 +713,7 @@ export default {
       const limit = parseLimit(url.searchParams.get("limit"), 50, 200);
       const beforeId = Number(url.searchParams.get("before") ?? "");
       const selectFields =
-        "id, chat_id, user_id, admin_id, thread_id, message_id, direction, sender, message_type, text, payload, created_at";
+        "id, chat_id, user_id, user_nickname, admin_id, thread_id, message_id, direction, sender, message_type, text, delivery_status, error_code, http_status, error_message, payload, created_at";
 
       let userQuery = supabase
         .from("bot_message_logs")
@@ -2158,6 +2158,7 @@ async function insertIncomingPrivateMessageLog(supabase: SupabaseClient, update:
     const { error } = await supabase.from("bot_message_logs").insert({
       chat_id: chatId,
       user_id: userId,
+      user_nickname: message.from?.username ?? null,
       admin_id: null,
       thread_id: message.message_thread_id ?? null,
       message_id: message.message_id ?? null,
