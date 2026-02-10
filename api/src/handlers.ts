@@ -104,7 +104,7 @@ const MATCH_RESULT_NOTIFICATION_LOCK_TIMEOUT_MS = 15 * 60 * 1000;
 const ANNOUNCEMENT_QUEUE_BATCH_SIZE = 100;
 const ANNOUNCEMENT_QUEUE_CONCURRENCY = 6;
 const ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS = 5;
-const ANNOUNCEMENT_QUEUE_LOCK_TIMEOUT_MS = 10 * 60 * 1000;
+const ANNOUNCEMENT_QUEUE_LOCK_TIMEOUT_MS = 2 * 60 * 1000;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const ANALITIKA_LEAGUE_ID = "english-premier-league";
@@ -6234,90 +6234,121 @@ async function processAnnouncementJob(env: Env, supabase: SupabaseClient, job: A
   const attempts = (job.attempts ?? 0) + 1;
   const maxAttempts = job.max_attempts ?? ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS;
   const nowIso = new Date().toISOString();
+  let finalized = false;
+  let finalReason = "unknown";
 
-  const caption = typeof job.caption === "string" ? job.caption : "";
-  if (!caption || !Array.isArray(job.match_ids) || job.match_ids.length === 0) {
-    await markAnnouncementJobFailed(supabase, job.id, attempts, "invalid_payload");
-    return;
-  }
+  try {
+    const caption = typeof job.caption === "string" ? job.caption : "";
+    if (!caption || !Array.isArray(job.match_ids) || job.match_ids.length === 0) {
+      await markAnnouncementJobFailed(supabase, job.id, attempts, "invalid_payload");
+      finalized = true;
+      finalReason = "invalid_payload";
+      return;
+    }
 
-  const alreadySent = await hasSentAnnouncementToday(supabase, job.user_id, caption);
-  if (alreadySent) {
-    await markAnnouncementJobSkipped(supabase, job.id, attempts, "already_sent_today");
-    await insertAnnouncementAudit(supabase, {
-      userId: job.user_id,
-      chatId: job.user_id,
-      status: "skipped",
-      reason: "already_sent_today",
-      caption,
-      matchIds: job.match_ids
-    });
-    return;
-  }
+    const alreadySent = await hasSentAnnouncementToday(supabase, job.user_id, caption);
+    if (alreadySent) {
+      await markAnnouncementJobSkipped(supabase, job.id, attempts, "already_sent_today");
+      await insertAnnouncementAudit(supabase, {
+        userId: job.user_id,
+        chatId: job.user_id,
+        status: "skipped",
+        reason: "already_sent_today",
+        caption,
+        matchIds: job.match_ids
+      });
+      finalized = true;
+      finalReason = "already_sent_today";
+      return;
+    }
 
-  const imageUrl = buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE);
-  const keyboard = { inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappAdminLayoutUrl(env) } }]] };
-  const result = await sendPhotoWithResult(env, job.user_id, imageUrl, caption, keyboard);
+    const imageUrl = buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE);
+    const keyboard = { inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappAdminLayoutUrl(env) } }]] };
+    const result = await sendPhotoWithResult(env, job.user_id, imageUrl, caption, keyboard);
 
-  if (result.ok) {
+    if (result.ok) {
+      const { error } = await supabase
+        .from("announcement_queue")
+        .update({
+          status: "sent",
+          attempts,
+          locked_at: null,
+          last_error: null,
+          sent_at: nowIso,
+          updated_at: nowIso
+        })
+        .eq("id", job.id);
+      if (error) {
+        console.error("Failed to mark announcement job as sent", error, { jobId: job.id });
+      }
+      await insertAnnouncementAudit(supabase, {
+        userId: job.user_id,
+        chatId: job.user_id,
+        status: "sent",
+        reason: "sent",
+        caption,
+        matchIds: job.match_ids,
+        httpStatus: result.status ?? null
+      });
+      finalized = true;
+      finalReason = "sent";
+      return;
+    }
+
+    const retryDelayMs = computeAnnouncementRetryDelayMs(result, attempts);
+    if (retryDelayMs === null || attempts >= maxAttempts) {
+      const parsed = parseTelegramErrorDetails(result.body);
+      await markAnnouncementJobFailed(supabase, job.id, attempts, buildAnnouncementDeliveryError(result));
+      await insertAnnouncementAudit(supabase, {
+        userId: job.user_id,
+        chatId: job.user_id,
+        status: "failed",
+        reason: "send_failed",
+        caption,
+        matchIds: job.match_ids,
+        errorCode: parsed.errorCode,
+        httpStatus: result.status ?? null,
+        errorMessage: parsed.errorMessage ?? result.body
+      });
+      finalized = true;
+      finalReason = "send_failed";
+      return;
+    }
+
+    const nextAttemptAt = new Date(Date.now() + retryDelayMs).toISOString();
     const { error } = await supabase
       .from("announcement_queue")
       .update({
-        status: "sent",
+        status: "retry",
         attempts,
         locked_at: null,
-        last_error: null,
-        sent_at: nowIso,
+        next_attempt_at: nextAttemptAt,
+        last_error: buildAnnouncementDeliveryError(result),
         updated_at: nowIso
       })
       .eq("id", job.id);
     if (error) {
-      console.error("Failed to mark announcement job as sent", error, { jobId: job.id });
+      console.error("Failed to reschedule announcement job", error, { jobId: job.id });
     }
-    await insertAnnouncementAudit(supabase, {
-      userId: job.user_id,
-      chatId: job.user_id,
-      status: "sent",
-      reason: "sent",
-      caption,
-      matchIds: job.match_ids,
-      httpStatus: result.status ?? null
-    });
-    return;
-  }
-
-  const retryDelayMs = computeAnnouncementRetryDelayMs(result, attempts);
-  if (retryDelayMs === null || attempts >= maxAttempts) {
-    const parsed = parseTelegramErrorDetails(result.body);
-    await markAnnouncementJobFailed(supabase, job.id, attempts, buildAnnouncementDeliveryError(result));
-    await insertAnnouncementAudit(supabase, {
-      userId: job.user_id,
-      chatId: job.user_id,
-      status: "failed",
-      reason: "send_failed",
-      caption,
-      matchIds: job.match_ids,
-      errorCode: parsed.errorCode,
-      httpStatus: result.status ?? null,
-      errorMessage: parsed.errorMessage ?? result.body
-    });
-    return;
-  }
-
-  const nextAttemptAt = new Date(Date.now() + retryDelayMs).toISOString();
-  const { error } = await supabase
-    .from("announcement_queue")
-    .update({
-      status: "retry",
-      attempts,
-      locked_at: null,
-      next_attempt_at: nextAttemptAt,
-      last_error: buildAnnouncementDeliveryError(result),
-      updated_at: nowIso
-    })
-    .eq("id", job.id);
-  if (error) {
-    console.error("Failed to reschedule announcement job", error, { jobId: job.id });
+    finalized = true;
+    finalReason = "retry";
+  } catch (error) {
+    console.error("Announcement job failed unexpectedly", error, { jobId: job.id });
+  } finally {
+    if (!finalized) {
+      await markAnnouncementJobFailed(supabase, job.id, attempts, "processing_abort");
+      await insertAnnouncementAudit(supabase, {
+        userId: job.user_id,
+        chatId: job.user_id,
+        status: "failed",
+        reason: "processing_abort",
+        caption: typeof job.caption === "string" ? job.caption : null,
+        matchIds: Array.isArray(job.match_ids) ? job.match_ids : []
+      });
+      await logDebugUpdate(supabase, "announcement_job_abort", {
+        error: `job_id=${job.id} user_id=${job.user_id} reason=${finalReason}`
+      });
+    }
   }
 }
 
