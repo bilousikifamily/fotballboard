@@ -110,6 +110,47 @@ create index if not exists bot_message_logs_user_id_idx on bot_message_logs (use
 create index if not exists bot_message_logs_created_at_idx on bot_message_logs (created_at);
 create index if not exists bot_message_logs_user_created_idx on bot_message_logs (user_id, created_at);
 
+create table if not exists announcement_queue (
+  id bigserial primary key,
+  job_key text not null,
+  user_id bigint not null,
+  caption text,
+  match_ids int4[] not null,
+  status text not null,
+  attempts int4 not null default 0,
+  max_attempts int4 not null default 5,
+  next_attempt_at timestamptz not null default now(),
+  locked_at timestamptz,
+  last_error text,
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists announcement_queue_job_key_uidx
+  on announcement_queue (job_key);
+create index if not exists announcement_queue_status_next_attempt_idx
+  on announcement_queue (status, next_attempt_at);
+create index if not exists announcement_queue_locked_at_idx
+  on announcement_queue (locked_at);
+
+create table if not exists announcement_audit (
+  id bigserial primary key,
+  user_id bigint,
+  chat_id bigint,
+  status text not null,
+  reason text,
+  caption text,
+  match_ids int4[],
+  error_code int4,
+  http_status int4,
+  error_message text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists announcement_audit_user_id_idx on announcement_audit (user_id);
+create index if not exists announcement_audit_created_at_idx on announcement_audit (created_at);
+
 create or replace view admin_chat_threads as
 select distinct on (log.user_id)
   log.user_id,
