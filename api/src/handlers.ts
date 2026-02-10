@@ -1922,34 +1922,12 @@ export default {
         return jsonResponse({ ok: true }, 200, corsHeaders());
       }
 
-      const matchIds = todayMatches.map((match) => match.id);
-
       const users = await listAllUserIds(supabase);
       if (!users) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      for (const user of users) {
-        const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
-        const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
-        if (!missingMatches.length) {
-          continue;
-        }
-        const caption = buildMatchesAnnouncementCaption(missingMatches);
-        if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
-          continue;
-        }
-        await sendPhoto(
-          env,
-          user.id,
-          buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE),
-          caption,
-          {
-            inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappAdminLayoutUrl(env) } }]]
-          }
-        );
-      }
-
+      ctx.waitUntil(processMatchesAnnouncement(env, supabase, users, todayMatches));
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
@@ -5839,6 +5817,91 @@ async function hasSentAnnouncementToday(
   } catch (error) {
     console.error("Failed to check announcement history", error);
     return false;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterSeconds(body: string): number | null {
+  if (!body) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(body) as { parameters?: { retry_after?: number } };
+    const retry = payload?.parameters?.retry_after;
+    return typeof retry === "number" && Number.isFinite(retry) ? retry : null;
+  } catch {
+    return null;
+  }
+}
+
+async function sendAnnouncementWithRetry(
+  env: Env,
+  userId: number,
+  caption: string,
+  maxAttempts = 3
+): Promise<void> {
+  const imageUrl = buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE);
+  const keyboard = { inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappAdminLayoutUrl(env) } }]] };
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const shouldLog = attempt === maxAttempts;
+    const result = await sendPhotoWithResult(env, userId, imageUrl, caption, keyboard, undefined, undefined, shouldLog);
+    if (result.ok) {
+      return;
+    }
+
+    const status = result.status ?? null;
+    const retryAfter = status === 429 ? parseRetryAfterSeconds(result.body) : null;
+    const isRetryable = status === null || status === 429 || status === 502 || status === 503 || status === 504;
+    if (!isRetryable || attempt === maxAttempts) {
+      return;
+    }
+
+    const baseDelay = retryAfter ? retryAfter * 1000 : 600 * attempt;
+    const jitter = Math.floor(Math.random() * 250);
+    await sleep(baseDelay + jitter);
+  }
+}
+
+async function processMatchesAnnouncement(
+  env: Env,
+  supabase: SupabaseClient,
+  users: Array<{ id: number }>,
+  todayMatches: DbMatch[]
+): Promise<void> {
+  const matchIds = todayMatches.map((match) => match.id);
+  if (!matchIds.length) {
+    return;
+  }
+
+  const pendingSends: Array<Promise<unknown>> = [];
+  for (const user of users) {
+    try {
+      const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
+      const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
+      if (!missingMatches.length) {
+        continue;
+      }
+      const caption = buildMatchesAnnouncementCaption(missingMatches);
+      if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+        continue;
+      }
+      pendingSends.push(sendAnnouncementWithRetry(env, user.id, caption));
+      if (pendingSends.length >= 5) {
+        await Promise.allSettled(pendingSends);
+        pendingSends.length = 0;
+        await sleep(200);
+      }
+    } catch (error) {
+      console.error("Failed to process announcement recipient", { userId: user.id, error });
+    }
+  }
+
+  if (pendingSends.length) {
+    await Promise.allSettled(pendingSends);
   }
 }
 
