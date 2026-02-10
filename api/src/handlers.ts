@@ -1936,6 +1936,9 @@ export default {
           continue;
         }
         const caption = buildMatchesAnnouncementCaption(missingMatches);
+        if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+          continue;
+        }
         await sendPhoto(
           env,
           user.id,
@@ -5805,6 +5808,40 @@ async function listUserPredictedMatches(
   }
 }
 
+async function hasSentAnnouncementToday(
+  supabase: SupabaseClient,
+  userId: number,
+  caption: string
+): Promise<boolean> {
+  try {
+    const kyivDay = getKyivDateString();
+    const range = getKyivDayRange(kyivDay);
+    if (!range) {
+      return false;
+    }
+    const { data, error } = await supabase
+      .from("bot_message_logs")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("direction", "out")
+      .eq("sender", "bot")
+      .eq("message_type", "photo")
+      .eq("delivery_status", "sent")
+      .eq("text", caption)
+      .gte("created_at", range.start)
+      .lte("created_at", range.end)
+      .limit(1);
+    if (error) {
+      console.error("Failed to check announcement history", error);
+      return false;
+    }
+    return Array.isArray(data) && data.length > 0;
+  } catch (error) {
+    console.error("Failed to check announcement history", error);
+    return false;
+  }
+}
+
 async function getMatch(supabase: SupabaseClient, matchId: number): Promise<DbMatch | null> {
   try {
     const { data, error } = await supabase
@@ -8171,7 +8208,22 @@ async function listAllUserIds(
       return null;
     }
 
-    return (users as Array<{ id: number }> | null | undefined) ?? [];
+    const normalized = ((users as Array<{ id: number | string }> | null | undefined) ?? [])
+      .map((user) => {
+        if (typeof user.id === "number" && Number.isFinite(user.id)) {
+          return { id: user.id };
+        }
+        if (typeof user.id === "string") {
+          const parsed = Number(user.id);
+          if (Number.isFinite(parsed)) {
+            return { id: parsed };
+          }
+        }
+        return null;
+      })
+      .filter((user): user is { id: number } => Boolean(user));
+
+    return normalized;
   } catch (error) {
     console.error("Failed to fetch users for announcements", error);
     return null;
