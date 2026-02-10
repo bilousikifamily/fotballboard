@@ -1167,7 +1167,7 @@ export async function sendPhotoWithResult(
   replyMarkup?: TelegramInlineKeyboardMarkup,
   parseMode?: "HTML" | "MarkdownV2",
   messageThreadId?: number,
-  logOverride: boolean = true
+  logFailures: boolean = true
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`;
   const payload: Record<string, unknown> = {
@@ -1197,7 +1197,7 @@ export async function sendPhotoWithResult(
     const parsed = parseTelegramMessageResponse(body);
     const parsedError = parseTelegramErrorResponse(body);
     const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
-    if (logOverride && response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+    if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
         userId: resolvedChatId,
@@ -1214,7 +1214,7 @@ export async function sendPhotoWithResult(
         errorMessage: null,
         extra: { photo_url: photoUrl }
       });
-    } else if (logOverride && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
+    } else if (logFailures && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
         userId: resolvedChatId,
@@ -1234,7 +1234,7 @@ export async function sendPhotoWithResult(
     }
     return { ok: response.ok, status: response.status, body };
   } catch (error) {
-    if (logOverride && shouldLogPrivateChat(typeof chatId === "number" ? chatId : null, null)) {
+    if (logFailures && shouldLogPrivateChat(typeof chatId === "number" ? chatId : null, null)) {
       await insertBotMessageLog(env, {
         chatId: typeof chatId === "number" ? chatId : null,
         userId: typeof chatId === "number" ? chatId : null,

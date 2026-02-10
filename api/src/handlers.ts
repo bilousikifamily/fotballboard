@@ -5833,33 +5833,85 @@ function parseRetryAfterSeconds(body: string): number | null {
   }
 }
 
+function parseTelegramErrorDetails(body: string): { errorCode: number | null; errorMessage: string | null } {
+  if (!body) {
+    return { errorCode: null, errorMessage: null };
+  }
+  try {
+    const payload = JSON.parse(body) as { error_code?: number; description?: string };
+    return {
+      errorCode: typeof payload.error_code === "number" ? payload.error_code : null,
+      errorMessage: typeof payload.description === "string" ? payload.description : null
+    };
+  } catch {
+    return { errorCode: null, errorMessage: null };
+  }
+}
+
+async function insertAnnouncementAudit(
+  supabase: SupabaseClient,
+  payload: {
+    userId: number;
+    chatId: number;
+    status: "sent" | "failed" | "skipped";
+    reason: string;
+    caption: string | null;
+    matchIds: number[];
+    errorCode?: number | null;
+    httpStatus?: number | null;
+    errorMessage?: string | null;
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabase.from("announcement_audit").insert({
+      user_id: payload.userId,
+      chat_id: payload.chatId,
+      status: payload.status,
+      reason: payload.reason,
+      caption: payload.caption,
+      match_ids: payload.matchIds,
+      error_code: payload.errorCode ?? null,
+      http_status: payload.httpStatus ?? null,
+      error_message: payload.errorMessage ?? null,
+      created_at: new Date().toISOString()
+    });
+    if (error) {
+      console.error("Failed to insert announcement audit", error);
+    }
+  } catch (error) {
+    console.error("Failed to insert announcement audit", error);
+  }
+}
+
 async function sendAnnouncementWithRetry(
   env: Env,
   userId: number,
   caption: string,
   maxAttempts = 3
-): Promise<void> {
+): Promise<{ ok: boolean; status: number | null; body: string }> {
   const imageUrl = buildWebappImageUrl(env, MATCHES_ANNOUNCEMENT_IMAGE);
   const keyboard = { inline_keyboard: [[{ text: "ПРОГОЛОСУВАТИ", web_app: { url: buildWebappAdminLayoutUrl(env) } }]] };
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const shouldLog = attempt === maxAttempts;
-    const result = await sendPhotoWithResult(env, userId, imageUrl, caption, keyboard, undefined, undefined, shouldLog);
+    const logFailures = attempt === maxAttempts;
+    const result = await sendPhotoWithResult(env, userId, imageUrl, caption, keyboard, undefined, undefined, logFailures);
     if (result.ok) {
-      return;
+      return result;
     }
 
     const status = result.status ?? null;
     const retryAfter = status === 429 ? parseRetryAfterSeconds(result.body) : null;
     const isRetryable = status === null || status === 429 || status === 502 || status === 503 || status === 504;
     if (!isRetryable || attempt === maxAttempts) {
-      return;
+      return result;
     }
 
     const baseDelay = retryAfter ? retryAfter * 1000 : 600 * attempt;
     const jitter = Math.floor(Math.random() * 250);
     await sleep(baseDelay + jitter);
   }
+
+  return { ok: false, status: null, body: "" };
 }
 
 async function processMatchesAnnouncement(
@@ -5879,13 +5931,57 @@ async function processMatchesAnnouncement(
       const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
       const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
       if (!missingMatches.length) {
+        await insertAnnouncementAudit(supabase, {
+          userId: user.id,
+          chatId: user.id,
+          status: "skipped",
+          reason: "all_predicted",
+          caption: null,
+          matchIds
+        });
         continue;
       }
       const caption = buildMatchesAnnouncementCaption(missingMatches);
       if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+        await insertAnnouncementAudit(supabase, {
+          userId: user.id,
+          chatId: user.id,
+          status: "skipped",
+          reason: "already_sent_today",
+          caption,
+          matchIds: missingMatches.map((match) => match.id)
+        });
         continue;
       }
-      pendingSends.push(sendAnnouncementWithRetry(env, user.id, caption));
+      pendingSends.push(
+        (async () => {
+          const result = await sendAnnouncementWithRetry(env, user.id, caption);
+          if (result.ok) {
+            await insertAnnouncementAudit(supabase, {
+              userId: user.id,
+              chatId: user.id,
+              status: "sent",
+              reason: "sent",
+              caption,
+              matchIds: missingMatches.map((match) => match.id),
+              httpStatus: result.status ?? null
+            });
+            return;
+          }
+          const parsed = parseTelegramErrorDetails(result.body);
+          await insertAnnouncementAudit(supabase, {
+            userId: user.id,
+            chatId: user.id,
+            status: "failed",
+            reason: "send_failed",
+            caption,
+            matchIds: missingMatches.map((match) => match.id),
+            errorCode: parsed.errorCode,
+            httpStatus: result.status ?? null,
+            errorMessage: parsed.errorMessage ?? result.body
+          });
+        })()
+      );
       if (pendingSends.length >= 5) {
         await Promise.allSettled(pendingSends);
         pendingSends.length = 0;
