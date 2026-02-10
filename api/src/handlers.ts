@@ -1911,6 +1911,8 @@ export default {
         return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
       }
 
+      await logDebugUpdate(supabase, "announcement_request");
+
       const scheduledMatches = await listScheduledMatches(supabase);
       if (scheduledMatches === null) {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
