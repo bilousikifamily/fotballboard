@@ -5928,10 +5928,13 @@ async function enqueueMatchesAnnouncement(
 ): Promise<void> {
   const matchIds = todayMatches.map((match) => match.id);
   if (!matchIds.length) {
+    await logDebugUpdate(supabase, "announcement_enqueue", { error: "total=0 queued=0 skipped_all_predicted=0 skipped_already_sent=0 enqueue_failed=0" });
     return;
   }
 
   const nowIso = new Date().toISOString();
+  let skippedAllPredicted = 0;
+  let skippedAlreadySent = 0;
   const queueRecords: Array<{
     job_key: string;
     user_id: number;
@@ -5961,6 +5964,7 @@ async function enqueueMatchesAnnouncement(
       const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
       const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
       if (!missingMatches.length) {
+        skippedAllPredicted += 1;
         await insertAnnouncementAudit(supabase, {
           userId: user.id,
           chatId: user.id,
@@ -5973,6 +5977,7 @@ async function enqueueMatchesAnnouncement(
       }
       const caption = buildMatchesAnnouncementCaption(missingMatches);
       if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+        skippedAlreadySent += 1;
         await insertAnnouncementAudit(supabase, {
           userId: user.id,
           chatId: user.id,
@@ -6012,6 +6017,9 @@ async function enqueueMatchesAnnouncement(
   }
 
   if (!queueRecords.length) {
+    await logDebugUpdate(supabase, "announcement_enqueue", {
+      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
+    });
     return;
   }
 
@@ -6020,6 +6028,9 @@ async function enqueueMatchesAnnouncement(
     .upsert(queueRecords, { onConflict: "job_key", ignoreDuplicates: true });
   if (error) {
     console.error("Failed to enqueue announcement jobs", error);
+    await logDebugUpdate(supabase, "announcement_enqueue", {
+      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=${queuedAudits.length}`
+    });
     await insertAnnouncementAudits(
       supabase,
       queuedAudits.map((audit) => ({
@@ -6033,6 +6044,9 @@ async function enqueueMatchesAnnouncement(
   }
 
   await insertAnnouncementAudits(supabase, queuedAudits);
+  await logDebugUpdate(supabase, "announcement_enqueue", {
+    error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
+  });
 }
 
 type AnnouncementJobRow = {
