@@ -100,7 +100,7 @@ const MISSED_PREDICTION_PENALTY = -1;
 const MATCH_RESULT_NOTIFICATION_BATCH_SIZE = 120;
 const MATCH_RESULT_NOTIFICATION_CONCURRENCY = 8;
 const MATCH_RESULT_NOTIFICATION_MAX_ATTEMPTS = 8;
-const MATCH_RESULT_NOTIFICATION_LOCK_TIMEOUT_MS = 15 * 60 * 1000;
+const MATCH_RESULT_NOTIFICATION_LOCK_TIMEOUT_MS = 2 * 60 * 1000;
 const ANNOUNCEMENT_QUEUE_BATCH_SIZE = 100;
 const ANNOUNCEMENT_QUEUE_CONCURRENCY = 6;
 const ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS = 5;
@@ -8205,56 +8205,78 @@ async function processMatchResultNotificationJob(
   const nowIso = new Date().toISOString();
   const payload = job.payload;
 
-  if (!isMatchResultNotificationPayload(payload)) {
-    await markMatchResultNotificationJobFailed(supabase, job.id, attempts, "invalid_payload");
-    return;
-  }
+  let finalized = false;
+  let finalReason = "unknown";
 
-  const attempt = await sendMatchResultNotification(env, payload);
-  if (attempt.result.ok) {
+  try {
+    if (!isMatchResultNotificationPayload(payload)) {
+      await markMatchResultNotificationJobFailed(supabase, job.id, attempts, "invalid_payload");
+      finalized = true;
+      finalReason = "invalid_payload";
+      return;
+    }
+
+    const attempt = await sendMatchResultNotification(env, payload);
+    if (attempt.result.ok) {
+      const { error } = await supabase
+        .from("match_result_notification_jobs")
+        .update({
+          status: "sent",
+          attempts,
+          locked_at: null,
+          last_error: null,
+          sent_at: nowIso,
+          updated_at: nowIso
+        })
+        .eq("id", job.id);
+      if (error) {
+        console.error("Failed to mark match result notification job as sent", error, { jobId: job.id });
+      }
+      finalized = true;
+      finalReason = "sent";
+      return;
+    }
+
+    const retryDelayMs = computeMatchResultRetryDelayMs(attempt.result, attempts);
+    if (retryDelayMs === null || attempts >= maxAttempts) {
+      await markMatchResultNotificationJobFailed(
+        supabase,
+        job.id,
+        attempts,
+        buildMatchResultDeliveryError(attempt.context, attempt.result)
+      );
+      await logBotDeliveryFailure(supabase, job.user_id, attempt.context, attempt.result);
+      finalized = true;
+      finalReason = "failed";
+      return;
+    }
+
+    const nextAttemptAt = new Date(Date.now() + retryDelayMs).toISOString();
     const { error } = await supabase
       .from("match_result_notification_jobs")
       .update({
-        status: "sent",
+        status: "retry",
         attempts,
         locked_at: null,
-        last_error: null,
-        sent_at: nowIso,
+        next_attempt_at: nextAttemptAt,
+        last_error: buildMatchResultDeliveryError(attempt.context, attempt.result),
         updated_at: nowIso
       })
       .eq("id", job.id);
     if (error) {
-      console.error("Failed to mark match result notification job as sent", error, { jobId: job.id });
+      console.error("Failed to reschedule match result notification job", error, { jobId: job.id });
     }
-    return;
-  }
-
-  const retryDelayMs = computeMatchResultRetryDelayMs(attempt.result, attempts);
-  if (retryDelayMs === null || attempts >= maxAttempts) {
-    await markMatchResultNotificationJobFailed(
-      supabase,
-      job.id,
-      attempts,
-      buildMatchResultDeliveryError(attempt.context, attempt.result)
-    );
-    await logBotDeliveryFailure(supabase, job.user_id, attempt.context, attempt.result);
-    return;
-  }
-
-  const nextAttemptAt = new Date(Date.now() + retryDelayMs).toISOString();
-  const { error } = await supabase
-    .from("match_result_notification_jobs")
-    .update({
-      status: "retry",
-      attempts,
-      locked_at: null,
-      next_attempt_at: nextAttemptAt,
-      last_error: buildMatchResultDeliveryError(attempt.context, attempt.result),
-      updated_at: nowIso
-    })
-    .eq("id", job.id);
-  if (error) {
-    console.error("Failed to reschedule match result notification job", error, { jobId: job.id });
+    finalized = true;
+    finalReason = "retry";
+  } catch (error) {
+    console.error("Match result job failed unexpectedly", error, { jobId: job.id });
+  } finally {
+    if (!finalized) {
+      await markMatchResultNotificationJobFailed(supabase, job.id, attempts, "processing_abort");
+      await logDebugUpdate(supabase, "match_result_job_abort", {
+        error: `job_id=${job.id} user_id=${job.user_id} reason=${finalReason}`
+      });
+    }
   }
 }
 
