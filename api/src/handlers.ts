@@ -5928,6 +5928,10 @@ async function enqueueMatchesAnnouncement(
   todayMatches: DbMatch[],
   kyivDay: string
 ): Promise<void> {
+  await logDebugUpdate(supabase, "announcement_enqueue_start", {
+    error: `users=${users.length} matches=${todayMatches.length} kyiv_day=${kyivDay}`
+  });
+
   const matchIds = todayMatches.map((match) => match.id);
   if (!matchIds.length) {
     await logDebugUpdate(supabase, "announcement_enqueue", { error: "total=0 queued=0 skipped_all_predicted=0 skipped_already_sent=0 enqueue_failed=0" });
@@ -6022,6 +6026,9 @@ async function enqueueMatchesAnnouncement(
     await logDebugUpdate(supabase, "announcement_enqueue", {
       error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
     });
+    await logDebugUpdate(supabase, "announcement_enqueue_end", {
+      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent}`
+    });
     return;
   }
 
@@ -6042,12 +6049,18 @@ async function enqueueMatchesAnnouncement(
         errorMessage: formatSupabaseError(error)
       }))
     );
+    await logDebugUpdate(supabase, "announcement_enqueue_end", {
+      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=${queuedAudits.length}`
+    });
     return;
   }
 
   await insertAnnouncementAudits(supabase, queuedAudits);
   await logDebugUpdate(supabase, "announcement_enqueue", {
     error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
+  });
+  await logDebugUpdate(supabase, "announcement_enqueue_end", {
+    error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent}`
   });
 }
 
