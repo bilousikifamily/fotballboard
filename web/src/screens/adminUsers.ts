@@ -98,7 +98,8 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
       const { homeName, awayName, homeLogo, awayLogo, homeLogoFallback, awayLogoFallback } = getMatchTeamInfo(matchForLogos);
       const homeLogoMarkup = renderTeamLogo(homeName, homeLogo, homeLogoFallback);
       const awayLogoMarkup = renderTeamLogo(awayName, awayLogo, awayLogoFallback);
-      const avgScoreLabel = `${formatAverage(match.avg_home_pred)} : ${formatAverage(match.avg_away_pred)}`;
+      const homeAvgLabel = formatAverage(match.avg_home_pred);
+      const awayAvgLabel = formatAverage(match.avg_away_pred);
       const resultLabel =
         typeof match.home_score === "number" && typeof match.away_score === "number"
           ? `${match.home_score}:${match.away_score}`
@@ -108,15 +109,16 @@ export function renderAdminMatchAccuracy(matches: PredictionAccuracyMatch[]): st
       return `
         <div class="admin-match-accuracy-card">
           <div class="admin-match-accuracy-card__logos" aria-label="${escapeHtml(homeName)} vs ${escapeHtml(awayName)}">
-            <div class="admin-match-accuracy-card__logo-item">
+            <div class="admin-match-accuracy-card__logo-item admin-match-accuracy-card__logo-item--home">
+              <span class="admin-match-accuracy-card__average-side admin-match-accuracy-card__average-side--home">${escapeHtml(homeAvgLabel)}</span>
               ${homeLogoMarkup}
             </div>
             <div class="admin-match-accuracy-card__center">
               <div class="admin-match-accuracy-card__score">${escapeHtml(resultLabel)}</div>
-              <div class="admin-match-accuracy-card__average">${escapeHtml(avgScoreLabel)}</div>
             </div>
-            <div class="admin-match-accuracy-card__logo-item">
+            <div class="admin-match-accuracy-card__logo-item admin-match-accuracy-card__logo-item--away">
               ${awayLogoMarkup}
+              <span class="admin-match-accuracy-card__average-side admin-match-accuracy-card__average-side--away">${escapeHtml(awayAvgLabel)}</span>
             </div>
           </div>
           <div class="admin-match-accuracy-card__progress" role="img" aria-label="Влучність ${accuracyPercent}% (${escapeHtml(scoreLabel)})">

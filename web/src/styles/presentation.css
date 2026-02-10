@@ -335,7 +335,7 @@ a {
 
 .admin-match-accuracy-card__logos {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(72px, auto) minmax(0, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(72px, auto) minmax(0, 1fr);
   align-items: center;
   justify-content: center;
   gap: 0px;
@@ -343,10 +343,12 @@ a {
 }
 
 .admin-match-accuracy-card__logos .admin-match-accuracy-card__logo-item {
-  width: 100px;
+  min-width: 140px;
   height: 100px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .admin-match-accuracy-card__logos .match-logo,
@@ -359,8 +361,7 @@ a {
 .admin-match-accuracy-card__center {
   display: grid;
   justify-items: center;
-  gap: 0px;
-  margin-bottom: -8px;
+  gap: 4px;
 }
 
 .admin-match-accuracy-card__score {
@@ -371,12 +372,13 @@ a {
   letter-spacing: 0.04em;
 }
 
-.admin-match-accuracy-card__average {
+.admin-match-accuracy-card__average-side {
+  min-width: 46px;
   text-align: center;
-  font-size: 0.92rem;
-  color: rgba(245, 246, 250, 0.86);
-  line-height: 1.25;
-  margin-top: -8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: rgba(245, 246, 250, 0.88);
+  letter-spacing: 0.02em;
 }
 
 .admin-match-accuracy-card__progress {
