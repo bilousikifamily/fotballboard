@@ -5928,140 +5928,147 @@ async function enqueueMatchesAnnouncement(
   todayMatches: DbMatch[],
   kyivDay: string
 ): Promise<void> {
-  await logDebugUpdate(supabase, "announcement_enqueue_start", {
-    error: `users=${users.length} matches=${todayMatches.length} kyiv_day=${kyivDay}`
-  });
+  try {
+    await logDebugUpdate(supabase, "announcement_enqueue_start", {
+      error: `users=${users.length} matches=${todayMatches.length} kyiv_day=${kyivDay}`
+    });
 
-  const matchIds = todayMatches.map((match) => match.id);
-  if (!matchIds.length) {
-    await logDebugUpdate(supabase, "announcement_enqueue", { error: "total=0 queued=0 skipped_all_predicted=0 skipped_already_sent=0 enqueue_failed=0" });
-    return;
-  }
+    const matchIds = todayMatches.map((match) => match.id);
+    if (!matchIds.length) {
+      await logDebugUpdate(supabase, "announcement_enqueue", {
+        error: "total=0 queued=0 skipped_all_predicted=0 skipped_already_sent=0 enqueue_failed=0"
+      });
+      return;
+    }
 
-  const nowIso = new Date().toISOString();
-  let skippedAllPredicted = 0;
-  let skippedAlreadySent = 0;
-  const queueRecords: Array<{
-    job_key: string;
-    user_id: number;
-    caption: string;
-    match_ids: number[];
-    status: string;
-    attempts: number;
-    max_attempts: number;
-    next_attempt_at: string;
-    locked_at: null;
-    last_error: null;
-    sent_at: null;
-    created_at: string;
-    updated_at: string;
-  }> = [];
-  const queuedAudits: Array<{
-    userId: number;
-    chatId: number;
-    status: "queued";
-    reason: string;
-    caption: string | null;
-    matchIds: number[];
-  }> = [];
+    const nowIso = new Date().toISOString();
+    let skippedAllPredicted = 0;
+    let skippedAlreadySent = 0;
+    const queueRecords: Array<{
+      job_key: string;
+      user_id: number;
+      caption: string;
+      match_ids: number[];
+      status: string;
+      attempts: number;
+      max_attempts: number;
+      next_attempt_at: string;
+      locked_at: null;
+      last_error: null;
+      sent_at: null;
+      created_at: string;
+      updated_at: string;
+    }> = [];
+    const queuedAudits: Array<{
+      userId: number;
+      chatId: number;
+      status: "queued";
+      reason: string;
+      caption: string | null;
+      matchIds: number[];
+    }> = [];
 
-  for (const user of users) {
-    try {
-      const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
-      const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
-      if (!missingMatches.length) {
-        skippedAllPredicted += 1;
-        await insertAnnouncementAudit(supabase, {
-          userId: user.id,
-          chatId: user.id,
-          status: "skipped",
-          reason: "all_predicted",
-          caption: null,
-          matchIds
+    for (const user of users) {
+      try {
+        const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
+        const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
+        if (!missingMatches.length) {
+          skippedAllPredicted += 1;
+          await insertAnnouncementAudit(supabase, {
+            userId: user.id,
+            chatId: user.id,
+            status: "skipped",
+            reason: "all_predicted",
+            caption: null,
+            matchIds
+          });
+          continue;
+        }
+        const caption = buildMatchesAnnouncementCaption(missingMatches);
+        if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+          skippedAlreadySent += 1;
+          await insertAnnouncementAudit(supabase, {
+            userId: user.id,
+            chatId: user.id,
+            status: "skipped",
+            reason: "already_sent_today",
+            caption,
+            matchIds: missingMatches.map((match) => match.id)
+          });
+          continue;
+        }
+        queueRecords.push({
+          job_key: buildAnnouncementJobKey(kyivDay, user.id, missingMatches.map((match) => match.id)),
+          user_id: user.id,
+          caption,
+          match_ids: missingMatches.map((match) => match.id),
+          status: "pending",
+          attempts: 0,
+          max_attempts: ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS,
+          next_attempt_at: nowIso,
+          locked_at: null,
+          last_error: null,
+          sent_at: null,
+          created_at: nowIso,
+          updated_at: nowIso
         });
-        continue;
-      }
-      const caption = buildMatchesAnnouncementCaption(missingMatches);
-      if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
-        skippedAlreadySent += 1;
-        await insertAnnouncementAudit(supabase, {
+        queuedAudits.push({
           userId: user.id,
           chatId: user.id,
-          status: "skipped",
-          reason: "already_sent_today",
+          status: "queued",
+          reason: "queued",
           caption,
           matchIds: missingMatches.map((match) => match.id)
         });
-        continue;
+      } catch (error) {
+        console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
       }
-      queueRecords.push({
-        job_key: buildAnnouncementJobKey(kyivDay, user.id, missingMatches.map((match) => match.id)),
-        user_id: user.id,
-        caption,
-        match_ids: missingMatches.map((match) => match.id),
-        status: "pending",
-        attempts: 0,
-        max_attempts: ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS,
-        next_attempt_at: nowIso,
-        locked_at: null,
-        last_error: null,
-        sent_at: null,
-        created_at: nowIso,
-        updated_at: nowIso
-      });
-      queuedAudits.push({
-        userId: user.id,
-        chatId: user.id,
-        status: "queued",
-        reason: "queued",
-        caption,
-        matchIds: missingMatches.map((match) => match.id)
-      });
-    } catch (error) {
-      console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
     }
-  }
 
-  if (!queueRecords.length) {
+    if (!queueRecords.length) {
+      await logDebugUpdate(supabase, "announcement_enqueue", {
+        error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
+      });
+      await logDebugUpdate(supabase, "announcement_enqueue_end", {
+        error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent}`
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("announcement_queue")
+      .upsert(queueRecords, { onConflict: "job_key", ignoreDuplicates: true });
+    if (error) {
+      console.error("Failed to enqueue announcement jobs", error);
+      await logDebugUpdate(supabase, "announcement_enqueue", {
+        error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=${queuedAudits.length}`
+      });
+      await insertAnnouncementAudits(
+        supabase,
+        queuedAudits.map((audit) => ({
+          ...audit,
+          status: "failed",
+          reason: "enqueue_failed",
+          errorMessage: formatSupabaseError(error)
+        }))
+      );
+      await logDebugUpdate(supabase, "announcement_enqueue_end", {
+        error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=${queuedAudits.length}`
+      });
+      return;
+    }
+
+    await insertAnnouncementAudits(supabase, queuedAudits);
     await logDebugUpdate(supabase, "announcement_enqueue", {
-      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
+      error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
     });
     await logDebugUpdate(supabase, "announcement_enqueue_end", {
-      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent}`
+      error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent}`
     });
-    return;
+  } catch (error) {
+    await logDebugUpdate(supabase, "announcement_enqueue_crash", { error: formatSupabaseError(error) });
+    throw error;
   }
-
-  const { error } = await supabase
-    .from("announcement_queue")
-    .upsert(queueRecords, { onConflict: "job_key", ignoreDuplicates: true });
-  if (error) {
-    console.error("Failed to enqueue announcement jobs", error);
-    await logDebugUpdate(supabase, "announcement_enqueue", {
-      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=${queuedAudits.length}`
-    });
-    await insertAnnouncementAudits(
-      supabase,
-      queuedAudits.map((audit) => ({
-        ...audit,
-        status: "failed",
-        reason: "enqueue_failed",
-        errorMessage: formatSupabaseError(error)
-      }))
-    );
-    await logDebugUpdate(supabase, "announcement_enqueue_end", {
-      error: `total=${users.length} queued=0 skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=${queuedAudits.length}`
-    });
-    return;
-  }
-
-  await insertAnnouncementAudits(supabase, queuedAudits);
-  await logDebugUpdate(supabase, "announcement_enqueue", {
-    error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent} enqueue_failed=0`
-  });
-  await logDebugUpdate(supabase, "announcement_enqueue_end", {
-    error: `total=${users.length} queued=${queuedAudits.length} skipped_all_predicted=${skippedAllPredicted} skipped_already_sent=${skippedAlreadySent}`
-  });
 }
 
 type AnnouncementJobRow = {
