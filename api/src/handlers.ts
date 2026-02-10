@@ -1933,7 +1933,7 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      ctx.waitUntil(enqueueMatchesAnnouncement(supabase, users, todayMatches, kyivDay));
+      await enqueueMatchesAnnouncement(supabase, users, todayMatches, kyivDay);
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
