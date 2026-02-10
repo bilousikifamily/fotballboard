@@ -5880,6 +5880,46 @@ async function insertAnnouncementAudit(
   }
 }
 
+async function insertAnnouncementAudits(
+  supabase: SupabaseClient,
+  audits: Array<{
+    userId: number;
+    chatId: number;
+    status: "sent" | "failed" | "skipped" | "queued";
+    reason: string;
+    caption: string | null;
+    matchIds: number[];
+    errorCode?: number | null;
+    httpStatus?: number | null;
+    errorMessage?: string | null;
+  }>
+): Promise<void> {
+  if (!audits.length) {
+    return;
+  }
+  try {
+    const nowIso = new Date().toISOString();
+    const records = audits.map((payload) => ({
+      user_id: payload.userId,
+      chat_id: payload.chatId,
+      status: payload.status,
+      reason: payload.reason,
+      caption: payload.caption,
+      match_ids: payload.matchIds,
+      error_code: payload.errorCode ?? null,
+      http_status: payload.httpStatus ?? null,
+      error_message: payload.errorMessage ?? null,
+      created_at: nowIso
+    }));
+    const { error } = await supabase.from("announcement_audit").insert(records);
+    if (error) {
+      console.error("Failed to insert announcement audits", error);
+    }
+  } catch (error) {
+    console.error("Failed to insert announcement audits", error);
+  }
+}
+
 async function enqueueMatchesAnnouncement(
   supabase: SupabaseClient,
   users: Array<{ id: number }>,
@@ -5906,6 +5946,14 @@ async function enqueueMatchesAnnouncement(
     sent_at: null;
     created_at: string;
     updated_at: string;
+  }> = [];
+  const queuedAudits: Array<{
+    userId: number;
+    chatId: number;
+    status: "queued";
+    reason: string;
+    caption: string | null;
+    matchIds: number[];
   }> = [];
 
   for (const user of users) {
@@ -5950,7 +5998,7 @@ async function enqueueMatchesAnnouncement(
         created_at: nowIso,
         updated_at: nowIso
       });
-      await insertAnnouncementAudit(supabase, {
+      queuedAudits.push({
         userId: user.id,
         chatId: user.id,
         status: "queued",
@@ -5972,7 +6020,19 @@ async function enqueueMatchesAnnouncement(
     .upsert(queueRecords, { onConflict: "job_key", ignoreDuplicates: true });
   if (error) {
     console.error("Failed to enqueue announcement jobs", error);
+    await insertAnnouncementAudits(
+      supabase,
+      queuedAudits.map((audit) => ({
+        ...audit,
+        status: "failed",
+        reason: "enqueue_failed",
+        errorMessage: formatSupabaseError(error)
+      }))
+    );
+    return;
   }
+
+  await insertAnnouncementAudits(supabase, queuedAudits);
 }
 
 type AnnouncementJobRow = {
