@@ -5820,10 +5820,6 @@ async function hasSentAnnouncementToday(
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function parseRetryAfterSeconds(body: string): number | null {
   if (!body) {
     return null;
