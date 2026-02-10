@@ -5968,61 +5968,66 @@ async function enqueueMatchesAnnouncement(
       matchIds: number[];
     }> = [];
 
-    for (const user of users) {
-      try {
-        const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
-        const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
-        if (!missingMatches.length) {
-          skippedAllPredicted += 1;
-          await insertAnnouncementAudit(supabase, {
-            userId: user.id,
-            chatId: user.id,
-            status: "skipped",
-            reason: "all_predicted",
-            caption: null,
-            matchIds
-          });
-          continue;
-        }
-        const caption = buildMatchesAnnouncementCaption(missingMatches);
-        if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
-          skippedAlreadySent += 1;
-          await insertAnnouncementAudit(supabase, {
-            userId: user.id,
-            chatId: user.id,
-            status: "skipped",
-            reason: "already_sent_today",
-            caption,
-            matchIds: missingMatches.map((match) => match.id)
-          });
-          continue;
-        }
-        queueRecords.push({
-          job_key: buildAnnouncementJobKey(kyivDay, user.id, missingMatches.map((match) => match.id)),
-          user_id: user.id,
-          caption,
-          match_ids: missingMatches.map((match) => match.id),
-          status: "pending",
-          attempts: 0,
-          max_attempts: ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS,
-          next_attempt_at: nowIso,
-          locked_at: null,
-          last_error: null,
-          sent_at: null,
-          created_at: nowIso,
-          updated_at: nowIso
-        });
-        queuedAudits.push({
-          userId: user.id,
-          chatId: user.id,
-          status: "queued",
-          reason: "queued",
-          caption,
-          matchIds: missingMatches.map((match) => match.id)
-        });
-      } catch (error) {
-        console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
-      }
+    for (let startIndex = 0; startIndex < users.length; startIndex += 10) {
+      const batch = users.slice(startIndex, startIndex + 10);
+      await Promise.all(
+        batch.map(async (user) => {
+          try {
+            const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
+            const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
+            if (!missingMatches.length) {
+              skippedAllPredicted += 1;
+              await insertAnnouncementAudit(supabase, {
+                userId: user.id,
+                chatId: user.id,
+                status: "skipped",
+                reason: "all_predicted",
+                caption: null,
+                matchIds
+              });
+              return;
+            }
+            const caption = buildMatchesAnnouncementCaption(missingMatches);
+            if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+              skippedAlreadySent += 1;
+              await insertAnnouncementAudit(supabase, {
+                userId: user.id,
+                chatId: user.id,
+                status: "skipped",
+                reason: "already_sent_today",
+                caption,
+                matchIds: missingMatches.map((match) => match.id)
+              });
+              return;
+            }
+            queueRecords.push({
+              job_key: buildAnnouncementJobKey(kyivDay, user.id, missingMatches.map((match) => match.id)),
+              user_id: user.id,
+              caption,
+              match_ids: missingMatches.map((match) => match.id),
+              status: "pending",
+              attempts: 0,
+              max_attempts: ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS,
+              next_attempt_at: nowIso,
+              locked_at: null,
+              last_error: null,
+              sent_at: null,
+              created_at: nowIso,
+              updated_at: nowIso
+            });
+            queuedAudits.push({
+              userId: user.id,
+              chatId: user.id,
+              status: "queued",
+              reason: "queued",
+              caption,
+              matchIds: missingMatches.map((match) => match.id)
+            });
+          } catch (error) {
+            console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
+          }
+        })
+      );
     }
 
     if (!queueRecords.length) {
