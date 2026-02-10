@@ -5968,94 +5968,121 @@ async function enqueueMatchesAnnouncement(
       matchIds: number[];
     }> = [];
 
-    const withTimeout = async <T>(label: string, promise: Promise<T>, ms = 8000): Promise<T> => {
-      let timer: ReturnType<typeof setTimeout> | null = null;
-      const timeout = new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`timeout:${label}`)), ms);
-      });
-      try {
-        return await Promise.race([promise, timeout]);
-      } finally {
-        if (timer) {
-          clearTimeout(timer);
-        }
-      }
-    };
-
     for (let startIndex = 0; startIndex < users.length; startIndex += 10) {
       const batch = users.slice(startIndex, startIndex + 10);
       await logDebugUpdate(supabase, "announcement_enqueue_batch_start", {
         error: `from=${startIndex} size=${batch.length}`
       });
-      await Promise.all(
-        batch.map(async (user) => {
-          try {
-            const predicted = await withTimeout(
-              `predicted:user=${user.id}`,
-              listUserPredictedMatches(supabase, user.id, matchIds)
-            );
-            const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
-            if (!missingMatches.length) {
-              skippedAllPredicted += 1;
-              await insertAnnouncementAudit(supabase, {
-                userId: user.id,
-                chatId: user.id,
-                status: "skipped",
-                reason: "all_predicted",
-                caption: null,
-                matchIds
-              });
-              return;
-            }
-            const caption = buildMatchesAnnouncementCaption(missingMatches);
-            const alreadySent = await withTimeout(
-              `already_sent:user=${user.id}`,
-              hasSentAnnouncementToday(supabase, user.id, caption)
-            );
-            if (alreadySent) {
-              skippedAlreadySent += 1;
-              await insertAnnouncementAudit(supabase, {
-                userId: user.id,
-                chatId: user.id,
-                status: "skipped",
-                reason: "already_sent_today",
-                caption,
-                matchIds: missingMatches.map((match) => match.id)
-              });
-              return;
-            }
-            queueRecords.push({
-              job_key: buildAnnouncementJobKey(kyivDay, user.id, missingMatches.map((match) => match.id)),
-              user_id: user.id,
-              caption,
-              match_ids: missingMatches.map((match) => match.id),
-              status: "pending",
-              attempts: 0,
-              max_attempts: ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS,
-              next_attempt_at: nowIso,
-              locked_at: null,
-              last_error: null,
-              sent_at: null,
-              created_at: nowIso,
-              updated_at: nowIso
-            });
-            queuedAudits.push({
+      const batchUserIds = batch.map((user) => user.id);
+      const { data: predictions, error: predictionsError } = await supabase
+        .from("predictions")
+        .select("user_id, match_id")
+        .in("match_id", matchIds)
+        .in("user_id", batchUserIds);
+      if (predictionsError) {
+        await logDebugUpdate(supabase, "announcement_enqueue_user_error", {
+          error: `batch=${startIndex} predictions_error=${formatSupabaseError(predictionsError)}`
+        });
+        console.error("Failed to fetch predictions for batch", predictionsError);
+        continue;
+      }
+      const predictedByUser = new Map<number, Set<number>>();
+      for (const row of (predictions as Array<{ user_id: number; match_id: number }> | null) ?? []) {
+        const set = predictedByUser.get(row.user_id) ?? new Set<number>();
+        set.add(row.match_id);
+        predictedByUser.set(row.user_id, set);
+      }
+
+      const kyivRange = getKyivDayRange(kyivDay);
+      const logsQuery = supabase
+        .from("bot_message_logs")
+        .select("user_id, text")
+        .in("user_id", batchUserIds)
+        .eq("direction", "out")
+        .eq("sender", "bot")
+        .eq("message_type", "photo")
+        .eq("delivery_status", "sent");
+      const logsFiltered =
+        kyivRange ? logsQuery.gte("created_at", kyivRange.start).lte("created_at", kyivRange.end) : logsQuery;
+      const { data: sentLogs, error: sentLogsError } = await logsFiltered;
+      if (sentLogsError) {
+        await logDebugUpdate(supabase, "announcement_enqueue_user_error", {
+          error: `batch=${startIndex} sent_logs_error=${formatSupabaseError(sentLogsError)}`
+        });
+        console.error("Failed to fetch sent logs for batch", sentLogsError);
+        continue;
+      }
+      const sentByUser = new Map<number, Set<string>>();
+      for (const row of (sentLogs as Array<{ user_id: number; text: string | null }> | null) ?? []) {
+        if (!row.text) {
+          continue;
+        }
+        const set = sentByUser.get(row.user_id) ?? new Set<string>();
+        set.add(row.text);
+        sentByUser.set(row.user_id, set);
+      }
+
+      for (const user of batch) {
+        try {
+          const predicted = predictedByUser.get(user.id) ?? new Set<number>();
+          const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
+          if (!missingMatches.length) {
+            skippedAllPredicted += 1;
+            await insertAnnouncementAudit(supabase, {
               userId: user.id,
               chatId: user.id,
-              status: "queued",
-              reason: "queued",
+              status: "skipped",
+              reason: "all_predicted",
+              caption: null,
+              matchIds
+            });
+            continue;
+          }
+          const caption = buildMatchesAnnouncementCaption(missingMatches);
+          const sentSet = sentByUser.get(user.id);
+          if (sentSet && sentSet.has(caption)) {
+            skippedAlreadySent += 1;
+            await insertAnnouncementAudit(supabase, {
+              userId: user.id,
+              chatId: user.id,
+              status: "skipped",
+              reason: "already_sent_today",
               caption,
               matchIds: missingMatches.map((match) => match.id)
             });
-          } catch (error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            await logDebugUpdate(supabase, "announcement_enqueue_user_error", {
-              error: `user=${user.id} ${msg}`
-            });
-            console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
+            continue;
           }
-        })
-      );
+          queueRecords.push({
+            job_key: buildAnnouncementJobKey(kyivDay, user.id, missingMatches.map((match) => match.id)),
+            user_id: user.id,
+            caption,
+            match_ids: missingMatches.map((match) => match.id),
+            status: "pending",
+            attempts: 0,
+            max_attempts: ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS,
+            next_attempt_at: nowIso,
+            locked_at: null,
+            last_error: null,
+            sent_at: null,
+            created_at: nowIso,
+            updated_at: nowIso
+          });
+          queuedAudits.push({
+            userId: user.id,
+            chatId: user.id,
+            status: "queued",
+            reason: "queued",
+            caption,
+            matchIds: missingMatches.map((match) => match.id)
+          });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          await logDebugUpdate(supabase, "announcement_enqueue_user_error", {
+            error: `user=${user.id} ${msg}`
+          });
+          console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
+        }
+      }
       await logDebugUpdate(supabase, "announcement_enqueue_batch_end", {
         error: `from=${startIndex} size=${batch.length}`
       });
