@@ -5968,12 +5968,32 @@ async function enqueueMatchesAnnouncement(
       matchIds: number[];
     }> = [];
 
+    const withTimeout = async <T>(label: string, promise: Promise<T>, ms = 8000): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const timeout = new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`timeout:${label}`)), ms);
+      });
+      try {
+        return await Promise.race([promise, timeout]);
+      } finally {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      }
+    };
+
     for (let startIndex = 0; startIndex < users.length; startIndex += 10) {
       const batch = users.slice(startIndex, startIndex + 10);
+      await logDebugUpdate(supabase, "announcement_enqueue_batch_start", {
+        error: `from=${startIndex} size=${batch.length}`
+      });
       await Promise.all(
         batch.map(async (user) => {
           try {
-            const predicted = await listUserPredictedMatches(supabase, user.id, matchIds);
+            const predicted = await withTimeout(
+              `predicted:user=${user.id}`,
+              listUserPredictedMatches(supabase, user.id, matchIds)
+            );
             const missingMatches = todayMatches.filter((match) => !predicted.has(match.id));
             if (!missingMatches.length) {
               skippedAllPredicted += 1;
@@ -5988,7 +6008,11 @@ async function enqueueMatchesAnnouncement(
               return;
             }
             const caption = buildMatchesAnnouncementCaption(missingMatches);
-            if (await hasSentAnnouncementToday(supabase, user.id, caption)) {
+            const alreadySent = await withTimeout(
+              `already_sent:user=${user.id}`,
+              hasSentAnnouncementToday(supabase, user.id, caption)
+            );
+            if (alreadySent) {
               skippedAlreadySent += 1;
               await insertAnnouncementAudit(supabase, {
                 userId: user.id,
@@ -6024,10 +6048,17 @@ async function enqueueMatchesAnnouncement(
               matchIds: missingMatches.map((match) => match.id)
             });
           } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            await logDebugUpdate(supabase, "announcement_enqueue_user_error", {
+              error: `user=${user.id} ${msg}`
+            });
             console.error("Failed to enqueue announcement recipient", { userId: user.id, error });
           }
         })
       );
+      await logDebugUpdate(supabase, "announcement_enqueue_batch_end", {
+        error: `from=${startIndex} size=${batch.length}`
+      });
     }
 
     if (!queueRecords.length) {
