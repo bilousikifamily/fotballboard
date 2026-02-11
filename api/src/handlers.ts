@@ -1874,13 +1874,18 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
+      let notificationsToSend = result.notifications;
+      if (notificationsToSend.length === 0) {
+        notificationsToSend = await buildMatchResultNotificationsForResend(supabase, matchId, timezone);
+      }
+
       await logDebugUpdate(supabase, "match_result_notifications_count", {
         matchId,
-        error: `count=${result.notifications.length}`
+        error: `count=${notificationsToSend.length}`
       });
 
-      if (result.notifications.length) {
-        await enqueueMatchResultNotifications(env, supabase, result.notifications);
+      if (notificationsToSend.length) {
+        await enqueueMatchResultNotifications(env, supabase, notificationsToSend);
         ctx.waitUntil(handleMatchResultNotificationQueue(env));
       }
 
