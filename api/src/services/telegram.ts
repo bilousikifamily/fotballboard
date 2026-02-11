@@ -1086,7 +1086,8 @@ export async function sendMessageWithResult(
   replyMarkup?: TelegramInlineKeyboardMarkup,
   parseMode?: "HTML" | "MarkdownV2",
   messageThreadId?: number,
-  logAdminId?: string
+  logAdminId?: string,
+  extraPayload?: Record<string, unknown> | null
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
   const payload: Record<string, unknown> = {
@@ -1127,7 +1128,8 @@ export async function sendMessageWithResult(
         deliveryStatus: "sent",
         errorCode: null,
         httpStatus: response.status,
-        errorMessage: null
+        errorMessage: null,
+        extra: extraPayload ?? null
       });
     } else if (shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
@@ -1143,7 +1145,8 @@ export async function sendMessageWithResult(
         deliveryStatus: "failed",
         errorCode: parsedError.errorCode,
         httpStatus: response.status,
-        errorMessage: parsedError.description ?? body
+        errorMessage: parsedError.description ?? body,
+        extra: extraPayload ?? null
       });
     }
     return { ok: response.ok, status: response.status, body };
@@ -1162,7 +1165,8 @@ export async function sendMessageWithResult(
         deliveryStatus: "failed",
         errorCode: null,
         httpStatus: null,
-        errorMessage: String(error)
+        errorMessage: String(error),
+        extra: extraPayload ?? null
       });
     }
     return { ok: false, status: null, body: String(error) };
@@ -1177,7 +1181,8 @@ export async function sendPhotoWithResult(
   replyMarkup?: TelegramInlineKeyboardMarkup,
   parseMode?: "HTML" | "MarkdownV2",
   messageThreadId?: number,
-  logFailures: boolean = true
+  logFailures: boolean = true,
+  extraPayload?: Record<string, unknown> | null
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`;
   const payload: Record<string, unknown> = {
@@ -1222,7 +1227,7 @@ export async function sendPhotoWithResult(
         errorCode: null,
         httpStatus: response.status,
         errorMessage: null,
-        extra: { photo_url: photoUrl }
+        extra: { photo_url: photoUrl, ...(extraPayload ?? {}) }
       });
     } else if (logFailures && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
@@ -1239,7 +1244,7 @@ export async function sendPhotoWithResult(
         errorCode: parsedError.errorCode,
         httpStatus: response.status,
         errorMessage: parsedError.description ?? body,
-        extra: { photo_url: photoUrl }
+        extra: { photo_url: photoUrl, ...(extraPayload ?? {}) }
       });
     }
     return { ok: response.ok, status: response.status, body };
@@ -1259,7 +1264,7 @@ export async function sendPhotoWithResult(
         errorCode: null,
         httpStatus: null,
         errorMessage: String(error),
-        extra: { photo_url: photoUrl }
+        extra: { photo_url: photoUrl, ...(extraPayload ?? {}) }
       });
     }
     return { ok: false, status: null, body: String(error) };

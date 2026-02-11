@@ -8355,6 +8355,36 @@ async function claimMatchResultNotificationJob(supabase: SupabaseClient, jobId: 
   return Array.isArray(data) && data.length > 0;
 }
 
+async function hasSentMatchResultNotification(
+  supabase: SupabaseClient,
+  payload: MatchResultNotification
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("bot_message_logs")
+      .select("id")
+      .eq("user_id", payload.user_id)
+      .eq("direction", "out")
+      .eq("sender", "bot")
+      .eq("delivery_status", "sent")
+      .eq("message_type", getMatchResultImageFile(payload.delta) ? "photo" : "text")
+      .eq("payload->>kind", "match_result")
+      .eq("payload->>match_id", String(payload.match_id))
+      .eq("payload->>delta", String(payload.delta))
+      .eq("payload->>home_score", String(payload.home_score))
+      .eq("payload->>away_score", String(payload.away_score))
+      .limit(1);
+    if (error) {
+      console.error("Failed to check match result duplicate", error);
+      return false;
+    }
+    return Array.isArray(data) && data.length > 0;
+  } catch (error) {
+    console.error("Failed to check match result duplicate", error);
+    return false;
+  }
+}
+
 async function processMatchResultNotificationJob(
   env: Env,
   supabase: SupabaseClient,
@@ -8373,6 +8403,27 @@ async function processMatchResultNotificationJob(
       await markMatchResultNotificationJobFailed(supabase, job.id, attempts, "invalid_payload");
       finalized = true;
       finalReason = "invalid_payload";
+      return;
+    }
+
+    const alreadySent = await hasSentMatchResultNotification(supabase, payload);
+    if (alreadySent) {
+      const { error } = await supabase
+        .from("match_result_notification_jobs")
+        .update({
+          status: "sent",
+          attempts,
+          locked_at: null,
+          last_error: "duplicate_suppressed",
+          sent_at: nowIso,
+          updated_at: nowIso
+        })
+        .eq("id", job.id);
+      if (error) {
+        console.error("Failed to mark duplicate match result job as sent", error, { jobId: job.id });
+      }
+      finalized = true;
+      finalReason = "duplicate_suppressed";
       return;
     }
 
@@ -8466,6 +8517,14 @@ async function sendMatchResultNotification(
   env: Env,
   notification: MatchResultNotification
 ): Promise<MatchResultDeliveryAttempt> {
+  const extraPayload = {
+    kind: "match_result",
+    match_id: notification.match_id,
+    user_id: notification.user_id,
+    delta: notification.delta,
+    home_score: notification.home_score,
+    away_score: notification.away_score
+  };
   const imageFile = getMatchResultImageFile(notification.delta);
   const caption = buildMatchResultCaption(notification) || formatMatchResultLine(notification);
   if (imageFile) {
@@ -8483,11 +8542,15 @@ async function sendMatchResultNotification(
             }
           ]
         ]
-      }
+      },
+      undefined,
+      undefined,
+      true,
+      extraPayload
     );
     return { context: "match_result_photo", result };
   }
-  const result = await sendMessageWithResult(env, notification.user_id, caption);
+  const result = await sendMessageWithResult(env, notification.user_id, caption, undefined, undefined, undefined, undefined, extraPayload);
   return { context: "match_result_text", result };
 }
 
