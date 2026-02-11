@@ -187,6 +187,10 @@ export type ChannelWebappResponse =
   | { ok: true }
   | { ok: false; error: string; status?: number; body?: string };
 
+export type MatchResultNotifyResponse =
+  | { ok: true; count: number }
+  | { ok: false; error: string };
+
 export type ManualOddsResponse =
   | { ok: true; match: Match }
   | { ok: false; error: string };

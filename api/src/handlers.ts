@@ -1887,6 +1887,63 @@ export default {
       return jsonResponse({ ok: true }, 200, corsHeaders());
     }
 
+    if (url.pathname === "/api/admin/match-result-notify") {
+      if (request.method === "OPTIONS") {
+        return corsResponse();
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, corsHeaders());
+      }
+
+      const supabase = createSupabaseClient(env);
+      if (!supabase) {
+        return jsonResponse({ ok: false, error: "missing_supabase" }, 500, corsHeaders());
+      }
+
+      const adminBearer = getAdminBearerToken(request);
+      if (!adminBearer) {
+        return jsonResponse({ ok: false, error: "missing_token" }, 401, corsHeaders());
+      }
+      const authResult = await authorizePresentationAdminAccess(supabase, env, request);
+      if (!authResult.ok) {
+        const status = adminAccessErrorStatus(authResult.error);
+        return jsonResponse({ ok: false, error: authResult.error }, status, corsHeaders());
+      }
+
+      const secret = env.ADMIN_JWT_SECRET?.trim();
+      if (!secret) {
+        return jsonResponse({ ok: false, error: "missing_secret" }, 500, corsHeaders());
+      }
+      const verification = await verifyAdminJwt(adminBearer, secret);
+      if (!verification.ok) {
+        const status = adminAccessErrorStatus("invalid_token");
+        return jsonResponse({ ok: false, error: "invalid_token" }, status, corsHeaders());
+      }
+
+      const body = await readJson<{ match_id?: number }>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, error: "bad_json" }, 400, corsHeaders());
+      }
+      const matchId = parseInteger(body.match_id);
+      if (!matchId) {
+        return jsonResponse({ ok: false, error: "bad_match_id" }, 400, corsHeaders());
+      }
+
+      const timezone = getApiFootballTimezone(env) ?? "Europe/Kyiv";
+      const notifications = await buildMatchResultNotificationsForResend(supabase, matchId, timezone);
+      await logDebugUpdate(supabase, "match_result_resend_notifications", {
+        matchId,
+        error: `count=${notifications.length}`
+      });
+
+      if (notifications.length) {
+        await enqueueMatchResultNotifications(env, supabase, notifications);
+        ctx.waitUntil(handleMatchResultNotificationQueue(env));
+      }
+
+      return jsonResponse({ ok: true, count: notifications.length }, 200, corsHeaders());
+    }
+
     if (url.pathname === "/api/matches/announcement") {
       if (request.method === "OPTIONS") {
         return corsResponse();
@@ -6990,6 +7047,97 @@ async function applyMatchResult(
   notifications.push(...penaltyNotifications);
 
   return { ok: true, notifications };
+}
+
+async function buildMatchResultNotificationsForResend(
+  supabase: SupabaseClient,
+  matchId: number,
+  timeZone: string
+): Promise<MatchResultNotification[]> {
+  const match = await getMatch(supabase, matchId);
+  if (!match || match.home_score === null || match.away_score === null) {
+    return [];
+  }
+
+  const { data: predictions, error: predError } = await supabase
+    .from("predictions")
+    .select(
+      "id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, faction_club_id)"
+    )
+    .eq("match_id", matchId);
+
+  if (predError) {
+    console.error("Failed to fetch predictions for resend", predError);
+    return [];
+  }
+
+  const predictionRows = (predictions as PredictionRow[]) ?? [];
+  const predictionStats = buildMatchResultPredictionStats(predictionRows, match.home_score, match.away_score);
+  const predictedUserIds = new Set(predictionRows.map((row) => row.user_id));
+
+  const { data: penalties, error: penaltiesError } = await supabase
+    .from("missed_predictions")
+    .select("user_id")
+    .eq("match_id", match.id);
+  if (penaltiesError) {
+    console.error("Failed to fetch missed_predictions for resend", penaltiesError);
+  }
+  const penalizedUserIds = new Set(
+    (penalties as Array<{ user_id: number }> | null | undefined)?.map((row) => row.user_id) ?? []
+  );
+
+  const allUserIds = new Set<number>([...predictedUserIds, ...penalizedUserIds]);
+  const { data: users, error: usersError } = await supabase
+    .from("users")
+    .select("id, points_total")
+    .in("id", Array.from(allUserIds));
+  if (usersError) {
+    console.error("Failed to fetch users for resend", usersError);
+    return [];
+  }
+  const pointsByUser = new Map<number, number>();
+  for (const user of (users as StoredUser[]) ?? []) {
+    const rawPoints = user.points_total;
+    const parsedPoints = typeof rawPoints === "number" ? rawPoints : Number(rawPoints);
+    const currentPoints = Number.isFinite(parsedPoints) ? parsedPoints : STARTING_POINTS;
+    pointsByUser.set(user.id, currentPoints);
+  }
+
+  const notifications: MatchResultNotification[] = [];
+  for (const prediction of predictionRows) {
+    const delta = typeof prediction.points === "number" ? prediction.points : Number(prediction.points ?? 0);
+    const safeDelta = Number.isFinite(delta) ? delta : 0;
+    notifications.push({
+      match_id: match.id,
+      user_id: prediction.user_id,
+      delta: safeDelta,
+      total_points: pointsByUser.get(prediction.user_id) ?? STARTING_POINTS,
+      home_team: match.home_team,
+      away_team: match.away_team,
+      home_score: match.home_score,
+      away_score: match.away_score,
+      prediction_stats: predictionStats
+    });
+  }
+
+  for (const userId of penalizedUserIds) {
+    if (predictedUserIds.has(userId)) {
+      continue;
+    }
+    notifications.push({
+      match_id: match.id,
+      user_id: userId,
+      delta: MISSED_PREDICTION_PENALTY,
+      total_points: pointsByUser.get(userId) ?? STARTING_POINTS,
+      home_team: match.home_team,
+      away_team: match.away_team,
+      home_score: match.home_score,
+      away_score: match.away_score,
+      prediction_stats: predictionStats
+    });
+  }
+
+  return notifications;
 }
 
 async function upsertTeamMatchStats(

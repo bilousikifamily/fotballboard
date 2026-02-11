@@ -53,6 +53,7 @@
             <div class="admin-actions-group is-visible" data-admin-actions-group="matches">
               <button class="button secondary" type="button" data-admin-action="add-match">ДОДАТИ МАТЧ</button>
               <button class="button secondary" type="button" data-admin-action="result">ВВЕСТИ РЕЗУЛЬТАТИ</button>
+              <button class="button secondary" type="button" data-admin-action="result-notify">РОЗСИЛКА РЕЗУЛЬТАТУ</button>
               <button class="button secondary" type="button" data-admin-action="announce">ПОВІДОМИТИ В БОТІ</button>
               <button class="button secondary" type="button" data-admin-action="channel-webapp">ПОСТ В КАНАЛ</button>
               <button class="button secondary" type="button" data-admin-action="predictions-stats">ПОВІДОМИТИ ПРО УСПІШНІСТЬ</button>
@@ -105,6 +106,15 @@
               <button class="button primary" type="submit">Зберегти результат</button>
               <p class="muted small" data-admin-result-status></p>
             </form>
+
+            <div class="admin-form is-hidden" data-admin-panel-content="result-notify">
+              <label class="field">
+                <span>ID матчу</span>
+                <input type="number" min="1" data-admin-result-notify-match-id placeholder="106" />
+              </label>
+              <button class="button primary" type="button" data-admin-result-notify>НАДІСЛАТИ РЕЗУЛЬТАТ</button>
+              <p class="muted small" data-admin-result-notify-status></p>
+            </div>
 
             <div class="admin-form is-hidden" data-admin-panel-content="announce">
               <button class="button primary" type="button" data-admin-announce>ПОВІДОМИТИ В БОТІ</button>

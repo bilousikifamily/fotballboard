@@ -5,6 +5,7 @@ import type {
   AdminLoginResponse,
   BotLogsResponse,
   ChannelWebappResponse,
+  MatchResultNotifyResponse,
   PredictionAccuracyResponse
 } from "../types";
 import { authJsonHeaders, requestJson } from "./client";
@@ -95,6 +96,18 @@ export function postChannelWebapp(
   return requestJson<ChannelWebappResponse>(`${apiBase}/api/admin/channel-webapp`, {
     method: "POST",
     headers: authJsonHeaders(undefined, adminSessionToken),
+    body: JSON.stringify(payload)
+  });
+}
+
+export function postMatchResultNotify(
+  apiBase: string,
+  adminSessionToken: string,
+  payload: { match_id: number }
+): Promise<{ response: Response; data: MatchResultNotifyResponse }> {
+  return requestJson<MatchResultNotifyResponse>(`${apiBase}/api/admin/match-result-notify`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${adminSessionToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 }

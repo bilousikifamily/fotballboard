@@ -12,7 +12,7 @@ import {
   postResult,
   postConfirmMatch
 } from "./api/matches";
-import { fetchBotLogs, fetchPredictionAccuracy, postAdminLogin, postChannelWebapp } from "./api/admin";
+import { fetchBotLogs, fetchPredictionAccuracy, postAdminLogin, postChannelWebapp, postMatchResultNotify } from "./api/admin";
 import { fetchLeaderboard } from "./api/leaderboard";
 import { renderAdminMatchAccuracy, renderAdminPlayerAccuracy, renderAdminUserSessions } from "./screens/adminUsers";
 import { renderPendingMatchesList } from "./screens/matches";
@@ -57,11 +57,13 @@ const resultForm = document.querySelector<HTMLFormElement>("[data-admin-result-f
 const announceButton = document.querySelector<HTMLButtonElement>("[data-admin-announce]");
 const predictionsStatsButton = document.querySelector<HTMLButtonElement>("[data-admin-predictions-stats]");
 const channelWebappButton = document.querySelector<HTMLButtonElement>("[data-admin-channel-webapp]");
+const resultNotifyButton = document.querySelector<HTMLButtonElement>("[data-admin-result-notify]");
 const addStatus = document.querySelector<HTMLElement>("[data-admin-add-status]");
 const resultStatus = document.querySelector<HTMLElement>("[data-admin-result-status]");
 const announceStatus = document.querySelector<HTMLElement>("[data-admin-announce-status]");
 const predictionsStatsStatus = document.querySelector<HTMLElement>("[data-admin-predictions-stats-status]");
 const channelWebappStatus = document.querySelector<HTMLElement>("[data-admin-channel-webapp-status]");
+const resultNotifyStatus = document.querySelector<HTMLElement>("[data-admin-result-notify-status]");
 const pendingList = document.querySelector<HTMLElement>("[data-admin-pending-list]");
 const pendingStatus = document.querySelector<HTMLElement>("[data-admin-pending-status]");
 const usersList = document.querySelector<HTMLElement>("[data-admin-users-list]");
@@ -84,6 +86,7 @@ const logsContent = document.querySelector<HTMLElement>("[data-admin-logs-conten
 const logsClearButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-clear]");
 const logsRefreshButton = document.querySelector<HTMLButtonElement>("[data-admin-logs-refresh]");
 const channelWebappCaption = document.querySelector<HTMLTextAreaElement>("[data-admin-channel-caption]");
+const resultNotifyMatchId = document.querySelector<HTMLInputElement>("[data-admin-result-notify-match-id]");
 
 const state = {
   matches: [] as Match[],
@@ -946,6 +949,38 @@ async function handleAnnouncement(): Promise<void> {
   }
 }
 
+async function handleResultNotify(): Promise<void> {
+  if (!API_BASE) {
+    return;
+  }
+  const token = getAdminToken();
+  if (!token) {
+    setStatus(resultNotifyStatus, "Ви не авторизовані.");
+    return;
+  }
+  const matchId = Number(resultNotifyMatchId?.value ?? "");
+  if (!Number.isFinite(matchId) || matchId <= 0) {
+    setStatus(resultNotifyStatus, "Вкажіть коректний ID матчу.");
+    return;
+  }
+
+  setStatus(resultNotifyStatus, "Надсилання повідомлень…");
+  try {
+    const { response, data } = await postMatchResultNotify(API_BASE, token, { match_id: matchId });
+    if (!response.ok || !data.ok) {
+      const errorMsg = `Не вдалося надіслати повідомлення. Status: ${response.status}, Error: ${data.error ?? "unknown"}`;
+      setStatus(resultNotifyStatus, "Не вдалося надіслати повідомлення.");
+      addLog("error", errorMsg, { response, data });
+      return;
+    }
+    setStatus(resultNotifyStatus, `Запущено розсилку: ${data.count ?? 0}`);
+    addLog("info", "Розсилку результатів запущено", { matchId, count: data.count ?? 0 });
+  } catch (error) {
+    setStatus(resultNotifyStatus, "Не вдалося надіслати повідомлення.");
+    addLog("error", "Помилка при надсиланні результатів", error);
+  }
+}
+
 async function handlePredictionsStats(): Promise<void> {
   if (!API_BASE) {
     return;
@@ -1039,6 +1074,9 @@ function attachListeners(): void {
   resultForm?.addEventListener("submit", handleResult);
   announceButton?.addEventListener("click", () => {
     void handleAnnouncement();
+  });
+  resultNotifyButton?.addEventListener("click", () => {
+    void handleResultNotify();
   });
   channelWebappButton?.addEventListener("click", () => {
     void handleChannelWebapp();
