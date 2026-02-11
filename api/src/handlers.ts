@@ -105,6 +105,11 @@ const ANNOUNCEMENT_QUEUE_BATCH_SIZE = 100;
 const ANNOUNCEMENT_QUEUE_CONCURRENCY = 6;
 const ANNOUNCEMENT_QUEUE_MAX_ATTEMPTS = 5;
 const ANNOUNCEMENT_QUEUE_LOCK_TIMEOUT_MS = 2 * 60 * 1000;
+const BOT_DEPUTY_USER_ID = 990000001;
+const BOT_DEPUTY_NICKNAME = "ПіВЕНЬ";
+const BOT_DEPUTY_USERNAME = "piven_bot";
+const BOT_DEPUTY_FACTION = "chelsea";
+const BOT_PREDICTION_LEAD_MS = 20 * 60 * 1000;
 const MATCHES_ANNOUNCEMENT_IMAGE = "new_prediction.png";
 const TEAM_ID_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const ANALITIKA_LEAGUE_ID = "english-premier-league";
@@ -2106,6 +2111,7 @@ export default {
     ctx.waitUntil(handleSubscriptionExpiryReminders(env));
     ctx.waitUntil(handleMatchResultNotificationQueue(env));
     ctx.waitUntil(handleAnnouncementQueue(env));
+    ctx.waitUntil(handleBotDeputyPredictions(env));
   }
 };
 
@@ -2550,6 +2556,30 @@ async function storeUser(
     }
   } catch (error) {
     console.error("Failed to store user", error);
+  }
+}
+
+async function ensureBotDeputyUser(supabase: SupabaseClient): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    const payload = {
+      id: BOT_DEPUTY_USER_ID,
+      username: BOT_DEPUTY_USERNAME,
+      first_name: BOT_DEPUTY_NICKNAME,
+      last_name: null,
+      photo_url: null,
+      nickname: BOT_DEPUTY_NICKNAME,
+      faction_club_id: BOT_DEPUTY_FACTION,
+      onboarding_completed_at: now,
+      updated_at: now
+    };
+
+    const { error } = await supabase.from("users").upsert(payload, { onConflict: "id" });
+    if (error) {
+      console.error("Failed to store bot deputy user", error);
+    }
+  } catch (error) {
+    console.error("Failed to store bot deputy user", error);
   }
 }
 
@@ -3941,6 +3971,27 @@ function formatAverageScore(predictions: PredictionView[]): string {
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
   };
   return `${format(averageHome)}:${format(averageAway)}`;
+}
+
+function getAveragePredictionScore(
+  predictions: Array<Pick<PredictionView, "home_pred" | "away_pred">>
+): { home: number; away: number } | null {
+  if (!predictions.length) {
+    return null;
+  }
+  const { homes, aways } = predictions.reduce(
+    (acc, prediction) => ({
+      homes: acc.homes + prediction.home_pred,
+      aways: acc.aways + prediction.away_pred
+    }),
+    { homes: 0, aways: 0 }
+  );
+  const averageHome = Math.round(homes / predictions.length);
+  const averageAway = Math.round(aways / predictions.length);
+  return {
+    home: Math.max(0, averageHome),
+    away: Math.max(0, averageAway)
+  };
 }
 
 function buildFactionPredictionsMessage(
@@ -8705,6 +8756,56 @@ async function handlePredictionReminders(env: Env): Promise<void> {
   }
 }
 
+async function handleBotDeputyPredictions(env: Env): Promise<void> {
+  const supabase = createSupabaseClient(env);
+  if (!supabase) {
+    console.error("Failed to send bot predictions: missing_supabase");
+    return;
+  }
+
+  await ensureBotDeputyUser(supabase);
+
+  const now = new Date();
+  const end = new Date(now.getTime() + BOT_PREDICTION_LEAD_MS);
+  const matches = await listMatchesForBotPredictions(supabase, now, end);
+  if (!matches || matches.length === 0) {
+    return;
+  }
+
+  const timezone = getApiFootballTimezone(env) ?? "Europe/Kyiv";
+
+  for (const match of matches) {
+    if (!canPredict(match.kickoff_at)) {
+      continue;
+    }
+
+    const existing = await findPrediction(supabase, BOT_DEPUTY_USER_ID, match.id);
+    if (existing) {
+      continue;
+    }
+
+    const predictions = await listPredictions(supabase, match.id);
+    if (!predictions) {
+      continue;
+    }
+    const filtered = predictions.filter((prediction) => prediction.user_id !== BOT_DEPUTY_USER_ID);
+    const average = filtered.length > 0 ? getAveragePredictionScore(filtered) : { home: 0, away: 0 };
+
+    const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timezone);
+    await insertPrediction(
+      supabase,
+      BOT_DEPUTY_USER_ID,
+      match.id,
+      {
+        match_id: match.id,
+        home_pred: average.home,
+        away_pred: average.away
+      },
+      seasonMonth
+    );
+  }
+}
+
 function formatAverageMatchPredictionScore(predictions: MatchPredictionRecord[]): string {
   if (!predictions.length) {
     return "0:0";
@@ -8846,6 +8947,32 @@ async function listMatchesForPredictionReminders(
     return (data as PredictionReminderMatch[]) ?? [];
   } catch (error) {
     console.error("Failed to list matches for reminders", error);
+    return null;
+  }
+}
+
+async function listMatchesForBotPredictions(
+  supabase: SupabaseClient,
+  start: Date,
+  end: Date
+): Promise<PredictionReminderMatch[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, home_team, away_team, home_club_id, away_club_id, kickoff_at")
+      .eq("status", "scheduled")
+      .gte("kickoff_at", start.toISOString())
+      .lte("kickoff_at", end.toISOString())
+      .order("kickoff_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to list matches for bot predictions", error);
+      return null;
+    }
+
+    return (data as PredictionReminderMatch[]) ?? [];
+  } catch (error) {
+    console.error("Failed to list matches for bot predictions", error);
     return null;
   }
 }
