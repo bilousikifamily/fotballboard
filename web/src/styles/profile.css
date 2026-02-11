@@ -964,15 +964,6 @@ h1 {
   overflow-x: auto;
 }
 
-.spinner {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 122, 26, 0.2);
-  border-top-color: var(--accent);
-  animation: spin 1s linear infinite;
-}
-
 .actions {
   width: 100%;
   display: grid;

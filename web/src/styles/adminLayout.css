@@ -749,8 +749,7 @@ body.admin-layout-active #app {
   /* Важливо для збереження якості при обертанні */
   transform-style: preserve-3d;
   will-change: transform;
-  /* Померанчевий глоу */
-  filter: drop-shadow(0 0 20px rgba(255, 154, 31, 0.3)) drop-shadow(0 0 40px rgba(255, 154, 31, 0.2)) drop-shadow(0 0 60px rgba(255, 154, 31, 0.1));
+  filter: none;
 }
 
 /* Застарілий селектор - залишаємо для сумісності, але ізольований */
@@ -769,8 +768,7 @@ body.admin-layout-active #app {
   /* Важливо для збереження якості при обертанні */
   transform-style: preserve-3d;
   will-change: transform;
-  /* Померанчевий глоу */
-  filter: drop-shadow(0 0 20px rgba(255, 154, 31, 0.3)) drop-shadow(0 0 40px rgba(255, 154, 31, 0.2)) drop-shadow(0 0 60px rgba(255, 154, 31, 0.1));
+  filter: none;
 }
 
 /* Дзеркальний рух для правого логотипа */

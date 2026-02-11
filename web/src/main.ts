@@ -407,6 +407,51 @@ function getDevMatches(): Match[] {
   ];
 }
 
+async function bootstrap(data: string): Promise<void> {
+  renderLoading();
+
+  apiBase = import.meta.env.VITE_API_BASE || "";
+
+  try {
+    const { response, data: payload } = await fetchAuth(apiBase, data);
+    if (!response.ok || !payload.ok) {
+      renderMessage("Auth failed", "Please reopen the WebApp.");
+      return;
+    }
+
+    isAdmin = Boolean(payload.admin);
+    currentUserId = payload.user?.id ?? null;
+    currentUser = payload.user;
+    currentDate = getKyivDateString();
+
+    const stats: UserStats = {
+      rank: payload.rank ?? null,
+      points: typeof payload.points_total === "number" ? payload.points_total : STARTING_POINTS
+    };
+
+    const onboarding = payload.onboarding ?? { completed: false };
+    currentOnboarding = onboarding;
+    currentNickname = onboarding.nickname ?? null;
+    currentAvatarChoice = onboarding.avatar_choice ?? null;
+
+    if (!onboarding.completed) {
+      document.body.classList.add("onboarding-active");
+      renderOnboarding(payload.user, stats, onboarding);
+      return;
+    }
+
+    document.body.classList.remove("onboarding-active");
+    renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
+    await loadMatches(currentDate);
+    if (isAdmin) {
+      await loadPendingMatches();
+      await loadAdminUserSessions();
+    }
+  } catch {
+    renderMessage("Network error", "Check your connection and try again.");
+  }
+}
+
 function mountIntro(): void {
   document.body.classList.add("intro-active");
   introOverlay = document.createElement("div");
@@ -493,58 +538,8 @@ function finishIntro(reason: string): void {
   window.setTimeout(removeOverlay, 260);
 }
 
-async function bootstrap(data: string): Promise<void> {
-  renderLoading();
-
-  apiBase = import.meta.env.VITE_API_BASE || "";
-
-  try {
-    const { response, data: payload } = await fetchAuth(apiBase, data);
-    if (!response.ok || !payload.ok) {
-      renderMessage("Auth failed", "Please reopen the WebApp.");
-      return;
-    }
-
-    isAdmin = Boolean(payload.admin);
-    currentUserId = payload.user?.id ?? null;
-    currentUser = payload.user;
-    currentDate = getKyivDateString();
-
-    const stats: UserStats = {
-      rank: payload.rank ?? null,
-      points: typeof payload.points_total === "number" ? payload.points_total : STARTING_POINTS
-    };
-
-    const onboarding = payload.onboarding ?? { completed: false };
-    currentOnboarding = onboarding;
-    currentNickname = onboarding.nickname ?? null;
-    currentAvatarChoice = onboarding.avatar_choice ?? null;
-
-    if (!onboarding.completed) {
-      document.body.classList.add("onboarding-active");
-      renderOnboarding(payload.user, stats, onboarding);
-      return;
-    }
-
-    document.body.classList.remove("onboarding-active");
-    renderUser(payload.user, stats, isAdmin, currentDate, currentNickname, payload.profile ?? null);
-    await loadMatches(currentDate);
-    if (isAdmin) {
-      await loadPendingMatches();
-      await loadAdminUserSessions();
-    }
-  } catch {
-    renderMessage("Network error", "Check your connection and try again.");
-  }
-}
-
 function renderLoading(): void {
-  app.innerHTML = `
-    <main class="card">
-      <div class="spinner"></div>
-      <p class="muted">Loading...</p>
-    </main>
-  `;
+  app.innerHTML = "";
 }
 
 function renderMessage(message: string, note = "This WebApp should be opened from Telegram."): void {

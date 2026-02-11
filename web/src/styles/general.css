@@ -51,6 +51,12 @@ body {
   opacity: 1;
 }
 
+#app.app-hidden {
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+
 body.onboarding-active #app {
   width: 100%;
   padding: 16px;
@@ -61,12 +67,6 @@ body.onboarding-active {
   padding-bottom: env(safe-area-inset-bottom);
   height: 100dvh;
   overflow: hidden;
-}
-
-#app.app-hidden {
-  opacity: 0;
-  transform: translateY(18px);
-  pointer-events: none;
 }
 
 #app.app-enter {
