@@ -2,16 +2,16 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0b0b0d;
-  --card: #151517;
-  --surface: #1e1e22;
-  --surface-strong: #232328;
+  --bg: #000000;
+  --card: #22160f;
+  --surface: #2a1a12;
+  --surface-strong: #332116;
   --ink: #f7f1e6;
-  --muted: #b2a89b;
-  --accent: #ffb347;
-  --accent-strong: #d96a1d;
-  --accent-soft: rgba(255, 179, 71, 0.2);
-  --accent-gradient: linear-gradient(135deg, #ffb347, #ff7a1a);
+  --muted: #b9a999;
+  --accent: #f2a359;
+  --accent-strong: #d2782b;
+  --accent-soft: rgba(242, 163, 89, 0.2);
+  --accent-gradient: linear-gradient(135deg, #f2a359, #ff8b3c);
   --prediction-dot-size: 22px;
   --prediction-dot-gap: 6px;
   --outline-light: rgba(255, 255, 255, 0.12);
@@ -32,10 +32,7 @@ html {
 body {
   margin: 0;
   font-family: "Space Grotesk", system-ui, sans-serif;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(255, 122, 26, 0.25), transparent 55%),
-    radial-gradient(circle at 85% 15%, rgba(255, 122, 26, 0.12), transparent 45%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
   min-height: 100vh;
   min-height: 100dvh;
@@ -194,9 +191,9 @@ body.intro-active {
   gap: 8px;
   padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
   min-height: var(--tabbar-height);
-  background: rgba(16, 17, 20, 0.92);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
+  background: rgba(18, 12, 8, 0.96);
+  border-top: 1px solid rgba(255, 179, 71, 0.2);
+  backdrop-filter: none;
 }
 
 .tabbar.is-admin {
@@ -261,8 +258,8 @@ body.intro-active {
 
 .tabbar-button.is-active {
   color: var(--ink);
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(242, 163, 89, 0.35);
+  background: rgba(255, 179, 71, 0.08);
 }
 
 .notice {
