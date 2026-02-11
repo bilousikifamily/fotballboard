@@ -313,6 +313,7 @@ export interface StoredUser {
   avatar_choice?: string | null;
   admin?: boolean | null;
   points_total?: number | null;
+  created_at?: string | null;
   updated_at?: string | null;
   last_seen_at?: string | null;
   faction_club_id?: string | null;
