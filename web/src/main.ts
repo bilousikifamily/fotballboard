@@ -458,8 +458,8 @@ function mountIntro(): void {
   introOverlay.className = "intro-overlay";
   introOverlay.innerHTML = `
     <div class="intro-content">
-      <video autoplay muted playsinline preload="auto" poster="/poster.jpg">
-        <source src="/preloader2.webm" type="video/webm" />
+      <video autoplay muted playsinline preload="auto">
+        <source src="/preloader 24.webm" type="video/webm" />
       </video>
       <button class="intro-skip" type="button" aria-label="Пропустити інтро">Пропустити</button>
     </div>
