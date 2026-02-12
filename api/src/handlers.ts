@@ -9170,7 +9170,10 @@ async function listAllUserIds(
   supabase: SupabaseClient
 ): Promise<Array<{ id: number }> | null> {
   try {
-    const { data: users, error: usersError } = await supabase.from("users").select("id");
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, bot_blocked")
+      .or("bot_blocked.is.null,bot_blocked.eq.false");
     if (usersError) {
       console.error("Failed to fetch users for announcements", usersError);
       return null;

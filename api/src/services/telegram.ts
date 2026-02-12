@@ -60,6 +60,9 @@ export async function handleUpdate(
   if (!message || !message.chat?.id) {
     return;
   }
+  if (supabase && message.from?.id) {
+    await clearUserBotBlocked(supabase, message.from.id);
+  }
 
   if (message.successful_payment) {
     if (supabase && message.from?.id) {
@@ -639,6 +642,63 @@ function createSupabaseClientForLogs(env: Env): SupabaseClient | null {
   });
 }
 
+async function clearUserBotBlocked(supabase: SupabaseClient, userId: number): Promise<void> {
+  try {
+    await supabase
+      .from("users")
+      .update({ bot_blocked: false, bot_blocked_at: null, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+  } catch (error) {
+    console.error("Failed to clear bot blocked flag", error);
+  }
+}
+
+async function markUserBotBlocked(env: Env, userId: number): Promise<void> {
+  const supabase = createSupabaseClientForLogs(env);
+  if (!supabase) {
+    return;
+  }
+  try {
+    await supabase
+      .from("users")
+      .update({ bot_blocked: true, bot_blocked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", userId);
+  } catch (error) {
+    console.error("Failed to mark bot blocked user", error);
+  }
+}
+
+async function isUserBotBlocked(env: Env, userId: number): Promise<boolean> {
+  const supabase = createSupabaseClientForLogs(env);
+  if (!supabase) {
+    return false;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("bot_blocked, bot_blocked_at")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) {
+      return false;
+    }
+    return Boolean(data?.bot_blocked || data?.bot_blocked_at);
+  } catch {
+    return false;
+  }
+}
+
+function isBotBlockedError(description: string | null, status: number | null): boolean {
+  if (status !== 403) {
+    return false;
+  }
+  if (!description) {
+    return false;
+  }
+  const normalized = description.toLowerCase();
+  return normalized.includes("bot was blocked by the user");
+}
+
 function parseTelegramMessageResponse(body: string): {
   messageId: number | null;
   chatId: number | null;
@@ -1089,6 +1149,27 @@ export async function sendMessageWithResult(
   logAdminId?: string,
   extraPayload?: Record<string, unknown> | null
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
+  if (typeof chatId === "number" && (await isUserBotBlocked(env, chatId))) {
+    if (shouldLogPrivateChat(chatId, null)) {
+      await insertBotMessageLog(env, {
+        chatId,
+        userId: chatId,
+        adminId: logAdminId ?? null,
+        threadId: typeof messageThreadId === "number" ? messageThreadId : null,
+        messageId: null,
+        direction: "out",
+        sender: logAdminId ? "admin" : "bot",
+        messageType: "text",
+        text,
+        deliveryStatus: "failed",
+        errorCode: 403,
+        httpStatus: 403,
+        errorMessage: "bot_blocked",
+        extra: extraPayload ?? null
+      });
+    }
+    return { ok: false, status: 403, body: "bot_blocked" };
+  }
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`;
   const payload: Record<string, unknown> = {
     chat_id: chatId,
@@ -1114,6 +1195,9 @@ export async function sendMessageWithResult(
     const parsed = parseTelegramMessageResponse(body);
     const parsedError = parseTelegramErrorResponse(body);
     const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
+    if (resolvedChatId && isBotBlockedError(parsedError.description, response.status)) {
+      await markUserBotBlocked(env, resolvedChatId);
+    }
     if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
@@ -1184,6 +1268,27 @@ export async function sendPhotoWithResult(
   logFailures: boolean = true,
   extraPayload?: Record<string, unknown> | null
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
+  if (typeof chatId === "number" && (await isUserBotBlocked(env, chatId))) {
+    if (logFailures && shouldLogPrivateChat(chatId, null)) {
+      await insertBotMessageLog(env, {
+        chatId,
+        userId: chatId,
+        adminId: null,
+        threadId: typeof messageThreadId === "number" ? messageThreadId : null,
+        messageId: null,
+        direction: "out",
+        sender: "bot",
+        messageType: "photo",
+        text: caption ?? null,
+        deliveryStatus: "failed",
+        errorCode: 403,
+        httpStatus: 403,
+        errorMessage: "bot_blocked",
+        extra: { photo_url: photoUrl, ...(extraPayload ?? {}) }
+      });
+    }
+    return { ok: false, status: 403, body: "bot_blocked" };
+  }
   const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`;
   const payload: Record<string, unknown> = {
     chat_id: chatId,
@@ -1212,6 +1317,9 @@ export async function sendPhotoWithResult(
     const parsed = parseTelegramMessageResponse(body);
     const parsedError = parseTelegramErrorResponse(body);
     const resolvedChatId = typeof chatId === "number" ? chatId : parsed.chatId;
+    if (resolvedChatId && isBotBlockedError(parsedError.description, response.status)) {
+      await markUserBotBlocked(env, resolvedChatId);
+    }
     if (response.ok && shouldLogPrivateChat(resolvedChatId, parsed.chatType)) {
       await insertBotMessageLog(env, {
         chatId: resolvedChatId,
