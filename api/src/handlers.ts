@@ -1879,10 +1879,7 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      let notificationsToSend = result.notifications;
-      if (notificationsToSend.length === 0) {
-        notificationsToSend = await buildMatchResultNotificationsForResend(supabase, matchId, timezone);
-      }
+      const notificationsToSend = await buildMatchResultNotificationsForResend(supabase, matchId, timezone);
 
       await logDebugUpdate(supabase, "match_result_notifications_count", {
         matchId,
@@ -1892,6 +1889,8 @@ export default {
       if (notificationsToSend.length) {
         await enqueueMatchResultNotifications(env, supabase, notificationsToSend);
         ctx.waitUntil(handleMatchResultNotificationQueue(env));
+      } else {
+        await logDebugUpdate(supabase, "match_result_notifications_empty", { matchId });
       }
 
       return jsonResponse({ ok: true }, 200, corsHeaders());
@@ -8302,6 +8301,25 @@ async function enqueueMatchResultNotifications(
     .upsert(records, { onConflict: "job_key", ignoreDuplicates: true });
 
   if (!error) {
+    const jobKeys = records.map((record) => record.job_key);
+    if (jobKeys.length) {
+      const { error: retryError } = await supabase
+        .from("match_result_notification_jobs")
+        .update({
+          status: "retry",
+          locked_at: null,
+          next_attempt_at: now,
+          updated_at: now
+        })
+        .in("job_key", jobKeys)
+        .in("status", ["failed", "retry"]);
+      if (retryError) {
+        await logDebugUpdate(supabase, "match_result_enqueue_retry_failed", {
+          matchId: notifications[0]?.match_id,
+          error: formatSupabaseError(retryError)
+        });
+      }
+    }
     return;
   }
 
