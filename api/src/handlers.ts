@@ -8334,6 +8334,24 @@ async function enqueueMatchResultNotifications(
   console.error("Failed to enqueue match result notifications", error);
   for (const notification of notifications) {
     const attempt = await sendMatchResultNotification(env, notification);
+    if (attempt.result.ok) {
+      await ensureMatchResultBotLog(
+        supabase,
+        notification,
+        attempt.context === "match_result_photo" ? "photo" : "text",
+        buildMatchResultCaption(notification) || formatMatchResultLine(notification),
+        attempt.result.status
+      );
+      await logDebugUpdate(supabase, "match_result_enqueue_fallback_sent", {
+        matchId: notification.match_id,
+        error: `user_id=${notification.user_id}`
+      });
+    } else {
+      await logDebugUpdate(supabase, "match_result_enqueue_fallback_failed", {
+        matchId: notification.match_id,
+        error: `user_id=${notification.user_id} ${buildMatchResultDeliveryError(attempt.context, attempt.result)}`
+      });
+    }
     if (!attempt.result.ok) {
       await logBotDeliveryFailure(supabase, notification.user_id, attempt.context, attempt.result);
     }
