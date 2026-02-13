@@ -1879,7 +1879,10 @@ export default {
         return jsonResponse({ ok: false, error: "db_error" }, 500, corsHeaders());
       }
 
-      const notificationsToSend = await buildMatchResultNotificationsForResend(supabase, matchId, timezone);
+      let notificationsToSend = result.notifications;
+      if (!notificationsToSend.length) {
+        notificationsToSend = await buildMatchResultNotificationsForResend(supabase, matchId, timezone);
+      }
 
       await logDebugUpdate(supabase, "match_result_notifications_count", {
         matchId,
