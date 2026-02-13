@@ -8501,6 +8501,13 @@ async function processMatchResultNotificationJob(
 
     const attempt = await sendMatchResultNotification(env, payload);
     if (attempt.result.ok) {
+      await ensureMatchResultBotLog(
+        supabase,
+        payload,
+        attempt.context === "match_result_photo" ? "photo" : "text",
+        buildMatchResultCaption(payload) || formatMatchResultLine(payload),
+        attempt.result.status
+      );
       const { error } = await supabase
         .from("match_result_notification_jobs")
         .update({
@@ -8560,6 +8567,61 @@ async function processMatchResultNotificationJob(
         error: `job_id=${job.id} user_id=${job.user_id} reason=${finalReason}`
       });
     }
+  }
+}
+
+async function ensureMatchResultBotLog(
+  supabase: SupabaseClient,
+  notification: MatchResultNotification,
+  messageType: "text" | "photo",
+  text: string | null,
+  httpStatus: number | null
+): Promise<void> {
+  const alreadySent = await hasSentMatchResultNotification(supabase, notification);
+  if (alreadySent) {
+    await logDebugUpdate(supabase, "match_result_bot_log_exists", {
+      matchId: notification.match_id,
+      error: `user_id=${notification.user_id}`
+    });
+    return;
+  }
+
+  try {
+    await supabase.from("bot_message_logs").insert({
+      chat_id: notification.user_id,
+      user_id: notification.user_id,
+      user_nickname: null,
+      admin_id: null,
+      thread_id: null,
+      message_id: null,
+      direction: "out",
+      sender: "bot",
+      message_type: messageType,
+      text,
+      delivery_status: "sent",
+      error_code: null,
+      http_status: httpStatus,
+      error_message: null,
+      payload: {
+        kind: "match_result",
+        match_id: notification.match_id,
+        user_id: notification.user_id,
+        delta: notification.delta,
+        home_score: notification.home_score,
+        away_score: notification.away_score
+      },
+      created_at: new Date().toISOString()
+    });
+    await logDebugUpdate(supabase, "match_result_bot_log_inserted", {
+      matchId: notification.match_id,
+      error: `user_id=${notification.user_id}`
+    });
+  } catch (error) {
+    await logDebugUpdate(supabase, "match_result_bot_log_failed", {
+      matchId: notification.match_id,
+      error: `user_id=${notification.user_id} ${formatSupabaseError(error)}`
+    });
+    console.error("Failed to ensure match result bot_message_log", error);
   }
 }
 
