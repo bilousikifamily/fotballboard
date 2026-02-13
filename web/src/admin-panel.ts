@@ -915,7 +915,23 @@ async function handleResult(event: Event): Promise<void> {
       setStatus(resultStatus, "Не вдалося зберегти результат.");
       return;
     }
-    setStatus(resultStatus, "Результат збережено ✅");
+    setStatus(resultStatus, "Результат збережено ✅ Запускаю розсилку…");
+    try {
+      const notify = await postMatchResultNotify(API_BASE, token, { match_id: matchId });
+      if (notify.response.ok && notify.data.ok) {
+        setStatus(resultStatus, `Результат збережено ✅ Розсилка: ${notify.data.count ?? 0}`);
+      } else {
+        setStatus(resultStatus, "Результат збережено ✅ але розсилку не запущено.");
+        addLog("warn", "Не вдалося автозапустити розсилку результату", {
+          status: notify.response.status,
+          error: notify.data.error ?? "unknown",
+          matchId
+        });
+      }
+    } catch (error) {
+      setStatus(resultStatus, "Результат збережено ✅ але розсилку не запущено.");
+      addLog("warn", "Помилка автозапуску розсилки результату", error);
+    }
     resultForm.reset();
     await Promise.all([loadMatches(), loadPendingMatches()]);
   } catch {

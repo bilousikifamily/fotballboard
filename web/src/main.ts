@@ -18,7 +18,13 @@ import type {
   TeamMatchStat,
   UserStats
 } from "./types";
-import { fetchAdminChatMessages, fetchAdminChatThreads, fetchBotLogs, sendAdminChatMessage } from "./api/admin";
+import {
+  fetchAdminChatMessages,
+  fetchAdminChatThreads,
+  fetchBotLogs,
+  postMatchResultNotify,
+  sendAdminChatMessage
+} from "./api/admin";
 import { fetchAuth } from "./api/auth";
 import { fetchAnalitikaTeam as fetchAnalitikaTeamApi } from "./api/analitika";
 import { fetchLeaderboard } from "./api/leaderboard";
@@ -2886,7 +2892,25 @@ async function submitResult(form: HTMLFormElement): Promise<void> {
     form.reset();
     form.classList.remove("is-open");
     if (status) {
-      status.textContent = "Результат збережено ✅";
+      status.textContent = "Результат збережено ✅ Запускаю розсилку…";
+    }
+    if (adminToken) {
+      try {
+        const notify = await postMatchResultNotify(apiBase, adminToken, { match_id: matchId });
+        if (notify.response.ok && notify.data.ok) {
+          if (status) {
+            status.textContent = `Результат збережено ✅ Розсилка: ${notify.data.count ?? 0}`;
+          }
+        } else if (status) {
+          status.textContent = "Результат збережено ✅ але розсилку не запущено.";
+        }
+      } catch {
+        if (status) {
+          status.textContent = "Результат збережено ✅ але розсилку не запущено.";
+        }
+      }
+    } else if (status) {
+      status.textContent = "Результат збережено ✅ (потрібен адмін‑токен для розсилки).";
     }
     await loadMatches(currentDate || getKyivDateString());
   } catch {
