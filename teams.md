@@ -30,6 +30,7 @@ This table lists clubs found in the project with Ukrainian alternatives.
 | English Premier League | Crystal Palace | `crystal-palace` | ПЕЛЕС |
 | English Premier League | Everton | `everton` | ЕВЕРТОН |
 | English Premier League | Fulham | `fulham` | ФУЛХЕМ |
+| English Premier League | Hull City | `hull-city` | ХАЛ СІТІ |
 | English Premier League | Ipswich | `ipswich` | ІПСВІЧ |
 | English Premier League | Leeds United | `leeds-united` | ЛІДС |
 | English Premier League | Leicester | `leicester` | ЛЕСТЕР |
@@ -84,6 +85,7 @@ This table lists clubs found in the project with Ukrainian alternatives.
 | Serie A | Monza | `monza` | МОНЦА |
 | Serie A | Napoli | `napoli` | НАПОЛІ |
 | Serie A | Parma | `parma` | ПАРМА |
+| Serie A | Pisa | `pisa` | ПІЗА |
 | Serie A | Roma | `roma` | РОМА |
 | Serie A | Sassuolo | `sassuolo` | САССУОЛО |
 | Serie A | Torino | `torino` | ТОРІНО |
