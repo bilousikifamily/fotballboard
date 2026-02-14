@@ -6975,8 +6975,6 @@ async function applyMatchResult(
     return { ok: false, notifications: [] };
   }
 
-<<<<<<< HEAD
-=======
   const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
   const { data: scoringRowsData, error: scoringError } = await supabase.rpc("apply_match_result_atomic", {
     p_match_id: match.id,
@@ -7076,7 +7074,6 @@ async function applyMatchResultLegacy(
   awayRating: number,
   timeZone: string
 ): Promise<MatchResultOutcome> {
->>>>>>> 8cb0b56 (прибрали повторну розсилку)
   const { error: updateError } = await supabase
     .from("matches")
     .update({
@@ -7084,7 +7081,7 @@ async function applyMatchResultLegacy(
       away_score: awayScore,
       status: "finished"
     })
-    .eq("id", matchId);
+    .eq("id", match.id);
 
   if (updateError) {
     console.error("Failed to update match", updateError);
@@ -7101,8 +7098,109 @@ async function applyMatchResultLegacy(
   );
   if (!statsOk) {
     console.error("Failed to update team_match_stats; continuing without stats update.");
-    await logDebugUpdate(supabase, "team_match_stats_failed", { matchId });
+    await logDebugUpdate(supabase, "team_match_stats_failed", { matchId: match.id });
   }
+
+  const { data: predictions, error: predError } = await supabase
+    .from("predictions")
+    .select(
+      "id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, faction_club_id)"
+    )
+    .eq("match_id", match.id);
+
+  if (predError) {
+    console.error("Failed to fetch predictions", predError);
+    return { ok: false, notifications: [] };
+  }
+
+  const predictionRows = (predictions as PredictionRow[]) ?? [];
+  const predictionStats = buildMatchResultPredictionStats(predictionRows, homeScore, awayScore);
+  const deltas = new Map<number, number>();
+  const updates: Array<{ id: number; points: number }> = [];
+  const predictedUserIds = new Set<number>();
+
+  for (const prediction of predictionRows) {
+    predictedUserIds.add(prediction.user_id);
+    const currentPoints = prediction.points ?? 0;
+    const newPoints = scorePrediction(
+      prediction.home_pred,
+      prediction.away_pred,
+      homeScore,
+      awayScore
+    );
+    if (newPoints !== currentPoints) {
+      updates.push({ id: prediction.id, points: newPoints });
+      const delta = newPoints - currentPoints;
+      deltas.set(prediction.user_id, (deltas.get(prediction.user_id) ?? 0) + delta);
+    }
+  }
+
+  for (const update of updates) {
+    const { error } = await supabase.from("predictions").update({ points: update.points }).eq("id", update.id);
+    if (error) {
+      console.error("Failed to update prediction points", error);
+    }
+  }
+
+  const notifications: MatchResultNotification[] = [];
+  if (deltas.size > 0) {
+    const userIds = Array.from(deltas.keys());
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, points_total")
+      .in("id", userIds);
+
+    if (usersError) {
+      console.error("Failed to fetch users for scoring", usersError);
+      return { ok: false, notifications: [] };
+    }
+
+    for (const user of (users as StoredUser[]) ?? []) {
+      const delta = deltas.get(user.id) ?? 0;
+      if (delta === 0) {
+        continue;
+      }
+      const rawPoints = user.points_total;
+      const parsedPoints = typeof rawPoints === "number" ? rawPoints : Number(rawPoints);
+      const currentPoints = Number.isFinite(parsedPoints) ? parsedPoints : STARTING_POINTS;
+      const nextPoints = currentPoints + delta;
+      const { error } = await supabase
+        .from("users")
+        .update({ points_total: nextPoints, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+      if (error) {
+        console.error("Failed to update user points", error);
+        continue;
+      }
+
+      notifications.push({
+        match_id: match.id,
+        user_id: user.id,
+        delta,
+        total_points: nextPoints,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        home_score: homeScore,
+        away_score: awayScore,
+        prediction_stats: predictionStats
+      });
+    }
+  }
+
+  const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
+  const penaltyNotifications = await applyMissingPredictionPenalties(
+    supabase,
+    match,
+    predictedUserIds,
+    homeScore,
+    awayScore,
+    predictionStats,
+    seasonMonth
+  );
+  notifications.push(...penaltyNotifications);
+
+  return { ok: true, notifications };
+}
 
   const { data: predictions, error: predError } = await supabase
     .from("predictions")
