@@ -6979,6 +6979,108 @@ async function applyMatchResult(
     return { ok: false, notifications: [] };
   }
 
+<<<<<<< HEAD
+=======
+  const seasonMonth = resolveSeasonMonthForMatch(match.kickoff_at, timeZone);
+  const { data: scoringRowsData, error: scoringError } = await supabase.rpc("apply_match_result_atomic", {
+    p_match_id: match.id,
+    p_home_score: homeScore,
+    p_away_score: awayScore,
+    p_kickoff_at: match.kickoff_at,
+    p_season_month: seasonMonth,
+    p_starting_points: STARTING_POINTS,
+    p_missed_penalty: MISSED_PREDICTION_PENALTY
+  });
+  if (scoringError) {
+    const errorMessage = formatSupabaseError(scoringError);
+    console.error("Failed to apply match result transactionally", scoringError);
+    await logDebugUpdate(supabase, "match_result_rpc_failed", { matchId: match.id, error: errorMessage });
+    return await applyMatchResultLegacy(supabase, match, homeScore, awayScore, homeRating, awayRating, timeZone);
+  }
+
+  const statsOk = await upsertTeamMatchStats(
+    supabase,
+    match,
+    homeScore,
+    awayScore,
+    homeRating,
+    awayRating
+  );
+  if (!statsOk) {
+    console.error("Failed to update team_match_stats; continuing without stats update.");
+    await logDebugUpdate(supabase, "team_match_stats_failed", { matchId });
+  }
+
+  let predictionStats: MatchResultPredictionStats = {
+    total_predictions: 0,
+    result_support_percent: 0,
+    exact_guessers: []
+  };
+  const { data: predictions, error: predError } = await supabase
+    .from("predictions")
+    .select(
+      "id, user_id, home_pred, away_pred, points, users(id, username, first_name, last_name, nickname, faction_club_id)"
+    )
+    .eq("match_id", matchId);
+  if (predError) {
+    console.error("Failed to fetch predictions for match result stats", predError);
+  } else {
+    predictionStats = buildMatchResultPredictionStats((predictions as PredictionRow[]) ?? [], homeScore, awayScore);
+  }
+
+  const scoringRows =
+    (scoringRowsData as Array<{ user_id?: number | string | null; delta?: number | string | null; total_points?: number | string | null }> | null) ??
+    [];
+  const deltaByUserId = new Map<number, number>();
+  const totalPointsByUserId = new Map<number, number>();
+  const notifications: MatchResultNotification[] = [];
+  for (const row of scoringRows) {
+    const userIdRaw = typeof row.user_id === "number" ? row.user_id : Number(row.user_id);
+    const deltaRaw = typeof row.delta === "number" ? row.delta : Number(row.delta);
+    const totalPointsRaw = typeof row.total_points === "number" ? row.total_points : Number(row.total_points);
+    if (!Number.isFinite(userIdRaw) || !Number.isFinite(deltaRaw) || !Number.isFinite(totalPointsRaw)) {
+      continue;
+    }
+    const userId = Number(userIdRaw);
+    const delta = Number(deltaRaw);
+    const totalPoints = Number(totalPointsRaw);
+    deltaByUserId.set(userId, delta);
+    totalPointsByUserId.set(userId, totalPoints);
+  }
+
+  for (const [userId, totalPoints] of totalPointsByUserId.entries()) {
+    const delta = deltaByUserId.get(userId) ?? 0;
+    notifications.push({
+      match_id: match.id,
+      user_id: userId,
+      delta,
+      total_points: totalPoints,
+      home_team: match.home_team,
+      away_team: match.away_team,
+      home_score: homeScore,
+      away_score: awayScore,
+      prediction_stats: predictionStats
+    });
+  }
+
+  return { ok: true, notifications };
+}
+
+function isMissingMatchResultRpc(error: unknown): boolean {
+  const message = formatSupabaseError(error).toLowerCase();
+  return message.includes("apply_match_result_atomic") && (message.includes("does not exist") || message.includes("not exist"));
+}
+
+async function applyMatchResultLegacy(
+  supabase: SupabaseClient,
+  match: DbMatch,
+  homeScore: number,
+  awayScore: number,
+  homeRating: number,
+  awayRating: number,
+  timeZone: string
+): Promise<MatchResultOutcome> {
+>>>>>>> 8cb0b56 (прибрали повторну розсилку)
   const { error: updateError } = await supabase
     .from("matches")
     .update({
