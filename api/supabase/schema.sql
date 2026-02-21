@@ -172,3 +172,22 @@ from bot_message_logs log
 left join users on users.id = log.user_id
 where log.user_id is not null
 order by log.user_id, log.created_at desc;
+
+-- Supabase Security Advisor hardening:
+-- 1) Ensure RLS is enabled on public tables exposed via PostgREST.
+-- 2) Ensure the admin view runs as invoker (not definer) permissions.
+alter table if exists debug_updates enable row level security;
+alter table if exists predictions enable row level security;
+alter table if exists team_match_stats enable row level security;
+alter table if exists matches enable row level security;
+alter table if exists match_result_delivery_markers enable row level security;
+alter table if exists users enable row level security;
+alter table if exists match_result_notification_jobs enable row level security;
+alter table if exists match_result_trace_logs enable row level security;
+alter table if exists missed_predictions enable row level security;
+alter table if exists announcement_audit enable row level security;
+alter table if exists bot_message_logs enable row level security;
+alter table if exists announcement_queue enable row level security;
+alter table if exists worker_runtime_logs enable row level security;
+
+alter view if exists admin_chat_threads set (security_invoker = true);

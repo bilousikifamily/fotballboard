@@ -3817,17 +3817,19 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
       .select("faction_club_id, nickname, avatar_choice, onboarding_completed_at")
       .eq("id", userId)
       .maybeSingle();
-    if (error || !data) {
+    if (error) {
+      console.error("Failed to load user onboarding", error);
+      return null;
+    }
+    if (!data) {
       return null;
     }
     const completedAt = (data as UserOnboardingRow).onboarding_completed_at ?? null;
     const factionClubId = data.faction_club_id ?? null;
     const nickname = (data.nickname ?? "").trim();
-    // Вважаємо онбординг повністю завершеним тільки коли заповнені всі кроки.
-    const isFullyCompleted =
-      Boolean(completedAt) &&
-      Boolean(factionClubId) &&
-      nickname.length >= 2;
+    // Legacy fallback: historical rows may miss onboarding_completed_at but still contain onboarding data.
+    const hasCoreOnboardingData = Boolean(factionClubId) && nickname.length >= 2;
+    const isFullyCompleted = Boolean(completedAt) || hasCoreOnboardingData;
 
     return {
       faction_club_id: factionClubId,
@@ -3835,7 +3837,8 @@ async function getUserOnboarding(supabase: SupabaseClient, userId: number): Prom
       avatar_choice: data.avatar_choice ?? null,
       completed: isFullyCompleted
     };
-  } catch {
+  } catch (error) {
+    console.error("Failed to load user onboarding", error);
     return null;
   }
 }
